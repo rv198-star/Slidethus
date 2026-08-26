@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+<rect width="100%" height="100%" fill="#f4f5f7"/>
+<style>text{font-family:Arial,"Noto Sans CJK SC",sans-serif;fill:#20242a}.meta{font-size:12px;fill:#727983}.label{font-size:12px;font-weight:700;fill:#5a616b}</style>
+<text x="24" y="24" class="meta">S-003 · architecture · planning wireframe</text>
+<rect x="64" y="52" width="1152" height="90" rx="12" fill="#ffffff" stroke="#b9c0c8" stroke-width="2"/>
+<text x="76" y="72" class="label">REG-S003-01 → BLK-S003-01</text>
+<text x="80" y="100.0" font-size="38" text-anchor="start">M1：先让工程事实可靠流动</text>
+<rect x="64" y="170" width="720" height="400" rx="12" fill="#eceff2" stroke="#b9c0c8" stroke-width="2"/>
+<text x="76" y="190" class="label">REG-S003-02 → BLK-S003-02</text>
+<text x="424.0" y="218.0" font-size="20" text-anchor="middle">• Project Brief</text>
+<text x="424.0" y="243.0" font-size="20" text-anchor="middle">• Evidence Ledger</text>
+<text x="424.0" y="268.0" font-size="20" text-anchor="middle">• Narrative</text>
+<text x="424.0" y="293.0" font-size="20" text-anchor="middle">• Slide Specs</text>
+<text x="424.0" y="318.0" font-size="20" text-anchor="middle">• Layout Plans</text>
+<text x="424.0" y="343.0" font-size="20" text-anchor="middle">• Visual System</text>
+<rect x="814" y="170" width="402" height="320" rx="12" fill="#ffffff" stroke="#b9c0c8" stroke-width="2"/>
+<text x="826" y="190" class="label">REG-S003-03 → BLK-S003-03</text>
+<text x="830" y="218.0" font-size="20" text-anchor="start">• Schema 与版本</text>
+<text x="830" y="243.0" font-size="20" text-anchor="start">• 跨引用与状态机</text>
+<text x="830" y="268.0" font-size="20" text-anchor="start">• 原子写入与恢复</text>
+<text x="830" y="293.0" font-size="20" text-anchor="start">• Gate 与回归测试</text>
+<rect x="814" y="520" width="402" height="100" rx="12" fill="#eceff2" stroke="#b9c0c8" stroke-width="2"/>
+<text x="826" y="540" class="label">REG-S003-04 → BLK-S003-04</text>
+<text x="830" y="568.0" font-size="15" text-anchor="start">渲染后端可替换；主 Skill 统一编排。</text>
+</svg>

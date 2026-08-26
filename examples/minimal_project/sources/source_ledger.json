@@ -1,0 +1,41 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "SLIDETHUS-DEMO",
+  "sources": [
+    {
+      "source_id": "SRC-001",
+      "kind": "user_file",
+      "title": "应该是目前最强的 PPT Agent，附上完整思路分享",
+      "path_or_url": "../../../source_material/cleaned-main-post.md",
+      "ownership": "public_reference",
+      "confidentiality": "public",
+      "authority_tier": "user",
+      "freshness_date": "2026-03-19",
+      "retrieved_at": "2026-08-26",
+      "content_hash": "c0091e79371380df1f20f532f4d7e88125c1b8dd15e3c60c4d34c7185b0a8870",
+      "parse_status": "parsed",
+      "allowed_use": "citation_only",
+      "notes": [
+        "发布包使用清洗主帖；浏览器原始 HTML 因包含会话元数据与无关页面数据而省略。",
+        "来源公开了方法论和部分提示词，没有公开完整商业实现。"
+      ]
+    },
+    {
+      "source_id": "SRC-002",
+      "kind": "internal_knowledge",
+      "title": "Slidethus Architecture",
+      "path_or_url": "../../../docs/02-architecture.md",
+      "ownership": "user_owned",
+      "confidentiality": "internal",
+      "authority_tier": "primary",
+      "freshness_date": "2026-08-26",
+      "retrieved_at": "2026-08-26",
+      "content_hash": "14f7a8849cddeea4756e02be8afee3c9e97209417af663d9020a96d3206fb6f3",
+      "parse_status": "parsed",
+      "allowed_use": "full",
+      "notes": [
+        "Slidethus 独立架构设计，不属于原作者公开内容。"
+      ]
+    }
+  ]
+}

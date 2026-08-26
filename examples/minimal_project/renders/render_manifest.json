@@ -1,0 +1,18 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "SLIDETHUS-DEMO",
+  "deck_id": "DECK-SLIDETHUS-DEMO",
+  "render_id": "RND-SLIDETHUS-DEMO",
+  "backend": "wireframe-svg",
+  "backend_version": "0.1.0",
+  "target_format": "svg",
+  "target_editability_level": "E4",
+  "editability_level": "not_measured",
+  "input_artifacts": [],
+  "outputs": [],
+  "font_substitutions": [],
+  "warnings": [
+    "该 manifest 为待渲染状态；运行 slidethus render-wireframe 后生成灰模文件。"
+  ],
+  "status": "pending"
+}

@@ -1,0 +1,12 @@
+{
+  "case_id": "EVAL-005",
+  "workflow": "audit",
+  "scenario": "A 20-slide deck uses the same Bento pattern on 18 slides.",
+  "required_behaviors": [
+    "flag systemic monotony",
+    "route to visual/layout policy",
+    "propose relation-driven layout diversity",
+    "do not merely recolor cards"
+  ],
+  "expected_issue_severity": "major"
+}

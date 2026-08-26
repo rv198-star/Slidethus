@@ -1,0 +1,290 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "SLIDETHUS-DEMO",
+  "records": [
+    {
+      "gate_record_id": "GTR-0001",
+      "gate_id": "G0",
+      "status": "pass",
+      "artifact_versions": [
+        {
+          "artifact_type": "project_brief",
+          "path": "brief/project_brief.json",
+          "version": 1,
+          "sha256": "1bbe3981a8725edc35de8ac183684bf442e546cf6e6a35186f794b070cae4f6f"
+        }
+      ],
+      "check_results": [
+        {
+          "check_id": "G0-LEGACY-001",
+          "status": "pass",
+          "severity": "info",
+          "message": "Imported from M0 project_state"
+        }
+      ],
+      "issue_refs": [],
+      "approved_by": "migration-runtime",
+      "evaluated_at": "2026-08-26T08:33:46.178810Z",
+      "waiver_reason": null,
+      "notes": [
+        "Bootstrap example gate."
+      ]
+    },
+    {
+      "gate_record_id": "GTR-0002",
+      "gate_id": "G1",
+      "status": "pass",
+      "artifact_versions": [
+        {
+          "artifact_type": "project_brief",
+          "path": "brief/project_brief.json",
+          "version": 1,
+          "sha256": "1bbe3981a8725edc35de8ac183684bf442e546cf6e6a35186f794b070cae4f6f"
+        },
+        {
+          "artifact_type": "source_ledger",
+          "path": "sources/source_ledger.json",
+          "version": 1,
+          "sha256": "6da17abb08911590bf74aa841a3c39e81031636f7e353451801b29f7f11e6adb"
+        }
+      ],
+      "check_results": [
+        {
+          "check_id": "G1-LEGACY-001",
+          "status": "pass",
+          "severity": "info",
+          "message": "Imported from M0 project_state"
+        }
+      ],
+      "issue_refs": [],
+      "approved_by": "migration-runtime",
+      "evaluated_at": "2026-08-26T08:33:46.178810Z",
+      "waiver_reason": null,
+      "notes": [
+        "Bootstrap example gate."
+      ]
+    },
+    {
+      "gate_record_id": "GTR-0003",
+      "gate_id": "G2",
+      "status": "pass",
+      "artifact_versions": [
+        {
+          "artifact_type": "project_brief",
+          "path": "brief/project_brief.json",
+          "version": 1,
+          "sha256": "1bbe3981a8725edc35de8ac183684bf442e546cf6e6a35186f794b070cae4f6f"
+        },
+        {
+          "artifact_type": "source_ledger",
+          "path": "sources/source_ledger.json",
+          "version": 1,
+          "sha256": "6da17abb08911590bf74aa841a3c39e81031636f7e353451801b29f7f11e6adb"
+        },
+        {
+          "artifact_type": "evidence_ledger",
+          "path": "evidence/evidence_ledger.json",
+          "version": 1,
+          "sha256": "92c5fe2c7e3ad5cef4e6a2643595089c5665c8a1cbdc139921b936772950de4d"
+        }
+      ],
+      "check_results": [
+        {
+          "check_id": "G2-LEGACY-001",
+          "status": "pass",
+          "severity": "info",
+          "message": "Imported from M0 project_state"
+        }
+      ],
+      "issue_refs": [],
+      "approved_by": "migration-runtime",
+      "evaluated_at": "2026-08-26T08:33:46.178810Z",
+      "waiver_reason": null,
+      "notes": [
+        "Bootstrap example gate."
+      ]
+    },
+    {
+      "gate_record_id": "GTR-0004",
+      "gate_id": "G3",
+      "status": "pass",
+      "artifact_versions": [
+        {
+          "artifact_type": "project_brief",
+          "path": "brief/project_brief.json",
+          "version": 1,
+          "sha256": "1bbe3981a8725edc35de8ac183684bf442e546cf6e6a35186f794b070cae4f6f"
+        },
+        {
+          "artifact_type": "source_ledger",
+          "path": "sources/source_ledger.json",
+          "version": 1,
+          "sha256": "6da17abb08911590bf74aa841a3c39e81031636f7e353451801b29f7f11e6adb"
+        },
+        {
+          "artifact_type": "evidence_ledger",
+          "path": "evidence/evidence_ledger.json",
+          "version": 1,
+          "sha256": "92c5fe2c7e3ad5cef4e6a2643595089c5665c8a1cbdc139921b936772950de4d"
+        },
+        {
+          "artifact_type": "narrative_blueprint",
+          "path": "narrative/narrative_blueprint.json",
+          "version": 1,
+          "sha256": "2c0a71cc230bbb996fa97de7e6d557a1c34474e5bea5a75b930fd9c9bc475983"
+        }
+      ],
+      "check_results": [
+        {
+          "check_id": "G3-LEGACY-001",
+          "status": "pass",
+          "severity": "info",
+          "message": "Imported from M0 project_state"
+        }
+      ],
+      "issue_refs": [],
+      "approved_by": "migration-runtime",
+      "evaluated_at": "2026-08-26T08:33:46.178810Z",
+      "waiver_reason": null,
+      "notes": [
+        "Bootstrap example gate."
+      ]
+    },
+    {
+      "gate_record_id": "GTR-0005",
+      "gate_id": "G4",
+      "status": "pass",
+      "artifact_versions": [
+        {
+          "artifact_type": "narrative_blueprint",
+          "path": "narrative/narrative_blueprint.json",
+          "version": 1,
+          "sha256": "2c0a71cc230bbb996fa97de7e6d557a1c34474e5bea5a75b930fd9c9bc475983"
+        },
+        {
+          "artifact_type": "deck_outline",
+          "path": "outline/deck_outline.json",
+          "version": 1,
+          "sha256": "d1c8a4fa5023c9dbed82cd6a471fb058da52f1de85a68e4cf1a6cdd04e419237"
+        }
+      ],
+      "check_results": [
+        {
+          "check_id": "G4-LEGACY-001",
+          "status": "pass",
+          "severity": "info",
+          "message": "Imported from M0 project_state"
+        }
+      ],
+      "issue_refs": [],
+      "approved_by": "migration-runtime",
+      "evaluated_at": "2026-08-26T08:33:46.178810Z",
+      "waiver_reason": null,
+      "notes": [
+        "Bootstrap example gate."
+      ]
+    },
+    {
+      "gate_record_id": "GTR-0006",
+      "gate_id": "G5A",
+      "status": "pass",
+      "artifact_versions": [
+        {
+          "artifact_type": "deck_outline",
+          "path": "outline/deck_outline.json",
+          "version": 1,
+          "sha256": "d1c8a4fa5023c9dbed82cd6a471fb058da52f1de85a68e4cf1a6cdd04e419237"
+        },
+        {
+          "artifact_type": "slide_specs",
+          "path": "slides/slide_specs.json",
+          "version": 1,
+          "sha256": "e65ba3b536754b68ce3fbe6045ab6fc6b858f4b5299b9b94d750c94be6d8572b"
+        }
+      ],
+      "check_results": [
+        {
+          "check_id": "G5A-LEGACY-001",
+          "status": "pass",
+          "severity": "info",
+          "message": "Imported from M0 project_state"
+        }
+      ],
+      "issue_refs": [],
+      "approved_by": "migration-runtime",
+      "evaluated_at": "2026-08-26T08:33:46.178810Z",
+      "waiver_reason": null,
+      "notes": [
+        "Bootstrap example gate."
+      ]
+    },
+    {
+      "gate_record_id": "GTR-0007",
+      "gate_id": "G5B",
+      "status": "pass",
+      "artifact_versions": [
+        {
+          "artifact_type": "slide_specs",
+          "path": "slides/slide_specs.json",
+          "version": 1,
+          "sha256": "e65ba3b536754b68ce3fbe6045ab6fc6b858f4b5299b9b94d750c94be6d8572b"
+        },
+        {
+          "artifact_type": "layout_plans",
+          "path": "layout/layout_plans.json",
+          "version": 1,
+          "sha256": "2474522492365a642ad0eb35f83503f7955fab20d6dee1298a7fc4d9716c16a3"
+        }
+      ],
+      "check_results": [
+        {
+          "check_id": "G5B-LEGACY-001",
+          "status": "pass",
+          "severity": "info",
+          "message": "Imported from M0 project_state"
+        }
+      ],
+      "issue_refs": [],
+      "approved_by": "migration-runtime",
+      "evaluated_at": "2026-08-26T08:33:46.178810Z",
+      "waiver_reason": null,
+      "notes": [
+        "Bootstrap example gate."
+      ]
+    },
+    {
+      "gate_record_id": "GTR-0008",
+      "gate_id": "G6",
+      "status": "pass",
+      "artifact_versions": [
+        {
+          "artifact_type": "layout_plans",
+          "path": "layout/layout_plans.json",
+          "version": 1,
+          "sha256": "2474522492365a642ad0eb35f83503f7955fab20d6dee1298a7fc4d9716c16a3"
+        },
+        {
+          "artifact_type": "visual_system",
+          "path": "design/visual_system.json",
+          "version": 1,
+          "sha256": "49e45d00954ae4503db900da22f39c5daad8a759b90643e7f97bf5d3e3f1fd0e"
+        }
+      ],
+      "check_results": [
+        {
+          "check_id": "G6-LEGACY-001",
+          "status": "pass",
+          "severity": "info",
+          "message": "Imported from M0 project_state"
+        }
+      ],
+      "issue_refs": [],
+      "approved_by": "migration-runtime",
+      "evaluated_at": "2026-08-26T08:33:46.178810Z",
+      "waiver_reason": null,
+      "notes": [
+        "Bootstrap example gate."
+      ]
+    }
+  ]
+}

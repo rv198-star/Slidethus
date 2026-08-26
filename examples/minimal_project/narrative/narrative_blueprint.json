@@ -1,0 +1,74 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "SLIDETHUS-DEMO",
+  "central_thesis": "原方案最值得复制的不是某个模型或模板，而是内容到设计之间可审阅的专业流水线；Slidethus 将其工程化为 Agentic Skill。",
+  "story_arc": "why-what-how",
+  "audience_journey": [
+    "先看到来源真正创新在阶段化工作流",
+    "再理解 Slidethus 如何把阶段变成结构化事实",
+    "最后明确 Codex 应从 Artifact Runtime 开始实现"
+  ],
+  "sections": [
+    {
+      "section_id": "SEC-01",
+      "title": "来源方法",
+      "purpose": "识别需要保留的方法论主干",
+      "key_questions": [
+        "来源真正解决了什么？"
+      ],
+      "evidence_ids": [
+        "EVD-001",
+        "EVD-002"
+      ],
+      "transition": "从流程洞见转向工程化。"
+    },
+    {
+      "section_id": "SEC-02",
+      "title": "Slidethus 架构",
+      "purpose": "解释 Agentic Skill 的分层",
+      "key_questions": [
+        "如何避免退化成长提示词？"
+      ],
+      "evidence_ids": [
+        "EVD-003"
+      ],
+      "transition": "从架构转向首个可构建里程碑。"
+    },
+    {
+      "section_id": "SEC-03",
+      "title": "Codex 起步",
+      "purpose": "给出明确实施顺序",
+      "key_questions": [
+        "下一步应该先做什么？"
+      ],
+      "evidence_ids": [
+        "EVD-004"
+      ],
+      "transition": "进入工程实施。"
+    }
+  ],
+  "objections": [
+    {
+      "objection": "这只是一套更长的提示词。",
+      "response_strategy": "展示结构化产物、跨引用、状态机和 Gate。",
+      "evidence_ids": [
+        "EVD-003"
+      ]
+    },
+    {
+      "objection": "应该先做最终视觉证明价值。",
+      "response_strategy": "说明没有稳定事实合同时渲染会放大返工和不可追溯。",
+      "evidence_ids": [
+        "EVD-004"
+      ]
+    }
+  ],
+  "excluded_content": [
+    "商业产品未公开源码推测",
+    "具体模型优劣排名",
+    "GUI 产品设计"
+  ],
+  "notes": [
+    "三页示例故意保持精简。"
+  ]
+}

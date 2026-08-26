@@ -1,0 +1,207 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "SLIDETHUS-DEMO",
+  "deck_id": "DECK-SLIDETHUS-DEMO",
+  "canvas": {
+    "width": 1280,
+    "height": 720
+  },
+  "safe_area": {
+    "top": 48,
+    "right": 56,
+    "bottom": 44,
+    "left": 56
+  },
+  "plans": [
+    {
+      "slide_id": "S-001",
+      "layout_family": "hero",
+      "reading_order": [
+        "REG-S001-01",
+        "REG-S001-02",
+        "REG-S001-03"
+      ],
+      "regions": [
+        {
+          "region_id": "REG-S001-01",
+          "block_id": "BLK-S001-01",
+          "x": 80,
+          "y": 190,
+          "w": 1120,
+          "h": 120,
+          "z": 1,
+          "align": "center",
+          "valign": "middle",
+          "overflow_strategy": "fail",
+          "role": "display"
+        },
+        {
+          "region_id": "REG-S001-02",
+          "block_id": "BLK-S001-02",
+          "x": 150,
+          "y": 330,
+          "w": 980,
+          "h": 110,
+          "z": 1,
+          "align": "center",
+          "valign": "middle",
+          "overflow_strategy": "wrap",
+          "role": "subtitle"
+        },
+        {
+          "region_id": "REG-S001-03",
+          "block_id": "BLK-S001-03",
+          "x": 420,
+          "y": 600,
+          "w": 440,
+          "h": 50,
+          "z": 1,
+          "align": "center",
+          "valign": "middle",
+          "overflow_strategy": "fail",
+          "role": "meta"
+        }
+      ],
+      "rationale": "单一焦点封面，避免用卡片稀释项目定位。",
+      "grid_notes": [
+        "中心视觉轴"
+      ]
+    },
+    {
+      "slide_id": "S-002",
+      "layout_family": "process",
+      "reading_order": [
+        "REG-S002-01",
+        "REG-S002-02",
+        "REG-S002-03",
+        "REG-S002-04"
+      ],
+      "regions": [
+        {
+          "region_id": "REG-S002-01",
+          "block_id": "BLK-S002-01",
+          "x": 64,
+          "y": 60,
+          "w": 1152,
+          "h": 92,
+          "z": 1,
+          "align": "left",
+          "valign": "middle",
+          "overflow_strategy": "wrap",
+          "role": "title"
+        },
+        {
+          "region_id": "REG-S002-02",
+          "block_id": "BLK-S002-02",
+          "x": 64,
+          "y": 180,
+          "w": 1152,
+          "h": 220,
+          "z": 1,
+          "align": "center",
+          "valign": "middle",
+          "overflow_strategy": "wrap",
+          "role": "process"
+        },
+        {
+          "region_id": "REG-S002-03",
+          "block_id": "BLK-S002-03",
+          "x": 64,
+          "y": 430,
+          "w": 760,
+          "h": 190,
+          "z": 1,
+          "align": "left",
+          "valign": "top",
+          "overflow_strategy": "wrap",
+          "role": "emphasis"
+        },
+        {
+          "region_id": "REG-S002-04",
+          "block_id": "BLK-S002-04",
+          "x": 850,
+          "y": 430,
+          "w": 366,
+          "h": 190,
+          "z": 1,
+          "align": "left",
+          "valign": "top",
+          "overflow_strategy": "wrap",
+          "role": "boundary"
+        }
+      ],
+      "rationale": "主流程横向展开，下方分别解释策划稿价值和实现边界。",
+      "grid_notes": [
+        "流程为主，卡片仅承载解释"
+      ]
+    },
+    {
+      "slide_id": "S-003",
+      "layout_family": "architecture",
+      "reading_order": [
+        "REG-S003-01",
+        "REG-S003-02",
+        "REG-S003-03",
+        "REG-S003-04"
+      ],
+      "regions": [
+        {
+          "region_id": "REG-S003-01",
+          "block_id": "BLK-S003-01",
+          "x": 64,
+          "y": 52,
+          "w": 1152,
+          "h": 90,
+          "z": 1,
+          "align": "left",
+          "valign": "middle",
+          "overflow_strategy": "wrap",
+          "role": "title"
+        },
+        {
+          "region_id": "REG-S003-02",
+          "block_id": "BLK-S003-02",
+          "x": 64,
+          "y": 170,
+          "w": 720,
+          "h": 400,
+          "z": 1,
+          "align": "center",
+          "valign": "middle",
+          "overflow_strategy": "wrap",
+          "role": "architecture"
+        },
+        {
+          "region_id": "REG-S003-03",
+          "block_id": "BLK-S003-03",
+          "x": 814,
+          "y": 170,
+          "w": 402,
+          "h": 320,
+          "z": 1,
+          "align": "left",
+          "valign": "top",
+          "overflow_strategy": "wrap",
+          "role": "milestone"
+        },
+        {
+          "region_id": "REG-S003-04",
+          "block_id": "BLK-S003-04",
+          "x": 814,
+          "y": 520,
+          "w": 402,
+          "h": 100,
+          "z": 1,
+          "align": "left",
+          "valign": "middle",
+          "overflow_strategy": "wrap",
+          "role": "principle"
+        }
+      ],
+      "rationale": "左侧显示 Artifact 链，右侧显示 M1 工程能力和边界。",
+      "grid_notes": [
+        "不使用多 Agent 角色图"
+      ]
+    }
+  ]
+}

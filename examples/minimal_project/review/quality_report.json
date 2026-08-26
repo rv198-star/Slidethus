@@ -1,0 +1,32 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "SLIDETHUS-DEMO",
+  "review_id": "REV-SLIDETHUS-DEMO-PLANNING",
+  "review_mode": "combined",
+  "reviewer": "bootstrap-foundation-review",
+  "issues": [],
+  "scores": [
+    {
+      "dimension": "artifact_integrity",
+      "score": 5,
+      "evidence": "示例通过 Schema 与跨引用验证。",
+      "unresolved": []
+    },
+    {
+      "dimension": "render_fidelity",
+      "score": 0,
+      "evidence": "尚未执行最终视觉渲染。",
+      "unresolved": [
+        "生产级 SVG/PPTX 后端属于后续里程碑。"
+      ]
+    }
+  ],
+  "gate_result": {
+    "gate_id": "G6",
+    "status": "pass",
+    "reasons": [
+      "规划与视觉系统合同完整；未声称最终渲染完成。"
+    ]
+  },
+  "status": "pass"
+}

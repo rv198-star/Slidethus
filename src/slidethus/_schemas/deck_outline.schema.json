@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/deck-outline.schema.json",
+  "title": "Deck Outline",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "deck_id",
+    "target_page_count",
+    "slides"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^0\\.1\\.[0-9]+$"
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"
+    },
+    "deck_id": {
+      "type": "string",
+      "pattern": "^DECK-[A-Z0-9][A-Z0-9_-]{2,63}$"
+    },
+    "target_page_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "slides": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "slide_id",
+          "ordinal",
+          "section_id",
+          "slide_type",
+          "headline",
+          "takeaway",
+          "purpose",
+          "evidence_ids",
+          "status"
+        ],
+        "properties": {
+          "slide_id": {
+            "type": "string",
+            "pattern": "^S-[0-9]{3}$"
+          },
+          "ordinal": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "section_id": {
+            "type": "string",
+            "pattern": "^SEC-[0-9]{2}$"
+          },
+          "slide_type": {
+            "enum": [
+              "cover",
+              "agenda",
+              "section",
+              "statement",
+              "evidence",
+              "process",
+              "comparison",
+              "timeline",
+              "matrix",
+              "architecture",
+              "chart",
+              "case",
+              "quote",
+              "summary",
+              "action",
+              "appendix"
+            ]
+          },
+          "headline": {
+            "type": "string",
+            "minLength": 1
+          },
+          "takeaway": {
+            "type": "string",
+            "minLength": 1
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^EVD-[0-9]{3}$"
+            }
+          },
+          "transition_from": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "transition_to": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "reviewed",
+              "approved",
+              "frozen",
+              "excluded"
+            ]
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "appendix_policy": {
+      "type": "string"
+    }
+  }
+}

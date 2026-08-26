@@ -1,0 +1,86 @@
+{
+  "schema_version": "0.2.0",
+  "schemas": [
+    {
+      "artifact_type": "project_brief",
+      "path": "project_brief.schema.json",
+      "default_path": "brief/project_brief.json"
+    },
+    {
+      "artifact_type": "source_ledger",
+      "path": "source_ledger.schema.json",
+      "default_path": "sources/source_ledger.json"
+    },
+    {
+      "artifact_type": "evidence_ledger",
+      "path": "evidence_ledger.schema.json",
+      "default_path": "evidence/evidence_ledger.json"
+    },
+    {
+      "artifact_type": "narrative_blueprint",
+      "path": "narrative_blueprint.schema.json",
+      "default_path": "narrative/narrative_blueprint.json"
+    },
+    {
+      "artifact_type": "deck_outline",
+      "path": "deck_outline.schema.json",
+      "default_path": "outline/deck_outline.json"
+    },
+    {
+      "artifact_type": "slide_specs",
+      "path": "slide_specs.schema.json",
+      "default_path": "slides/slide_specs.json"
+    },
+    {
+      "artifact_type": "layout_plans",
+      "path": "layout_plans.schema.json",
+      "default_path": "layout/layout_plans.json"
+    },
+    {
+      "artifact_type": "visual_system",
+      "path": "visual_system.schema.json",
+      "default_path": "design/visual_system.json"
+    },
+    {
+      "artifact_type": "asset_manifest",
+      "path": "asset_manifest.schema.json",
+      "default_path": "assets/asset_manifest.json"
+    },
+    {
+      "artifact_type": "render_manifest",
+      "path": "render_manifest.schema.json",
+      "default_path": "renders/render_manifest.json"
+    },
+    {
+      "artifact_type": "quality_report",
+      "path": "quality_report.schema.json",
+      "default_path": "review/quality_report.json"
+    },
+    {
+      "artifact_type": "delivery_manifest",
+      "path": "delivery_manifest.schema.json",
+      "default_path": "delivery/delivery_manifest.json"
+    },
+    {
+      "artifact_type": "gate_results",
+      "path": "gate_results.schema.json",
+      "default_path": "gates/gate_results.json"
+    },
+    {
+      "artifact_type": "decision_log",
+      "path": "decision_log.schema.json",
+      "default_path": "decisions/decision_log.json"
+    },
+    {
+      "artifact_type": "assumption_log",
+      "path": "assumption_log.schema.json",
+      "default_path": "decisions/assumption_log.json"
+    },
+    {
+      "artifact_type": "project_state",
+      "path": "project_state.schema.json",
+      "default_path": "project_state.json",
+      "schema_version": "0.2.0"
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "schema_version": "0.1.0",
+  "generated_on": "2026-08-26",
+  "files": [
+    {
+      "path": "source_material/README.md",
+      "sha256": "5bb75a2b119e9120acfd185bbef4de3cabb24ad092082f49ff26409a1ccad35a",
+      "bytes": 1032
+    },
+    {
+      "path": "source_material/cleaned-main-post.md",
+      "sha256": "c0091e79371380df1f20f532f4d7e88125c1b8dd15e3c60c4d34c7185b0a8870",
+      "bytes": 14640
+    },
+    {
+      "path": "source_material/derived-analysis/engineering-gaps.md",
+      "sha256": "1c10c5602b53ad1a9c97b4293b20428f91e89d7a59b203c06004bc2697868278",
+      "bytes": 1910
+    },
+    {
+      "path": "source_material/derived-analysis/reusable-capabilities.md",
+      "sha256": "48fe8a02e8fe2ac109dc5843ef84be851809ee71443a435f5294b664421e4339",
+      "bytes": 2176
+    },
+    {
+      "path": "source_material/material-map.md",
+      "sha256": "778d128894dcfd43d38906d880c53e8ba84a5fb09bfa2d1130e306d294a55be5",
+      "bytes": 1464
+    },
+    {
+      "path": "source_material/raw/README.md",
+      "sha256": "9dd19b9269f780fbd359acb3e87b122c74a4ad895fe5c855517cb62b5135722c",
+      "bytes": 337
+    },
+    {
+      "path": "source_material/source-boundary.md",
+      "sha256": "b88485225e619734237bd19cb1d05ff2b1bab8cff022545da4c0887daf5b596b",
+      "bytes": 1355
+    },
+    {
+      "path": "source_material/source-preserved/bento-grid-source.md",
+      "sha256": "f0be5f9c4f8c19e1ca14fe3a4eee73a2b682942d17203976b1a697761b81464d",
+      "bytes": 1587
+    },
+    {
+      "path": "source_material/source-preserved/outline-architect-source.md",
+      "sha256": "5b6a42e212eba00357b8525362ab8d77d512d4e94aa4d4f7b1c36ec712bcf5a9",
+      "bytes": 1892
+    },
+    {
+      "path": "source_material/source-preserved/svg-page-source.md",
+      "sha256": "351d97fe67c50c8971940a79522024a5a1036db7bfd54584b87450b779d24182",
+      "bytes": 1844
+    },
+    {
+      "path": "source_material/source-workflow.md",
+      "sha256": "9dec967969c3758d55e1e963ca9b00eb4dd78ce9380c64f6eebe7a8ff5958ec6",
+      "bytes": 2500
+    },
+    {
+      "path": "source_material/visual-example-gallery.html",
+      "sha256": "538c1948275ee163b35d5a3dbc34596e878651b12cbbf3b09056a06621b8384f",
+      "bytes": 9802
+    },
+    {
+      "path": "source_material/visual-example-index.csv",
+      "sha256": "dead72de0641dcca870a5407ce0aa428a1e716754c3d94130ca6186476b82654",
+      "bytes": 6641
+    },
+    {
+      "path": "source_material/visual-examples-analysis.md",
+      "sha256": "3db37ed61d40e41ad3b554a90b6af5c504887f39c8d643aa5bf8f5c25c50d6a0",
+      "bytes": 4701
+    }
+  ]
+}

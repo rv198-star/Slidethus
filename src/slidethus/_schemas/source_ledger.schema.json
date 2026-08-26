@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/source-ledger.schema.json",
+  "title": "Source Ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "sources"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^0\\.1\\.[0-9]+$"
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_id",
+          "kind",
+          "title",
+          "path_or_url",
+          "ownership",
+          "confidentiality",
+          "authority_tier",
+          "parse_status",
+          "allowed_use"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "pattern": "^SRC-[0-9]{3}$"
+          },
+          "kind": {
+            "enum": [
+              "user_file",
+              "web",
+              "existing_deck",
+              "dataset",
+              "image",
+              "internal_knowledge",
+              "other"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path_or_url": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ownership": {
+            "enum": [
+              "user_owned",
+              "licensed",
+              "public_reference",
+              "unknown"
+            ]
+          },
+          "confidentiality": {
+            "enum": [
+              "public",
+              "internal",
+              "confidential",
+              "restricted"
+            ]
+          },
+          "authority_tier": {
+            "enum": [
+              "user",
+              "primary",
+              "secondary",
+              "community",
+              "unknown"
+            ]
+          },
+          "freshness_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "retrieved_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "content_hash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parse_status": {
+            "enum": [
+              "pending",
+              "parsed",
+              "partial",
+              "unreadable",
+              "skipped"
+            ]
+          },
+          "allowed_use": {
+            "enum": [
+              "full",
+              "internal_only",
+              "citation_only",
+              "metadata_only",
+              "do_not_use"
+            ]
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

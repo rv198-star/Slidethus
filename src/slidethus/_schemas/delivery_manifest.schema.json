@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/delivery-manifest.schema.json",
+  "title": "Delivery Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "delivery_id",
+    "delivery_level",
+    "outputs",
+    "artifact_versions",
+    "target_editability_level",
+    "editability_level",
+    "review_status",
+    "waivers",
+    "limitations",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^0\\.1\\.[0-9]+$"
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"
+    },
+    "delivery_id": {
+      "type": "string",
+      "pattern": "^DLV-[A-Z0-9_-]+$"
+    },
+    "delivery_level": {
+      "enum": [
+        "D0",
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5"
+      ]
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "format",
+          "sha256",
+          "validated"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "validated": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "artifact_versions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifact_type",
+          "path",
+          "version",
+          "sha256"
+        ],
+        "properties": {
+          "artifact_type": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "editability_level": {
+      "enum": [
+        "E0",
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "not_measured"
+      ]
+    },
+    "review_status": {
+      "enum": [
+        "not_run",
+        "partial",
+        "pass",
+        "fail"
+      ]
+    },
+    "waivers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "ready",
+        "delivered",
+        "blocked"
+      ]
+    },
+    "target_editability_level": {
+      "enum": [
+        "E0",
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ]
+    }
+  }
+}

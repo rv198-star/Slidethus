@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "SLIDETHUS-DEMO",
+  "decisions": [
+    {
+      "decision_id": "DEC-001",
+      "statement": "示例停在 Visual System Ready；最终渲染能力不作假完成。",
+      "rationale": "Imported from M0 project_state",
+      "status": "active",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    },
+    {
+      "decision_id": "DEC-002",
+      "statement": "灰模使用确定性 SVG renderer。",
+      "rationale": "Imported from M0 project_state",
+      "status": "active",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    }
+  ]
+}

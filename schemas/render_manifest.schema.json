@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/render-manifest.schema.json",
+  "title": "Render Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "deck_id",
+    "render_id",
+    "backend",
+    "target_format",
+    "target_editability_level",
+    "editability_level",
+    "input_artifacts",
+    "outputs",
+    "font_substitutions",
+    "warnings",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^0\\.1\\.[0-9]+$"
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"
+    },
+    "deck_id": {
+      "type": "string",
+      "pattern": "^DECK-[A-Z0-9][A-Z0-9_-]{2,63}$"
+    },
+    "render_id": {
+      "type": "string",
+      "pattern": "^RND-[A-Z0-9_-]+$"
+    },
+    "backend": {
+      "type": "string"
+    },
+    "backend_version": {
+      "type": "string"
+    },
+    "target_format": {
+      "enum": [
+        "svg",
+        "pptx",
+        "pdf",
+        "png",
+        "html"
+      ]
+    },
+    "editability_level": {
+      "enum": [
+        "E0",
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "not_measured"
+      ]
+    },
+    "input_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256",
+          "version"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256",
+          "mime_type",
+          "slide_count"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "mime_type": {
+            "type": "string"
+          },
+          "slide_count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "font_substitutions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requested",
+          "actual"
+        ],
+        "properties": {
+          "requested": {
+            "type": "string"
+          },
+          "actual": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "enum": [
+        "pending",
+        "success",
+        "partial",
+        "failed"
+      ]
+    },
+    "target_editability_level": {
+      "enum": [
+        "E0",
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ]
+    }
+  }
+}

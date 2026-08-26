@@ -1,0 +1,16 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "SLIDETHUS-DEMO",
+  "delivery_id": "DLV-SLIDETHUS-DEMO",
+  "delivery_level": "D4",
+  "outputs": [],
+  "artifact_versions": [],
+  "target_editability_level": "E4",
+  "editability_level": "not_measured",
+  "review_status": "partial",
+  "waivers": [],
+  "limitations": [
+    "仅为 Schema/规划/灰模示例，不是生产级 PPTX 交付。"
+  ],
+  "status": "draft"
+}

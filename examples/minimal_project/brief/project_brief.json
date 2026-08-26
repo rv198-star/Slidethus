@@ -1,0 +1,72 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "SLIDETHUS-DEMO",
+  "title": "从 PPT Agent 思路到 Slidethus Agentic Skill",
+  "language": "zh-CN",
+  "intent": {
+    "purpose": "说明如何把来源中的 PPT Agent 工作流重构为可验证、可扩展的 Agentic Skill 工程。",
+    "desired_outcome": "让本地 Codex 开发者理解 M0 基础合同并从 M1 Artifact Runtime 开始实施。",
+    "presentation_mode": "both",
+    "delivery_context": "项目启动与架构评审",
+    "call_to_action": "按 CODEX_KICKOFF.md 完成 M1，而不是直接实现华丽渲染。"
+  },
+  "audiences": [
+    {
+      "audience_id": "AUD-01",
+      "role": "本地 Codex 项目构建者",
+      "needs": [
+        "理解来源方法论",
+        "理解 Slidethus 的工程分层",
+        "知道首个可实施里程碑"
+      ],
+      "objections": [
+        "这是否只是另一套长提示词",
+        "为何不直接做 PPTX 渲染"
+      ],
+      "decision_power": "decision_maker",
+      "knowledge_level": "expert"
+    }
+  ],
+  "constraints": {
+    "page_count": {
+      "min": 3,
+      "target": 3,
+      "max": 3
+    },
+    "duration_minutes": 5,
+    "aspect_ratio": "16:9",
+    "output_formats": [
+      "svg",
+      "artifacts_only"
+    ],
+    "editability_target": "E4",
+    "deadline": null,
+    "brand_requirements": [
+      "中性工程灰模，不模拟最终品牌视觉"
+    ],
+    "forbidden_content": [
+      "把未实现渲染能力描述为完成"
+    ]
+  },
+  "source_policy": {
+    "use_user_sources": true,
+    "external_research": false,
+    "citation_required": true,
+    "freshness_requirement": null,
+    "allowed_source_tiers": [
+      "user",
+      "primary",
+      "secondary"
+    ]
+  },
+  "approval_mode": "checkpoint",
+  "quality_profile": "critical",
+  "assumptions": [
+    {
+      "assumption_id": "ASM-001",
+      "statement": "该示例只验证中间产物和灰模，不代表生产级最终视觉。",
+      "status": "accepted"
+    }
+  ],
+  "open_questions": []
+}

@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/asset-manifest.schema.json",
+  "title": "Asset Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "assets"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^0\\.1\\.[0-9]+$"
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "asset_id",
+          "kind",
+          "source_type",
+          "path_or_url",
+          "license",
+          "allowed_use",
+          "status"
+        ],
+        "properties": {
+          "asset_id": {
+            "type": "string",
+            "pattern": "^AST-[0-9]{3}$"
+          },
+          "kind": {
+            "enum": [
+              "image",
+              "icon",
+              "font",
+              "chart_data",
+              "template",
+              "logo",
+              "svg",
+              "other"
+            ]
+          },
+          "source_type": {
+            "enum": [
+              "generated",
+              "user_provided",
+              "stock",
+              "open_source",
+              "internal",
+              "unknown"
+            ]
+          },
+          "path_or_url": {
+            "type": "string"
+          },
+          "license": {
+            "type": "string"
+          },
+          "allowed_use": {
+            "enum": [
+              "full",
+              "internal_only",
+              "attribution_required",
+              "reference_only",
+              "do_not_use"
+            ]
+          },
+          "attribution": {
+            "type": "string"
+          },
+          "content_hash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "available",
+              "missing",
+              "blocked",
+              "replaced"
+            ]
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

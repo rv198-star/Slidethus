@@ -1,0 +1,11 @@
+{
+  "case_id": "EVAL-004",
+  "workflow": "revise_slide",
+  "scenario": "Revise S-007 while preserving the approved deck thesis.",
+  "required_behaviors": [
+    "keep stable slide ID",
+    "identify upstream cause",
+    "invalidate dependent layout/render only",
+    "run local and deck regression"
+  ]
+}

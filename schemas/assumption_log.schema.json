@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/assumption-log.schema.json",
+  "title": "Assumption Log",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "project_id", "assumptions"],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["assumption_id", "statement", "basis", "risk", "status", "created_at", "created_by", "resolved_by"],
+        "properties": {
+          "assumption_id": {"type": "string", "pattern": "^ASM-[0-9]{3,}$"},
+          "statement": {"type": "string", "minLength": 1},
+          "basis": {"type": "string"},
+          "risk": {"enum": ["low", "medium", "high"]},
+          "status": {"enum": ["active", "confirmed", "rejected", "superseded"]},
+          "created_at": {"type": "string", "format": "date-time"},
+          "created_by": {"type": "string", "minLength": 1},
+          "resolved_by": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}]}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "schema_version": "0.1.0",
+  "status": "pass",
+  "checks": [
+    {
+      "name": "required_paths",
+      "ok": true,
+      "detail": "all present"
+    },
+    {
+      "name": "skill_frontmatter",
+      "ok": true,
+      "detail": "name and description present"
+    },
+    {
+      "name": "schemas",
+      "ok": true,
+      "detail": "16 valid"
+    },
+    {
+      "name": "packaged_schema_mirror",
+      "ok": true,
+      "detail": "matches repository schemas"
+    },
+    {
+      "name": "instruction_budget",
+      "ok": true,
+      "detail": "12256 bytes across AGENTS.md and SKILL.md"
+    },
+    {
+      "name": "raw_browser_html_omitted",
+      "ok": true,
+      "detail": "no browser-session HTML in package"
+    },
+    {
+      "name": "state_contract_alignment",
+      "ok": true,
+      "detail": "blocked is modeled as status, not phase"
+    },
+    {
+      "name": "minimal_project",
+      "ok": true,
+      "detail": "PASS: no validation issues"
+    },
+    {
+      "name": "relative_links",
+      "ok": true,
+      "detail": "no missing relative links"
+    },
+    {
+      "name": "unresolved_placeholders",
+      "ok": true,
+      "detail": "none outside source-preserved material"
+    },
+    {
+      "name": "source_manifest",
+      "ok": true,
+      "detail": "all source hashes match"
+    },
+    {
+      "name": "source_prompt_mirror",
+      "ok": true,
+      "detail": "source-preserved prompts match"
+    },
+    {
+      "name": "research_contract_alignment",
+      "ok": true,
+      "detail": "two-pass cycles, outline binding, gates, and provider protocol align"
+    },
+    {
+      "name": "artifact_runtime_alignment",
+      "ok": true,
+      "detail": "versioning, migration, recovery, invalidation, logs, and waiver policy align"
+    },
+    {
+      "name": "editability_contract_alignment",
+      "ok": true,
+      "detail": "target, measured actual, and promise enforcement align"
+    },
+    {
+      "name": "independent_audit_reports",
+      "ok": true,
+      "detail": "five substantive audit rounds present"
+    },
+    {
+      "name": "release_tree_hygiene",
+      "ok": true,
+      "detail": "no build/dist/egg-info directories"
+    },
+    {
+      "name": "no_fake_renderer",
+      "ok": true,
+      "detail": "planned renderer is documented, not presented as runnable"
+    }
+  ]
+}

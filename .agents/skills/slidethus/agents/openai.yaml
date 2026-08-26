@@ -1,0 +1,7 @@
+interface:
+  display_name: "Slidethus"
+  short_description: "Evidence-backed agentic presentation engineering"
+  default_prompt: "Use Slidethus to plan, build, revise, or audit this presentation through structured artifacts and quality gates."
+
+policy:
+  allow_implicit_invocation: true

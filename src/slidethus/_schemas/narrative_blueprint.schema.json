@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/narrative-blueprint.schema.json",
+  "title": "Narrative Blueprint",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "central_thesis",
+    "story_arc",
+    "audience_journey",
+    "sections",
+    "objections",
+    "excluded_content"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^0\\.1\\.[0-9]+$"
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"
+    },
+    "central_thesis": {
+      "type": "string",
+      "minLength": 1
+    },
+    "story_arc": {
+      "enum": [
+        "problem-solution-proof-action",
+        "situation-complication-resolution",
+        "why-what-how",
+        "chronological",
+        "question-answer",
+        "portfolio",
+        "teaching",
+        "custom"
+      ]
+    },
+    "audience_journey": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "string"
+      }
+    },
+    "sections": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "section_id",
+          "title",
+          "purpose",
+          "key_questions",
+          "evidence_ids",
+          "transition"
+        ],
+        "properties": {
+          "section_id": {
+            "type": "string",
+            "pattern": "^SEC-[0-9]{2}$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "key_questions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^EVD-[0-9]{3}$"
+            }
+          },
+          "transition": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "objections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "objection",
+          "response_strategy"
+        ],
+        "properties": {
+          "objection": {
+            "type": "string"
+          },
+          "response_strategy": {
+            "type": "string"
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "excluded_content": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

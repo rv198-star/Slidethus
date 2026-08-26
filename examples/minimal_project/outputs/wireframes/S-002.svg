@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+<rect width="100%" height="100%" fill="#f4f5f7"/>
+<style>text{font-family:Arial,"Noto Sans CJK SC",sans-serif;fill:#20242a}.meta{font-size:12px;fill:#727983}.label{font-size:12px;font-weight:700;fill:#5a616b}</style>
+<text x="24" y="24" class="meta">S-002 · process · planning wireframe</text>
+<rect x="64" y="60" width="1152" height="92" rx="12" fill="#ffffff" stroke="#b9c0c8" stroke-width="2"/>
+<text x="76" y="80" class="label">REG-S002-01 → BLK-S002-01</text>
+<text x="80" y="108.0" font-size="38" text-anchor="start">内容先行，策划稿隔离最终设计</text>
+<rect x="64" y="180" width="1152" height="220" rx="12" fill="#eceff2" stroke="#b9c0c8" stroke-width="2"/>
+<text x="76" y="200" class="label">REG-S002-02 → BLK-S002-02</text>
+<text x="640.0" y="228.0" font-size="20" text-anchor="middle">• 需求调研</text>
+<text x="640.0" y="253.0" font-size="20" text-anchor="middle">• 资料搜集</text>
+<text x="640.0" y="278.0" font-size="20" text-anchor="middle">• 大纲策划</text>
+<text x="640.0" y="303.0" font-size="20" text-anchor="middle">• 页面策划稿</text>
+<text x="640.0" y="328.0" font-size="20" text-anchor="middle">• 最终设计稿</text>
+<rect x="64" y="430" width="760" height="190" rx="12" fill="#ffffff" stroke="#b9c0c8" stroke-width="2"/>
+<text x="76" y="450" class="label">REG-S002-03 → BLK-S002-03</text>
+<text x="80" y="478.0" font-size="20" text-anchor="start">页面策划稿先固定信息、层级和位置，再应用风格。</text>
+<rect x="850" y="430" width="366" height="190" rx="12" fill="#eceff2" stroke="#b9c0c8" stroke-width="2"/>
+<text x="862" y="450" class="label">REG-S002-04 → BLK-S002-04</text>
+<text x="866" y="478.0" font-size="15" text-anchor="start">Bento/SVG 是实现手段之一，不是方法论全部。</text>
+</svg>

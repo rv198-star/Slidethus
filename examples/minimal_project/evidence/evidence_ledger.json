@@ -1,0 +1,117 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "SLIDETHUS-DEMO",
+  "research_cycles": [
+    {
+      "cycle_id": "RSC-001",
+      "kind": "orientation",
+      "status": "complete",
+      "basis": "user_materials",
+      "outline_version": null,
+      "source_ids": [
+        "SRC-001",
+        "SRC-002"
+      ],
+      "query_count": 0,
+      "waiver_reason": null,
+      "notes": [
+        "用户素材与项目文档已足以完成方向性理解，无需外部联网补充。"
+      ]
+    },
+    {
+      "cycle_id": "RSC-002",
+      "kind": "targeted",
+      "status": "complete",
+      "basis": "user_materials",
+      "outline_version": 1,
+      "source_ids": [
+        "SRC-001",
+        "SRC-002"
+      ],
+      "query_count": 0,
+      "waiver_reason": null,
+      "notes": [
+        "已按三页大纲检查证据需求；所有事实性页面均绑定可用 evidence IDs。"
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "evidence_id": "EVD-001",
+      "claim": "来源方案把流程明确拆为需求调研、资料搜集、大纲策划、策划稿和设计稿。",
+      "support_status": "verified",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "locator": "cleaned-main-post.md：全流程说明",
+          "support_type": "direct"
+        }
+      ],
+      "freshness_date": "2026-03-19",
+      "conflict_notes": [],
+      "use_policy": "allowed_with_citation",
+      "reasoning": "来源直接陈述。",
+      "tags": [
+        "workflow"
+      ]
+    },
+    {
+      "evidence_id": "EVD-002",
+      "claim": "来源把页面策划稿作为内容与最终视觉之间的独立阶段。",
+      "support_status": "verified",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "locator": "cleaned-main-post.md：PPT 居然还有策划稿",
+          "support_type": "direct"
+        }
+      ],
+      "freshness_date": "2026-03-19",
+      "conflict_notes": [],
+      "use_policy": "allowed_with_citation",
+      "reasoning": "来源展示了策划稿到设计稿的前后关系。",
+      "tags": [
+        "planning-draft"
+      ]
+    },
+    {
+      "evidence_id": "EVD-003",
+      "claim": "Slidethus 可以用结构化产物、Gate 和可替换工具端口把该流程实现为 Agentic Skill。",
+      "support_status": "inference",
+      "source_refs": [
+        {
+          "source_id": "SRC-002",
+          "locator": "docs/02-architecture.md：分层架构",
+          "support_type": "direct"
+        }
+      ],
+      "freshness_date": "2026-08-26",
+      "conflict_notes": [],
+      "use_policy": "allowed_with_qualification",
+      "reasoning": "这是 Slidethus 的架构推导，不是来源作者对其商业产品的技术披露。",
+      "tags": [
+        "architecture",
+        "inference"
+      ]
+    },
+    {
+      "evidence_id": "EVD-004",
+      "claim": "M1 应优先建立可靠的 Artifact Runtime，再扩展最终渲染。",
+      "support_status": "verified",
+      "source_refs": [
+        {
+          "source_id": "SRC-002",
+          "locator": "docs/02-architecture.md 与 TASKS.md：M1",
+          "support_type": "direct"
+        }
+      ],
+      "freshness_date": "2026-08-26",
+      "conflict_notes": [],
+      "use_policy": "internal_only",
+      "reasoning": "项目内部实施决策。",
+      "tags": [
+        "roadmap"
+      ]
+    }
+  ]
+}

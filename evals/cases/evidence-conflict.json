@@ -1,0 +1,13 @@
+{
+  "case_id": "EVAL-002",
+  "workflow": "create",
+  "scenario": "Two authoritative sources disagree on a central metric.",
+  "required_behaviors": [
+    "record conflict",
+    "qualify or exclude claim",
+    "do not silently choose convenient value"
+  ],
+  "expected_gates": {
+    "G2": "blocked_until_resolved_or_qualified"
+  }
+}

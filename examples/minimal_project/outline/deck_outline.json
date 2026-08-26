@@ -1,0 +1,59 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "SLIDETHUS-DEMO",
+  "deck_id": "DECK-SLIDETHUS-DEMO",
+  "target_page_count": 3,
+  "slides": [
+    {
+      "slide_id": "S-001",
+      "ordinal": 1,
+      "section_id": "SEC-01",
+      "slide_type": "cover",
+      "headline": "Slidethus：把 PPT Agent 方法工程化",
+      "takeaway": "复制的是专业工作流，不是产品外壳。",
+      "purpose": "建立项目定位与来源边界。",
+      "evidence_ids": [
+        "EVD-001"
+      ],
+      "transition_from": null,
+      "transition_to": "先看来源方法论主干。",
+      "status": "approved",
+      "notes": []
+    },
+    {
+      "slide_id": "S-002",
+      "ordinal": 2,
+      "section_id": "SEC-01",
+      "slide_type": "process",
+      "headline": "关键创新是“内容先行 + 策划稿隔离”",
+      "takeaway": "需求、证据、叙事和页面策划在视觉设计前完成。",
+      "purpose": "呈现来源工作流并强调策划层。",
+      "evidence_ids": [
+        "EVD-001",
+        "EVD-002"
+      ],
+      "transition_from": "来源的全流程是什么？",
+      "transition_to": "把阶段变成可验证的工程事实。",
+      "status": "approved",
+      "notes": []
+    },
+    {
+      "slide_id": "S-003",
+      "ordinal": 3,
+      "section_id": "SEC-03",
+      "slide_type": "architecture",
+      "headline": "Codex 从 Artifact Runtime 开始，而不是先画页面",
+      "takeaway": "Schema、状态、引用和 Gate 稳定后，再接入搜索、模型与渲染。",
+      "purpose": "说明 Slidethus 架构和首个里程碑。",
+      "evidence_ids": [
+        "EVD-003",
+        "EVD-004"
+      ],
+      "transition_from": "如何工程化？",
+      "transition_to": null,
+      "status": "approved",
+      "notes": []
+    }
+  ],
+  "appendix_policy": "示例无附录。"
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/decision-log.schema.json",
+  "title": "Decision Log",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "project_id", "decisions"],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["decision_id", "statement", "rationale", "status", "created_at", "created_by", "supersedes"],
+        "properties": {
+          "decision_id": {"type": "string", "pattern": "^DEC-[0-9]{3,}$"},
+          "statement": {"type": "string", "minLength": 1},
+          "rationale": {"type": "string"},
+          "status": {"enum": ["active", "superseded", "rejected"]},
+          "created_at": {"type": "string", "format": "date-time"},
+          "created_by": {"type": "string", "minLength": 1},
+          "supersedes": {"oneOf": [{"type": "string", "pattern": "^DEC-[0-9]{3,}$"}, {"type": "null"}]}
+        }
+      }
+    }
+  }
+}

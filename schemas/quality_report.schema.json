@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/quality-report.schema.json",
+  "title": "Quality Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "review_id",
+    "review_mode",
+    "reviewer",
+    "issues",
+    "scores",
+    "gate_result",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^0\\.1\\.[0-9]+$"
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"
+    },
+    "review_id": {
+      "type": "string",
+      "pattern": "^REV-[A-Z0-9_-]+$"
+    },
+    "review_mode": {
+      "enum": [
+        "deterministic",
+        "open_issue_mining",
+        "dimension_scorecard",
+        "combined"
+      ]
+    },
+    "reviewer": {
+      "type": "string"
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "issue_id",
+          "severity",
+          "category",
+          "phase",
+          "finding",
+          "impact",
+          "recommended_fix",
+          "verification",
+          "status"
+        ],
+        "properties": {
+          "issue_id": {
+            "type": "string",
+            "pattern": "^ISS-[0-9]{3}$"
+          },
+          "severity": {
+            "enum": [
+              "critical",
+              "major",
+              "minor",
+              "suggestion"
+            ]
+          },
+          "category": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string"
+          },
+          "slide_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^S-[0-9]{3}$"
+          },
+          "block_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^BLK-S[0-9]{3}-[0-9]{2}$"
+          },
+          "region_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^REG-S[0-9]{3}-[0-9]{2}$"
+          },
+          "finding": {
+            "type": "string"
+          },
+          "impact": {
+            "type": "string"
+          },
+          "recommended_fix": {
+            "type": "string"
+          },
+          "verification": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "fixed",
+              "waived",
+              "not_applicable"
+            ]
+          }
+        }
+      }
+    },
+    "scores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "dimension",
+          "score",
+          "evidence",
+          "unresolved"
+        ],
+        "properties": {
+          "dimension": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 5
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "unresolved": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "gate_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gate_id",
+        "status",
+        "reasons"
+      ],
+      "properties": {
+        "gate_id": {
+          "enum": [
+            "G0",
+            "G1",
+            "G2",
+            "G3",
+            "G4",
+            "G5A",
+            "G5B",
+            "G6",
+            "G7",
+            "G8",
+            "G9"
+          ]
+        },
+        "status": {
+          "enum": [
+            "pass",
+            "fail",
+            "blocked",
+            "waived"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "pass",
+        "fail",
+        "blocked"
+      ]
+    }
+  }
+}

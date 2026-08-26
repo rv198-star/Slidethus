@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/gate-results.schema.json",
+  "title": "Gate Results",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "project_id", "records"],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "records": {"type": "array", "items": {"$ref": "#/$defs/gateRecord"}}
+  },
+  "$defs": {
+    "gateRecord": {
+      "type": "object", "additionalProperties": false,
+      "required": ["gate_record_id", "gate_id", "status", "artifact_versions", "check_results", "issue_refs", "approved_by", "evaluated_at", "waiver_reason"],
+      "properties": {
+        "gate_record_id": {"type": "string", "pattern": "^GTR-[0-9]{4}$"},
+        "gate_id": {"enum": ["G0", "G1", "G2", "G3", "G4", "G5A", "G5B", "G6", "G7", "G8", "G9"]},
+        "status": {"enum": ["pass", "fail", "blocked", "waived"]},
+        "artifact_versions": {
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["artifact_type", "path", "version", "sha256"],
+            "properties": {
+              "artifact_type": {"type": "string", "minLength": 1},
+              "path": {"type": "string", "minLength": 1},
+              "version": {"type": "integer", "minimum": 1},
+              "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+            }
+          }
+        },
+        "check_results": {
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["check_id", "status", "severity", "message"],
+            "properties": {
+              "check_id": {"type": "string", "minLength": 1},
+              "status": {"enum": ["pass", "fail", "blocked"]},
+              "severity": {"enum": ["info", "critical", "major", "minor"]},
+              "message": {"type": "string"},
+              "issue_ref": {"type": "string", "pattern": "^ISS-[0-9]{3,}$"}
+            }
+          }
+        },
+        "issue_refs": {"type": "array", "items": {"type": "string", "pattern": "^ISS-[0-9]{3,}$"}, "uniqueItems": true},
+        "approved_by": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+        "evaluated_at": {"type": "string", "format": "date-time"},
+        "waiver_reason": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+        "notes": {"type": "array", "items": {"type": "string"}}
+      },
+      "allOf": [{
+        "if": {"properties": {"status": {"const": "waived"}}, "required": ["status"]},
+        "then": {
+          "properties": {
+            "approved_by": {"type": "string", "minLength": 1},
+            "waiver_reason": {"type": "string", "minLength": 1},
+            "check_results": {"not": {"contains": {"type": "object", "properties": {"severity": {"const": "critical"}}, "required": ["severity"]}}}
+          }
+        }
+      }]
+    }
+  }
+}

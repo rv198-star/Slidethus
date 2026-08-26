@@ -1,0 +1,202 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "SLIDETHUS-DEMO",
+  "deck_id": "DECK-SLIDETHUS-DEMO",
+  "slides": [
+    {
+      "slide_id": "S-001",
+      "audience_question": "这个项目究竟是什么？",
+      "core_message": "Slidethus 是 Agentic Presentation Engineering Skill，而不是独立 PPT 玩具。",
+      "content_blocks": [
+        {
+          "block_id": "BLK-S001-01",
+          "semantic_role": "headline",
+          "content_type": "text",
+          "priority": "primary",
+          "content": "Slidethus",
+          "evidence_ids": []
+        },
+        {
+          "block_id": "BLK-S001-02",
+          "semantic_role": "subhead",
+          "content_type": "text",
+          "priority": "secondary",
+          "content": "把 PPT Agent 方法工程化为可验证的 Agentic Skill",
+          "evidence_ids": [
+            "EVD-003"
+          ]
+        },
+        {
+          "block_id": "BLK-S001-03",
+          "semantic_role": "caption",
+          "content_type": "text",
+          "priority": "tertiary",
+          "content": "Bootstrap v0.1.0 · M0 Foundation Contract",
+          "evidence_ids": []
+        }
+      ],
+      "visual_intent": {
+        "relationship": "单一主张与项目定位",
+        "suggested_layout_families": [
+          "hero"
+        ],
+        "avoid": [
+          "目录式封面",
+          "多卡片堆叠"
+        ]
+      },
+      "speaker_notes": "强调当前包是基础合同，不是完整生产渲染器。",
+      "density_budget": {
+        "max_blocks": 3,
+        "max_words": 40,
+        "min_body_pt": 22
+      },
+      "editability_intent": "E4"
+    },
+    {
+      "slide_id": "S-002",
+      "audience_question": "来源方案真正值得复制的是什么？",
+      "core_message": "把专业工作流分成需求、研究、大纲、策划稿和最终设计，避免从原始素材直接跳到视觉。",
+      "content_blocks": [
+        {
+          "block_id": "BLK-S002-01",
+          "semantic_role": "headline",
+          "content_type": "text",
+          "priority": "primary",
+          "content": "内容先行，策划稿隔离最终设计",
+          "evidence_ids": [
+            "EVD-001",
+            "EVD-002"
+          ]
+        },
+        {
+          "block_id": "BLK-S002-02",
+          "semantic_role": "diagram",
+          "content_type": "diagram",
+          "priority": "secondary",
+          "content": [
+            "需求调研",
+            "资料搜集",
+            "大纲策划",
+            "页面策划稿",
+            "最终设计稿"
+          ],
+          "evidence_ids": [
+            "EVD-001"
+          ]
+        },
+        {
+          "block_id": "BLK-S002-03",
+          "semantic_role": "evidence",
+          "content_type": "text",
+          "priority": "secondary",
+          "content": "页面策划稿先固定信息、层级和位置，再应用风格。",
+          "evidence_ids": [
+            "EVD-002"
+          ]
+        },
+        {
+          "block_id": "BLK-S002-04",
+          "semantic_role": "caption",
+          "content_type": "text",
+          "priority": "tertiary",
+          "content": "Bento/SVG 是实现手段之一，不是方法论全部。",
+          "evidence_ids": []
+        }
+      ],
+      "visual_intent": {
+        "relationship": "顺序流程 + 关键阶段强调",
+        "suggested_layout_families": [
+          "process"
+        ],
+        "avoid": [
+          "五个等权文本框",
+          "只有装饰没有阶段关系"
+        ]
+      },
+      "speaker_notes": "把策划稿作为正式可审阅资产，而非设计提示中的一句话。",
+      "density_budget": {
+        "max_blocks": 4,
+        "max_words": 90,
+        "min_body_pt": 18
+      },
+      "editability_intent": "E4"
+    },
+    {
+      "slide_id": "S-003",
+      "audience_question": "Codex 应该从哪里开始构建？",
+      "core_message": "先完成 Artifact Runtime，再沿 provider-neutral 端口接入模型、研究和渲染能力。",
+      "content_blocks": [
+        {
+          "block_id": "BLK-S003-01",
+          "semantic_role": "headline",
+          "content_type": "text",
+          "priority": "primary",
+          "content": "M1：先让工程事实可靠流动",
+          "evidence_ids": [
+            "EVD-004"
+          ]
+        },
+        {
+          "block_id": "BLK-S003-02",
+          "semantic_role": "diagram",
+          "content_type": "diagram",
+          "priority": "secondary",
+          "content": [
+            "Project Brief",
+            "Evidence Ledger",
+            "Narrative",
+            "Slide Specs",
+            "Layout Plans",
+            "Visual System"
+          ],
+          "evidence_ids": [
+            "EVD-003"
+          ]
+        },
+        {
+          "block_id": "BLK-S003-03",
+          "semantic_role": "body",
+          "content_type": "list",
+          "priority": "secondary",
+          "content": [
+            "Schema 与版本",
+            "跨引用与状态机",
+            "原子写入与恢复",
+            "Gate 与回归测试"
+          ],
+          "evidence_ids": [
+            "EVD-004"
+          ]
+        },
+        {
+          "block_id": "BLK-S003-04",
+          "semantic_role": "caption",
+          "content_type": "text",
+          "priority": "tertiary",
+          "content": "渲染后端可替换；主 Skill 统一编排。",
+          "evidence_ids": [
+            "EVD-003"
+          ]
+        }
+      ],
+      "visual_intent": {
+        "relationship": "核心运行时连接多个后续能力",
+        "suggested_layout_families": [
+          "architecture"
+        ],
+        "avoid": [
+          "把所有模块画成独立 Agent",
+          "把渲染器写死在领域层"
+        ]
+      },
+      "speaker_notes": "结束时引导执行 CODEX_KICKOFF.md。",
+      "density_budget": {
+        "max_blocks": 4,
+        "max_words": 100,
+        "min_body_pt": 18
+      },
+      "editability_intent": "E4"
+    }
+  ]
+}

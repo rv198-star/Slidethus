@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/layout-plans.schema.json",
+  "title": "Layout Plans",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "deck_id",
+    "canvas",
+    "safe_area",
+    "plans"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^0\\.1\\.[0-9]+$"
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"
+    },
+    "deck_id": {
+      "type": "string",
+      "pattern": "^DECK-[A-Z0-9][A-Z0-9_-]{2,63}$"
+    },
+    "canvas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "width",
+        "height"
+      ],
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 100
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 100
+        }
+      }
+    },
+    "safe_area": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "top",
+        "right",
+        "bottom",
+        "left"
+      ],
+      "properties": {
+        "top": {
+          "type": "number",
+          "minimum": 0
+        },
+        "right": {
+          "type": "number",
+          "minimum": 0
+        },
+        "bottom": {
+          "type": "number",
+          "minimum": 0
+        },
+        "left": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "plans": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "slide_id",
+          "layout_family",
+          "reading_order",
+          "regions",
+          "rationale"
+        ],
+        "properties": {
+          "slide_id": {
+            "type": "string",
+            "pattern": "^S-[0-9]{3}$"
+          },
+          "layout_family": {
+            "enum": [
+              "hero",
+              "split",
+              "process",
+              "timeline",
+              "matrix",
+              "architecture",
+              "chart-story",
+              "case",
+              "full-bleed",
+              "bento",
+              "custom"
+            ]
+          },
+          "reading_order": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^REG-S[0-9]{3}-[0-9]{2}$"
+            }
+          },
+          "regions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "region_id",
+                "block_id",
+                "x",
+                "y",
+                "w",
+                "h",
+                "z",
+                "align",
+                "valign",
+                "overflow_strategy"
+              ],
+              "properties": {
+                "region_id": {
+                  "type": "string",
+                  "pattern": "^REG-S[0-9]{3}-[0-9]{2}$"
+                },
+                "block_id": {
+                  "type": "string",
+                  "pattern": "^BLK-S[0-9]{3}-[0-9]{2}$"
+                },
+                "x": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "y": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "w": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "h": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "z": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "align": {
+                  "enum": [
+                    "left",
+                    "center",
+                    "right"
+                  ]
+                },
+                "valign": {
+                  "enum": [
+                    "top",
+                    "middle",
+                    "bottom"
+                  ]
+                },
+                "overflow_strategy": {
+                  "enum": [
+                    "fail",
+                    "wrap",
+                    "shrink_with_floor",
+                    "clip",
+                    "paginate"
+                  ]
+                },
+                "role": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1
+          },
+          "grid_notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

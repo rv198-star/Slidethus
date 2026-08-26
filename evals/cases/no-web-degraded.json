@@ -1,0 +1,12 @@
+{
+  "case_id": "EVAL-003",
+  "workflow": "create",
+  "scenario": "User requests current market facts but host has no web access.",
+  "required_behaviors": [
+    "declare degraded mode",
+    "use only supplied sources",
+    "mark freshness limitation",
+    "avoid current factual claims without evidence"
+  ],
+  "expected_delivery_level": "D2_or_lower_when_research_is_material"
+}

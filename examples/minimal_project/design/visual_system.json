@@ -1,0 +1,100 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "SLIDETHUS-DEMO",
+  "deck_id": "DECK-SLIDETHUS-DEMO",
+  "theme_id": "THEME-ENGINEERING-WIREFRAME",
+  "tone": [
+    "专业",
+    "克制",
+    "结构化",
+    "可审阅"
+  ],
+  "canvas": {
+    "background": "#F4F5F7",
+    "aspect_ratio": "16:9"
+  },
+  "colors": {
+    "background": "#F4F5F7",
+    "surface": "#FFFFFF",
+    "text_primary": "#20242A",
+    "text_secondary": "#727983",
+    "primary": "#3A4756",
+    "accent": "#6D7D8C"
+  },
+  "typography": {
+    "display": {
+      "font_family": "Noto Sans CJK SC",
+      "font_size": 42,
+      "font_weight": 700,
+      "line_height": 1.15,
+      "color": "#20242A",
+      "letter_spacing": 0
+    },
+    "title": {
+      "font_family": "Noto Sans CJK SC",
+      "font_size": 30,
+      "font_weight": 700,
+      "line_height": 1.2,
+      "color": "#20242A",
+      "letter_spacing": 0
+    },
+    "body": {
+      "font_family": "Noto Sans CJK SC",
+      "font_size": 20,
+      "font_weight": 400,
+      "line_height": 1.35,
+      "color": "#20242A",
+      "letter_spacing": 0
+    },
+    "caption": {
+      "font_family": "Noto Sans CJK SC",
+      "font_size": 14,
+      "font_weight": 400,
+      "line_height": 1.3,
+      "color": "#727983",
+      "letter_spacing": 0
+    }
+  },
+  "spacing": {
+    "base": 8,
+    "region_gap": 24,
+    "safe_area": {
+      "top": 48,
+      "right": 56,
+      "bottom": 44,
+      "left": 56
+    }
+  },
+  "shape_rules": {
+    "corner_radius": 12,
+    "border_width": 2,
+    "shadow": "none"
+  },
+  "chart_rules": {
+    "default": "editable_native"
+  },
+  "image_rules": {
+    "default": "none_in_wireframe"
+  },
+  "icon_rules": {
+    "style": "outline"
+  },
+  "layout_policy": {
+    "max_same_family_consecutive": 1,
+    "max_bento_ratio": 0.34,
+    "min_gap": 20
+  },
+  "forbidden_patterns": [
+    "全套页面使用相同 Bento 网格",
+    "小字号掩盖溢出",
+    "装饰性渐变替代信息层级"
+  ],
+  "font_fallbacks": {
+    "Noto Sans CJK SC": [
+      "Microsoft YaHei",
+      "PingFang SC",
+      "Arial"
+    ]
+  },
+  "brand_assets": []
+}

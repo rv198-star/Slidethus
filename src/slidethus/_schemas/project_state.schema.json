@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/project-state.schema.json",
+  "title": "Project State",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "project_id", "current_phase", "status", "delivery_level", "artifacts", "completed_gates", "blockers", "decisions", "revision"],
+  "properties": {
+    "schema_version": {"type": "string", "pattern": "^0\\.2\\.[0-9]+$"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "current_phase": {"enum": ["CREATED", "BRIEF_READY", "SOURCES_READY", "EVIDENCE_READY", "NARRATIVE_READY", "OUTLINE_READY", "SLIDE_SPECS_READY", "LAYOUT_READY", "VISUAL_SYSTEM_READY", "DRAFT_RENDERED", "REVIEWED", "DELIVERY_READY", "COMPLETED"]},
+    "status": {"enum": ["active", "blocked", "failed", "cancelled", "completed", "degraded"]},
+    "delivery_level": {"enum": ["D0", "D1", "D2", "D3", "D4", "D5"]},
+    "artifacts": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/artifactEntry"}},
+    "completed_gates": {"type": "array", "items": {"$ref": "#/$defs/gateSummary"}},
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["blocker_id", "description", "status"],
+        "properties": {
+          "blocker_id": {"type": "string", "pattern": "^BKR-[0-9]{3}$"},
+          "description": {"type": "string"},
+          "status": {"enum": ["open", "resolved", "waived"]}
+        }
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "description": "Compatibility summary; decisions/decision_log.json is authoritative.",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["decision_id", "statement", "status"],
+        "properties": {
+          "decision_id": {"type": "string", "pattern": "^DEC-[0-9]{3}$"},
+          "statement": {"type": "string"},
+          "status": {"enum": ["active", "superseded", "rejected"]}
+        }
+      }
+    },
+    "revision": {"type": "integer", "minimum": 1}
+  },
+  "$defs": {
+    "artifactType": {
+      "enum": ["project_brief", "source_ledger", "evidence_ledger", "narrative_blueprint", "deck_outline", "slide_specs", "layout_plans", "visual_system", "asset_manifest", "render_manifest", "quality_report", "delivery_manifest", "gate_results", "decision_log", "assumption_log"]
+    },
+    "artifactVersionRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_type", "path", "version", "sha256"],
+      "properties": {
+        "artifact_type": {"$ref": "#/$defs/artifactType"},
+        "path": {"type": "string", "minLength": 1},
+        "version": {"type": "integer", "minimum": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "artifactEntry": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_id", "artifact_type", "project_id", "path", "schema", "schema_version", "version", "status", "sha256", "content_hash", "created_at", "updated_at", "created_by", "supersedes"],
+      "properties": {
+        "artifact_id": {"type": "string", "pattern": "^ART-[A-F0-9]{16}$"},
+        "artifact_type": {"$ref": "#/$defs/artifactType"},
+        "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+        "path": {"type": "string", "minLength": 1},
+        "schema": {"type": "string", "pattern": "^[A-Za-z0-9_-]+\\.schema\\.json$"},
+        "schema_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "version": {"type": "integer", "minimum": 1},
+        "status": {"enum": ["draft", "reviewed", "approved", "frozen", "superseded"]},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "content_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "created_at": {"type": "string", "format": "date-time"},
+        "updated_at": {"type": "string", "format": "date-time"},
+        "created_by": {"type": "string", "minLength": 1},
+        "supersedes": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "object", "additionalProperties": false, "required": ["artifact_id", "version"], "properties": {"artifact_id": {"type": "string", "pattern": "^ART-[A-F0-9]{16}$"}, "version": {"type": "integer", "minimum": 1}}}
+          ]
+        }
+      }
+    },
+    "gateSummary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["gate_id", "gate_record_id", "status", "artifact_hashes", "artifact_versions", "evaluated_at", "approved_by", "waiver_reason"],
+      "properties": {
+        "gate_id": {"enum": ["G0", "G1", "G2", "G3", "G4", "G5A", "G5B", "G6", "G7", "G8", "G9"]},
+        "gate_record_id": {"type": "string", "pattern": "^GTR-[0-9]{4}$"},
+        "status": {"enum": ["pass", "fail", "blocked", "waived"]},
+        "artifact_hashes": {"type": "array", "items": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+        "artifact_versions": {"type": "array", "items": {"$ref": "#/$defs/artifactVersionRef"}},
+        "evaluated_at": {"type": "string", "format": "date-time"},
+        "approved_by": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+        "waiver_reason": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+        "notes": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

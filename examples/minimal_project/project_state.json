@@ -1,0 +1,511 @@
+{
+  "schema_version": "0.2.0",
+  "project_id": "SLIDETHUS-DEMO",
+  "current_phase": "VISUAL_SYSTEM_READY",
+  "status": "active",
+  "delivery_level": "D4",
+  "artifacts": [
+    {
+      "artifact_id": "ART-C3FE1C9EC65FFF18",
+      "artifact_type": "project_brief",
+      "project_id": "SLIDETHUS-DEMO",
+      "path": "brief/project_brief.json",
+      "schema": "project_brief.schema.json",
+      "schema_version": "0.1.0",
+      "version": 1,
+      "status": "approved",
+      "sha256": "1bbe3981a8725edc35de8ac183684bf442e546cf6e6a35186f794b070cae4f6f",
+      "content_hash": "sha256:46f8ddc253eb4eecf8355dc126213156f83e3d7506a3495179f0fb865b581314",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "updated_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    },
+    {
+      "artifact_id": "ART-AD74B727CAC8BBEA",
+      "artifact_type": "source_ledger",
+      "project_id": "SLIDETHUS-DEMO",
+      "path": "sources/source_ledger.json",
+      "schema": "source_ledger.schema.json",
+      "schema_version": "0.1.0",
+      "version": 1,
+      "status": "approved",
+      "sha256": "6da17abb08911590bf74aa841a3c39e81031636f7e353451801b29f7f11e6adb",
+      "content_hash": "sha256:ce88b2b412710932684ccfb68af22c6ed194946cf450445fc5807bafdaaa7efb",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "updated_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    },
+    {
+      "artifact_id": "ART-5CE5642870201075",
+      "artifact_type": "evidence_ledger",
+      "project_id": "SLIDETHUS-DEMO",
+      "path": "evidence/evidence_ledger.json",
+      "schema": "evidence_ledger.schema.json",
+      "schema_version": "0.1.0",
+      "version": 1,
+      "status": "approved",
+      "sha256": "92c5fe2c7e3ad5cef4e6a2643595089c5665c8a1cbdc139921b936772950de4d",
+      "content_hash": "sha256:2f5cf017440b873ce40db5b180aef16a3a779657c15f64e66e08b334c1d47054",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "updated_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    },
+    {
+      "artifact_id": "ART-C230F0FE90B2D1CA",
+      "artifact_type": "narrative_blueprint",
+      "project_id": "SLIDETHUS-DEMO",
+      "path": "narrative/narrative_blueprint.json",
+      "schema": "narrative_blueprint.schema.json",
+      "schema_version": "0.1.0",
+      "version": 1,
+      "status": "approved",
+      "sha256": "2c0a71cc230bbb996fa97de7e6d557a1c34474e5bea5a75b930fd9c9bc475983",
+      "content_hash": "sha256:7a3b1a787dda0f1d2e25db0647fe38d6d95953b64cbb05a9a5c44ecf5b107a57",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "updated_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    },
+    {
+      "artifact_id": "ART-E2AEF2B29B4C4CE5",
+      "artifact_type": "deck_outline",
+      "project_id": "SLIDETHUS-DEMO",
+      "path": "outline/deck_outline.json",
+      "schema": "deck_outline.schema.json",
+      "schema_version": "0.1.0",
+      "version": 1,
+      "status": "approved",
+      "sha256": "d1c8a4fa5023c9dbed82cd6a471fb058da52f1de85a68e4cf1a6cdd04e419237",
+      "content_hash": "sha256:793a47184ec0bb61d2ecc225bb4611caecc8729da935f96c4d62e6fcf69c47fb",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "updated_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    },
+    {
+      "artifact_id": "ART-1093C53FDA5F1362",
+      "artifact_type": "slide_specs",
+      "project_id": "SLIDETHUS-DEMO",
+      "path": "slides/slide_specs.json",
+      "schema": "slide_specs.schema.json",
+      "schema_version": "0.1.0",
+      "version": 1,
+      "status": "approved",
+      "sha256": "e65ba3b536754b68ce3fbe6045ab6fc6b858f4b5299b9b94d750c94be6d8572b",
+      "content_hash": "sha256:aca74dfabe40fdd6c7cac95ae775969d8e0bc8c1393f579106d002ab4f3496ba",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "updated_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    },
+    {
+      "artifact_id": "ART-1D3AA2DC8A64BA94",
+      "artifact_type": "layout_plans",
+      "project_id": "SLIDETHUS-DEMO",
+      "path": "layout/layout_plans.json",
+      "schema": "layout_plans.schema.json",
+      "schema_version": "0.1.0",
+      "version": 1,
+      "status": "approved",
+      "sha256": "2474522492365a642ad0eb35f83503f7955fab20d6dee1298a7fc4d9716c16a3",
+      "content_hash": "sha256:4ca399bebbf5d93defd8082da3a651ce75ea3a9dacf8146185b0ee5be23c4748",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "updated_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    },
+    {
+      "artifact_id": "ART-A33F68B05484C3AE",
+      "artifact_type": "visual_system",
+      "project_id": "SLIDETHUS-DEMO",
+      "path": "design/visual_system.json",
+      "schema": "visual_system.schema.json",
+      "schema_version": "0.1.0",
+      "version": 1,
+      "status": "approved",
+      "sha256": "49e45d00954ae4503db900da22f39c5daad8a759b90643e7f97bf5d3e3f1fd0e",
+      "content_hash": "sha256:5562c3985c8b7f40e798c3be1f96973610f1623d59e3829b71ab9cee942b81a6",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "updated_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    },
+    {
+      "artifact_id": "ART-F9ED435766457B2B",
+      "artifact_type": "asset_manifest",
+      "project_id": "SLIDETHUS-DEMO",
+      "path": "assets/asset_manifest.json",
+      "schema": "asset_manifest.schema.json",
+      "schema_version": "0.1.0",
+      "version": 1,
+      "status": "approved",
+      "sha256": "23ca85396334c5eaa6c3f4bc6d6e08eccd425479ee3e76032e76f60f567ca9bd",
+      "content_hash": "sha256:6fbedb6ccbc0485f7577c76b51079d1d3870ebf0ea2d834f1fa011bdc291457f",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "updated_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    },
+    {
+      "artifact_id": "ART-76EF1BD34B464C69",
+      "artifact_type": "render_manifest",
+      "project_id": "SLIDETHUS-DEMO",
+      "path": "renders/render_manifest.json",
+      "schema": "render_manifest.schema.json",
+      "schema_version": "0.1.0",
+      "version": 1,
+      "status": "draft",
+      "sha256": "7159911ffeebdb9a9f35a2eae8b530d2f9e8a61cefc7ce575dd3f04aca6f9fde",
+      "content_hash": "sha256:4ef0c5b3d0cc92c616cd787c4d58d5c078acb436f3c3b9a0baec68bb9a68e8d9",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "updated_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    },
+    {
+      "artifact_id": "ART-5EB5905507BCF614",
+      "artifact_type": "quality_report",
+      "project_id": "SLIDETHUS-DEMO",
+      "path": "review/quality_report.json",
+      "schema": "quality_report.schema.json",
+      "schema_version": "0.1.0",
+      "version": 1,
+      "status": "draft",
+      "sha256": "7840dc2c118d1b276a2d83cb0ed5bb011ffbe0b951511f4b50b0c13a469625ad",
+      "content_hash": "sha256:5840289297c99db3d09e6a18c44a578628d986e2449928006d130b86381318b2",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "updated_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    },
+    {
+      "artifact_id": "ART-845ECDF079F4E7F5",
+      "artifact_type": "delivery_manifest",
+      "project_id": "SLIDETHUS-DEMO",
+      "path": "delivery/delivery_manifest.json",
+      "schema": "delivery_manifest.schema.json",
+      "schema_version": "0.1.0",
+      "version": 1,
+      "status": "draft",
+      "sha256": "dea24f29ad4810f5b3d72a5cee998b2314f4a2116b4fb78d3eaf0f2569a1d8ba",
+      "content_hash": "sha256:8a2520a63c86afb208943b9322362c0769458a8ef362fc93ee4ba1f6834c459f",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "updated_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    },
+    {
+      "artifact_id": "ART-8BE5DC0368D7007B",
+      "artifact_type": "gate_results",
+      "project_id": "SLIDETHUS-DEMO",
+      "path": "gates/gate_results.json",
+      "schema": "gate_results.schema.json",
+      "schema_version": "0.1.0",
+      "version": 1,
+      "status": "approved",
+      "sha256": "183f9cfc6d64042c39c0ced8912e9fef1f791d03165556b47cf9bece7f0e9a06",
+      "content_hash": "sha256:47ac88e6dc72efc1565dbe496ea795e40dc0a57f554f98807eedc422fc7624cb",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "updated_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    },
+    {
+      "artifact_id": "ART-B794E3A06FAAD6A0",
+      "artifact_type": "decision_log",
+      "project_id": "SLIDETHUS-DEMO",
+      "path": "decisions/decision_log.json",
+      "schema": "decision_log.schema.json",
+      "schema_version": "0.1.0",
+      "version": 1,
+      "status": "approved",
+      "sha256": "5d2724b70aebd9fabbe6e202f427d2637be55bd4582002fe80a7d7429c8d37cd",
+      "content_hash": "sha256:d86fa00b8ea6dade1d5e8ba52fb6376fc5c989d8b234296590da650105918ba7",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "updated_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    },
+    {
+      "artifact_id": "ART-13CA0756720A2E49",
+      "artifact_type": "assumption_log",
+      "project_id": "SLIDETHUS-DEMO",
+      "path": "decisions/assumption_log.json",
+      "schema": "assumption_log.schema.json",
+      "schema_version": "0.1.0",
+      "version": 1,
+      "status": "approved",
+      "sha256": "049bed90a02e2b77131b0ec8cdc4b33a952b1c09a11da0e3b65bf2ca15027953",
+      "content_hash": "sha256:311bb4494b9f94ebc6f7272f621a7ef69432868927f839bec3b575e2f67942a0",
+      "created_at": "2026-08-26T08:33:46.178810Z",
+      "updated_at": "2026-08-26T08:33:46.178810Z",
+      "created_by": "migration-runtime",
+      "supersedes": null
+    }
+  ],
+  "completed_gates": [
+    {
+      "gate_id": "G0",
+      "gate_record_id": "GTR-0001",
+      "status": "pass",
+      "artifact_hashes": [
+        "1bbe3981a8725edc35de8ac183684bf442e546cf6e6a35186f794b070cae4f6f"
+      ],
+      "artifact_versions": [
+        {
+          "artifact_type": "project_brief",
+          "path": "brief/project_brief.json",
+          "version": 1,
+          "sha256": "1bbe3981a8725edc35de8ac183684bf442e546cf6e6a35186f794b070cae4f6f"
+        }
+      ],
+      "evaluated_at": "2026-08-26T08:33:46.178810Z",
+      "approved_by": "migration-runtime",
+      "waiver_reason": null,
+      "notes": [
+        "Bootstrap example gate."
+      ]
+    },
+    {
+      "gate_id": "G1",
+      "gate_record_id": "GTR-0002",
+      "status": "pass",
+      "artifact_hashes": [
+        "1bbe3981a8725edc35de8ac183684bf442e546cf6e6a35186f794b070cae4f6f",
+        "6da17abb08911590bf74aa841a3c39e81031636f7e353451801b29f7f11e6adb"
+      ],
+      "artifact_versions": [
+        {
+          "artifact_type": "project_brief",
+          "path": "brief/project_brief.json",
+          "version": 1,
+          "sha256": "1bbe3981a8725edc35de8ac183684bf442e546cf6e6a35186f794b070cae4f6f"
+        },
+        {
+          "artifact_type": "source_ledger",
+          "path": "sources/source_ledger.json",
+          "version": 1,
+          "sha256": "6da17abb08911590bf74aa841a3c39e81031636f7e353451801b29f7f11e6adb"
+        }
+      ],
+      "evaluated_at": "2026-08-26T08:33:46.178810Z",
+      "approved_by": "migration-runtime",
+      "waiver_reason": null,
+      "notes": [
+        "Bootstrap example gate."
+      ]
+    },
+    {
+      "gate_id": "G2",
+      "gate_record_id": "GTR-0003",
+      "status": "pass",
+      "artifact_hashes": [
+        "1bbe3981a8725edc35de8ac183684bf442e546cf6e6a35186f794b070cae4f6f",
+        "6da17abb08911590bf74aa841a3c39e81031636f7e353451801b29f7f11e6adb",
+        "92c5fe2c7e3ad5cef4e6a2643595089c5665c8a1cbdc139921b936772950de4d"
+      ],
+      "artifact_versions": [
+        {
+          "artifact_type": "project_brief",
+          "path": "brief/project_brief.json",
+          "version": 1,
+          "sha256": "1bbe3981a8725edc35de8ac183684bf442e546cf6e6a35186f794b070cae4f6f"
+        },
+        {
+          "artifact_type": "source_ledger",
+          "path": "sources/source_ledger.json",
+          "version": 1,
+          "sha256": "6da17abb08911590bf74aa841a3c39e81031636f7e353451801b29f7f11e6adb"
+        },
+        {
+          "artifact_type": "evidence_ledger",
+          "path": "evidence/evidence_ledger.json",
+          "version": 1,
+          "sha256": "92c5fe2c7e3ad5cef4e6a2643595089c5665c8a1cbdc139921b936772950de4d"
+        }
+      ],
+      "evaluated_at": "2026-08-26T08:33:46.178810Z",
+      "approved_by": "migration-runtime",
+      "waiver_reason": null,
+      "notes": [
+        "Bootstrap example gate."
+      ]
+    },
+    {
+      "gate_id": "G3",
+      "gate_record_id": "GTR-0004",
+      "status": "pass",
+      "artifact_hashes": [
+        "1bbe3981a8725edc35de8ac183684bf442e546cf6e6a35186f794b070cae4f6f",
+        "6da17abb08911590bf74aa841a3c39e81031636f7e353451801b29f7f11e6adb",
+        "92c5fe2c7e3ad5cef4e6a2643595089c5665c8a1cbdc139921b936772950de4d",
+        "2c0a71cc230bbb996fa97de7e6d557a1c34474e5bea5a75b930fd9c9bc475983"
+      ],
+      "artifact_versions": [
+        {
+          "artifact_type": "project_brief",
+          "path": "brief/project_brief.json",
+          "version": 1,
+          "sha256": "1bbe3981a8725edc35de8ac183684bf442e546cf6e6a35186f794b070cae4f6f"
+        },
+        {
+          "artifact_type": "source_ledger",
+          "path": "sources/source_ledger.json",
+          "version": 1,
+          "sha256": "6da17abb08911590bf74aa841a3c39e81031636f7e353451801b29f7f11e6adb"
+        },
+        {
+          "artifact_type": "evidence_ledger",
+          "path": "evidence/evidence_ledger.json",
+          "version": 1,
+          "sha256": "92c5fe2c7e3ad5cef4e6a2643595089c5665c8a1cbdc139921b936772950de4d"
+        },
+        {
+          "artifact_type": "narrative_blueprint",
+          "path": "narrative/narrative_blueprint.json",
+          "version": 1,
+          "sha256": "2c0a71cc230bbb996fa97de7e6d557a1c34474e5bea5a75b930fd9c9bc475983"
+        }
+      ],
+      "evaluated_at": "2026-08-26T08:33:46.178810Z",
+      "approved_by": "migration-runtime",
+      "waiver_reason": null,
+      "notes": [
+        "Bootstrap example gate."
+      ]
+    },
+    {
+      "gate_id": "G4",
+      "gate_record_id": "GTR-0005",
+      "status": "pass",
+      "artifact_hashes": [
+        "2c0a71cc230bbb996fa97de7e6d557a1c34474e5bea5a75b930fd9c9bc475983",
+        "d1c8a4fa5023c9dbed82cd6a471fb058da52f1de85a68e4cf1a6cdd04e419237"
+      ],
+      "artifact_versions": [
+        {
+          "artifact_type": "narrative_blueprint",
+          "path": "narrative/narrative_blueprint.json",
+          "version": 1,
+          "sha256": "2c0a71cc230bbb996fa97de7e6d557a1c34474e5bea5a75b930fd9c9bc475983"
+        },
+        {
+          "artifact_type": "deck_outline",
+          "path": "outline/deck_outline.json",
+          "version": 1,
+          "sha256": "d1c8a4fa5023c9dbed82cd6a471fb058da52f1de85a68e4cf1a6cdd04e419237"
+        }
+      ],
+      "evaluated_at": "2026-08-26T08:33:46.178810Z",
+      "approved_by": "migration-runtime",
+      "waiver_reason": null,
+      "notes": [
+        "Bootstrap example gate."
+      ]
+    },
+    {
+      "gate_id": "G5A",
+      "gate_record_id": "GTR-0006",
+      "status": "pass",
+      "artifact_hashes": [
+        "d1c8a4fa5023c9dbed82cd6a471fb058da52f1de85a68e4cf1a6cdd04e419237",
+        "e65ba3b536754b68ce3fbe6045ab6fc6b858f4b5299b9b94d750c94be6d8572b"
+      ],
+      "artifact_versions": [
+        {
+          "artifact_type": "deck_outline",
+          "path": "outline/deck_outline.json",
+          "version": 1,
+          "sha256": "d1c8a4fa5023c9dbed82cd6a471fb058da52f1de85a68e4cf1a6cdd04e419237"
+        },
+        {
+          "artifact_type": "slide_specs",
+          "path": "slides/slide_specs.json",
+          "version": 1,
+          "sha256": "e65ba3b536754b68ce3fbe6045ab6fc6b858f4b5299b9b94d750c94be6d8572b"
+        }
+      ],
+      "evaluated_at": "2026-08-26T08:33:46.178810Z",
+      "approved_by": "migration-runtime",
+      "waiver_reason": null,
+      "notes": [
+        "Bootstrap example gate."
+      ]
+    },
+    {
+      "gate_id": "G5B",
+      "gate_record_id": "GTR-0007",
+      "status": "pass",
+      "artifact_hashes": [
+        "e65ba3b536754b68ce3fbe6045ab6fc6b858f4b5299b9b94d750c94be6d8572b",
+        "2474522492365a642ad0eb35f83503f7955fab20d6dee1298a7fc4d9716c16a3"
+      ],
+      "artifact_versions": [
+        {
+          "artifact_type": "slide_specs",
+          "path": "slides/slide_specs.json",
+          "version": 1,
+          "sha256": "e65ba3b536754b68ce3fbe6045ab6fc6b858f4b5299b9b94d750c94be6d8572b"
+        },
+        {
+          "artifact_type": "layout_plans",
+          "path": "layout/layout_plans.json",
+          "version": 1,
+          "sha256": "2474522492365a642ad0eb35f83503f7955fab20d6dee1298a7fc4d9716c16a3"
+        }
+      ],
+      "evaluated_at": "2026-08-26T08:33:46.178810Z",
+      "approved_by": "migration-runtime",
+      "waiver_reason": null,
+      "notes": [
+        "Bootstrap example gate."
+      ]
+    },
+    {
+      "gate_id": "G6",
+      "gate_record_id": "GTR-0008",
+      "status": "pass",
+      "artifact_hashes": [
+        "2474522492365a642ad0eb35f83503f7955fab20d6dee1298a7fc4d9716c16a3",
+        "49e45d00954ae4503db900da22f39c5daad8a759b90643e7f97bf5d3e3f1fd0e"
+      ],
+      "artifact_versions": [
+        {
+          "artifact_type": "layout_plans",
+          "path": "layout/layout_plans.json",
+          "version": 1,
+          "sha256": "2474522492365a642ad0eb35f83503f7955fab20d6dee1298a7fc4d9716c16a3"
+        },
+        {
+          "artifact_type": "visual_system",
+          "path": "design/visual_system.json",
+          "version": 1,
+          "sha256": "49e45d00954ae4503db900da22f39c5daad8a759b90643e7f97bf5d3e3f1fd0e"
+        }
+      ],
+      "evaluated_at": "2026-08-26T08:33:46.178810Z",
+      "approved_by": "migration-runtime",
+      "waiver_reason": null,
+      "notes": [
+        "Bootstrap example gate."
+      ]
+    }
+  ],
+  "blockers": [],
+  "decisions": [
+    {
+      "decision_id": "DEC-001",
+      "statement": "示例停在 Visual System Ready；最终渲染能力不作假完成。",
+      "status": "active"
+    },
+    {
+      "decision_id": "DEC-002",
+      "statement": "灰模使用确定性 SVG renderer。",
+      "status": "active"
+    }
+  ],
+  "revision": 2
+}

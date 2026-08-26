@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/slide-specs.schema.json",
+  "title": "Slide Specifications",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "deck_id",
+    "slides"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^0\\.1\\.[0-9]+$"
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"
+    },
+    "deck_id": {
+      "type": "string",
+      "pattern": "^DECK-[A-Z0-9][A-Z0-9_-]{2,63}$"
+    },
+    "slides": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "slide_id",
+          "audience_question",
+          "core_message",
+          "content_blocks",
+          "visual_intent",
+          "density_budget",
+          "editability_intent"
+        ],
+        "properties": {
+          "slide_id": {
+            "type": "string",
+            "pattern": "^S-[0-9]{3}$"
+          },
+          "audience_question": {
+            "type": "string"
+          },
+          "core_message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content_blocks": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "block_id",
+                "semantic_role",
+                "content_type",
+                "priority",
+                "content",
+                "evidence_ids"
+              ],
+              "properties": {
+                "block_id": {
+                  "type": "string",
+                  "pattern": "^BLK-S[0-9]{3}-[0-9]{2}$"
+                },
+                "semantic_role": {
+                  "enum": [
+                    "headline",
+                    "subhead",
+                    "body",
+                    "metric",
+                    "evidence",
+                    "label",
+                    "caption",
+                    "quote",
+                    "chart",
+                    "image",
+                    "icon",
+                    "diagram",
+                    "table",
+                    "footer"
+                  ]
+                },
+                "content_type": {
+                  "enum": [
+                    "text",
+                    "list",
+                    "metric",
+                    "quote",
+                    "image",
+                    "icon",
+                    "chart",
+                    "table",
+                    "diagram",
+                    "spacer"
+                  ]
+                },
+                "priority": {
+                  "enum": [
+                    "primary",
+                    "secondary",
+                    "tertiary",
+                    "decorative"
+                  ]
+                },
+                "content": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "object"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                },
+                "evidence_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^EVD-[0-9]{3}$"
+                  }
+                },
+                "asset_refs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^AST-[0-9]{3}$"
+                  }
+                },
+                "notes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "visual_intent": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "relationship",
+              "suggested_layout_families",
+              "avoid"
+            ],
+            "properties": {
+              "relationship": {
+                "type": "string"
+              },
+              "suggested_layout_families": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "avoid": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "speaker_notes": {
+            "type": "string"
+          },
+          "density_budget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "max_blocks",
+              "max_words",
+              "min_body_pt"
+            ],
+            "properties": {
+              "max_blocks": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "max_words": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "min_body_pt": {
+                "type": "number",
+                "minimum": 8
+              }
+            }
+          },
+          "editability_intent": {
+            "enum": [
+              "E0",
+              "E1",
+              "E2",
+              "E3",
+              "E4"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
