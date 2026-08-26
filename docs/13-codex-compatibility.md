@@ -18,7 +18,9 @@ Codex should use `slidethus artifact list/show/validate/migrate/recover` for run
 
 ## 4. Capability truthfulness
 
-v0.2 provides deterministic artifact persistence, validation, Gate history, migration, recovery and planning wireframes. It does not provide production research/model/image adapters or final SVG/PPTX rendering. Codex must select a delivery level from the Skill capability matrix and declare degraded phases instead of claiming missing capabilities.
+v0.3 adds a D3/E3 vertical MVP: Markdown/TXT → line-located evidence → rule-based planning artifacts → native PPTX → independent LibreOffice/Poppler preview. It remains a MinimalImpl and does not provide production research/model/image adapters, Final SVG, PptxGenJS/Hybrid rendering or automatic repair. Codex must select a delivery level from the Skill capability matrix and declare degraded phases instead of claiming missing capabilities.
+
+The Python package owns PPTX generation through `python-pptx`. LibreOffice, Poppler and `fc-match` are optional host tools: when unavailable, the CLI preserves the output but G8/G9 do not pass. Temporary preview fonts come from the host and are never included in the deck or delivery.
 
 ## 5. Required verification
 

@@ -44,6 +44,14 @@ For a new project, run when available:
 slidethus init <workspace> --title "<title>" --language <locale>
 ```
 
+For the repository's real but intentionally limited Markdown/TXT vertical MVP, run:
+
+```bash
+slidethus mvp <workspace> --source <file.md> --title "<title>" --require-preview
+```
+
+This route declares D3/E3, still writes every core artifact, and uses MinimalImpl providers. Do not use it for unsupported input formats or describe it as the complete M2–M5 pipeline.
+
 For an existing workspace, validate it before mutation:
 
 ```bash

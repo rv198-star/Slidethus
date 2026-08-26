@@ -1,6 +1,6 @@
-# Slidethus v0.2.0 — Artifact Runtime
+# Slidethus v0.3.0 — Minimal End-to-End MVP
 
-> 面向通用 Agentic Host 的 **Agentic Presentation Engineering Skill** 与可恢复 Artifact Runtime。
+> 面向通用 Agentic Host 的 **Agentic Presentation Engineering Skill**：现在可以从本地文本真实生成可编辑 PPTX。
 
 ## 这是什么
 
@@ -11,29 +11,35 @@ Slidethus 不是“输入标题后套模板”的 PPT 生成器，而是一套�
 - 可被 Codex 自动发现的仓库级 Skill：`.agents/skills/slidethus/`；
 - 根目录 `AGENTS.md`、Codex 启动指令、执行计划模板和分阶段任务清单；
 - 需求、来源、证据、叙事、页面规格、布局、视觉系统、审计与交付的 JSON Schema；
-- 一个可运行的 Python 核心骨架；
+- 一个可运行的 Python 核心与真实纵向 MVP；
 - 随 Wheel 分发的 Schema 镜像，使确定性 CLI 可在仓库外独立运行；
 - 初始化、校验、Gate 检查、状态查看和灰模 SVG 渲染 CLI；
 - 统一 artifact registry 元数据、乐观锁、不可变版本历史和跨进程 workspace 锁；
 - journaled 多文件事务、原子替换、故障恢复和显式 M0→M1 Schema 迁移；
 - 独立、可版本化的 Gate 结果、决策日志和假设日志；
 - `artifact list/show/validate/migrate/recover` CLI 与故障注入测试；
+- `SourceParser` / `ReasoningProvider` / `RenderBackend` / `DocumentRenderer` 可替换接口；
+- Markdown/TXT 摄取、行号 evidence、规则式 Narrative/Outline/Slide Specs/Layout/Visual System MinimalImpl；
+- 基于 `python-pptx` 的原生文本/简单形状 PPTX 后端，实测编辑等级 E3；
+- LibreOffice + Poppler 独立预览、临时本机字体装载和无预览诚实降级；
+- `slidethus mvp` 从单个用户文件贯通 G0–G9；
 - 一个完整的最小示例项目；
 - 五轮独立审计记录、自动审计脚本和 SHA-256 清单；
 - 用户提供的 PPT Agent 素材、原始提示词和来源边界说明。
 
 ## 这不是什么
 
-当前包已经完成 **M0 Foundation Contract** 与 **M1 Artifact Runtime**，但不是生产级端到端 PPT 生成产品。以下能力留给 M2–M6：
+当前包已经完成 **M0 Foundation Contract**、**M1 Artifact Runtime** 和一个跨 M2–M5 的 **MVP0 最小纵向切片**，但不是生产级端到端 PPT 产品。以下能力仍未完成：
 
 - LLM/搜索/图片生成服务的真实适配；
-- 最终视觉 SVG 生成；
+- PDF/DOCX/PPTX/图片/表格等多格式摄取；
+- LLM 驱动的受众化叙事与页面策划；
+- 最终视觉 SVG 生成和复杂视觉资产；
 - PptxGenJS 原生/混合 PPTX 渲染；
-- Office/LibreOffice 渲染回归；
 - 视觉模型驱动的自动审计与局部修复；
 - GUI、云端服务、多租户和商业化能力。
 
-基础包不会伪装这些能力已经存在；相关接口、合同、Gate 和实施顺序已经定义。
+MVP0 的规则式 MinimalImpl 只使用用户提供的 Markdown/TXT，并明确声明 D3、E3 和所有限制。它证明工程链路可产出，不代表 M2–M5 的完整 Exit Gate 已完成。
 
 ## 核心设计
 
@@ -121,7 +127,30 @@ slidethus render-wireframe examples/minimal_project
 examples/minimal_project/outputs/wireframes/
 ```
 
-### 5. 用 Codex 接手
+### 5. 从 Markdown/TXT 生成真实 PPTX
+
+```bash
+slidethus mvp /tmp/slidethus-demo \
+  --source examples/mvp-input.md \
+  --title "Slidethus 纵向 MVP" \
+  --max-slides 6 \
+  --require-preview
+```
+
+主要输出：
+
+```text
+/tmp/slidethus-demo/outputs/*.pptx
+/tmp/slidethus-demo/outputs/wireframes/*.svg
+/tmp/slidethus-demo/outputs/model-previews/*.svg
+/tmp/slidethus-demo/outputs/office-previews/*.png
+```
+
+`--require-preview` 会在 LibreOffice/Poppler 或可用字体缺失时阻止 G8/G9；不加时仍会交付结构验证过的 PPTX，但状态为 degraded，绝不冒充视觉验收通过。
+
+MVP0 命令当前要求目标 workspace 为空；Artifact Runtime 的事务恢复仍然生效，但应用级断点续跑属于后续 ProductionImpl。
+
+### 6. 用 Codex 接手
 
 从仓库根目录启动 Codex，然后粘贴 `CODEX_KICKOFF.md` 中的指令。Codex 会自动读取根目录 `AGENTS.md`，并能发现 `.agents/skills/slidethus/SKILL.md`。
 
@@ -160,8 +189,8 @@ audit/                      本包审计记录与完整性清单
 
 ## 版本定位
 
-- 包版本：`0.2.0`
-- 成熟度：M1 Artifact Runtime
+- 包版本：`0.3.0`
+- 成熟度：MVP0 Minimal End-to-End（M2–M5 仍未完整）
 - 默认语言：中文
 - 逻辑画布：`1280 × 720`
 - 推荐最终渲染：Hybrid（原生文本/形状 + SVG/图片复杂视觉）
@@ -169,4 +198,4 @@ audit/                      本包审计记录与完整性清单
 
 ## 下一步
 
-下一里程碑是 `TASKS.md` 的 **M2：Ingestion, Research, Evidence**。它应复用当前 Artifact Runtime 接入解析与研究适配器，不应绕过证据账本或提前把最终渲染写进领域层。
+下一步仍是完成 `TASKS.md` 的 **M2：Ingestion, Research, Evidence**。后续能力应逐个用 ProductionImpl 替换当前 MinimalImpl，而不改变 Artifact Runtime、语义 Schema 或 Gate 标准。

@@ -12,6 +12,7 @@ from slidethus.constants import find_repository_root
 from slidethus.errors import SlidethusError
 from slidethus.gates import evaluate_gate
 from slidethus.io_utils import read_json
+from slidethus.mvp import MvpBuildConfig, build_minimal_mvp
 from slidethus.schema_registry import SchemaRegistry
 from slidethus.validation import format_report, validate_workspace
 from slidethus.wireframe import render_wireframes
@@ -43,6 +44,14 @@ def _parser() -> argparse.ArgumentParser:
     render = sub.add_parser("render-wireframe", help="render gray SVG planning drafts")
     render.add_argument("workspace", type=Path)
     render.add_argument("--output-dir", type=Path)
+
+    mvp = sub.add_parser("mvp", help="build a real minimal PPTX from Markdown/TXT")
+    mvp.add_argument("workspace", type=Path)
+    mvp.add_argument("--source", type=Path, required=True)
+    mvp.add_argument("--title")
+    mvp.add_argument("--language", default="zh-CN")
+    mvp.add_argument("--max-slides", type=int, default=6)
+    mvp.add_argument("--require-preview", action="store_true")
 
     sub.add_parser("doctor", help="check local foundation prerequisites")
     sub.add_parser("schemas", help="list known artifact schemas")
@@ -113,6 +122,36 @@ def main(argv: list[str] | None = None) -> int:
             for output in outputs:
                 print(output)
             return 0
+        if args.command == "mvp":
+            title = args.title or args.source.stem
+            result = build_minimal_mvp(
+                MvpBuildConfig(
+                    workspace=args.workspace,
+                    source=args.source,
+                    title=title,
+                    language=args.language,
+                    max_slides=args.max_slides,
+                    require_preview=args.require_preview,
+                )
+            )
+            print(
+                json.dumps(
+                    {
+                        "status": result.status,
+                        "workspace": str(result.workspace),
+                        "output": str(result.output_path),
+                        "current_phase": result.current_phase,
+                        "model_previews": [str(path) for path in result.model_previews],
+                        "independent_previews": [
+                            str(path) for path in result.independent_previews
+                        ],
+                        "limitations": list(result.limitations),
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return 1 if result.status == "blocked" else 0
         if args.command == "doctor":
             return _doctor()
         if args.command == "schemas":
@@ -139,7 +178,14 @@ def main(argv: list[str] | None = None) -> int:
             if args.artifact_command == "recover":
                 print(json.dumps({"recovered": list(runtime.recover())}, ensure_ascii=False, indent=2))
                 return 0
-    except (SlidethusError, FileNotFoundError, json.JSONDecodeError, KeyError, ValueError) as exc:
+    except (
+        SlidethusError,
+        FileNotFoundError,
+        json.JSONDecodeError,
+        KeyError,
+        RuntimeError,
+        ValueError,
+    ) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
     return 2

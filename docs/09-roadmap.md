@@ -19,7 +19,22 @@
 - gate history；
 - recovery tests。
 
-## v0.3 Planning Pipeline
+## v0.3 Minimal End-to-End MVP
+
+目标：以可替换 MinimalImpl 先证明从本地文本到真实 PPTX 的纵向链路。
+
+关键产出：
+
+- Markdown/TXT + line locators；
+- 用户来源限定 evidence；
+- 规则式 narrative/page planning；
+- python-pptx E3 后端；
+- 独立 LibreOffice 预览和降级 Gate；
+- G0–G9 MVP CLI。
+
+该版本不代表后续完整里程碑完成。
+
+## v0.4 Planning Pipeline
 
 目标：从素材到经审计的页面策划稿。
 
@@ -32,7 +47,7 @@
 - interactive checkpoints；
 - wireframe review。
 
-## v0.4 Rendering
+## v0.5 Rendering
 
 目标：至少两种可替换渲染后端。
 
@@ -45,7 +60,7 @@
 - overflow/collision tests；
 - editability report。
 
-## v0.5 Review and Repair
+## v0.6 Review and Repair
 
 目标：全 deck 可自动发现问题、定位阶段并局部修复。
 
@@ -58,7 +73,7 @@
 - golden corpus；
 - quality dashboard artifacts。
 
-## v0.6 Multi-workflow
+## v0.7 Multi-workflow
 
 目标：Create、Rebuild、Improve、Audit、Revise、Extract Style 稳定可用。
 
@@ -83,10 +98,11 @@
 ```mermaid
 flowchart LR
     F[v0.1 Foundation] --> A[v0.2 Artifact Runtime]
-    A --> P[v0.3 Planning]
-    P --> R[v0.4 Rendering]
-    R --> Q[v0.5 Review/Repair]
-    Q --> W[v0.6 Workflows]
+    A --> M[v0.3 MVP0]
+    M --> P[v0.4 Planning]
+    P --> R[v0.5 Rendering]
+    R --> Q[v0.6 Review/Repair]
+    Q --> W[v0.7 Workflows]
     W --> RC[v0.9 RC]
     RC --> V[v1.0]
 ```

@@ -41,11 +41,20 @@ def _artifact_entry(
     )
 
 
-def init_workspace(workspace: Path, *, title: str, language: str = "zh-CN", force: bool = False) -> Path:
+def init_workspace(
+    workspace: Path,
+    *,
+    title: str,
+    language: str = "zh-CN",
+    force: bool = False,
+    delivery_level: str = "D4",
+) -> Path:
     """Create a safe stage-0 workspace with schema-valid early artifacts."""
 
     if not title.strip():
         raise WorkspaceError("Project title must not be blank")
+    if delivery_level not in {"D0", "D1", "D2", "D3", "D4", "D5"}:
+        raise WorkspaceError(f"Unknown delivery level: {delivery_level}")
     workspace = workspace.resolve()
     directories = ["brief", "sources", "evidence", "narrative", "outline", "slides", "layout", "design", "assets", "renders", "review", "delivery", "gates", "decisions", "cache", "outputs"]
     if workspace.exists() and any(workspace.iterdir()):
@@ -173,7 +182,7 @@ def init_workspace(workspace: Path, *, title: str, language: str = "zh-CN", forc
         "project_id": project_id,
         "current_phase": "CREATED",
         "status": "blocked",
-        "delivery_level": "D4",
+        "delivery_level": delivery_level,
         "artifacts": artifacts,
         "completed_gates": [],
         "blockers": [

@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "slidethus"
-version = "0.2.0"
+version = "0.3.0"
 description = "Agentic presentation engineering skill foundation"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{name = "Slidethus contributors"}]
 dependencies = [
   "jsonschema>=4.22,<5",
+  "python-pptx>=1,<2",
 ]
 
 [project.optional-dependencies]

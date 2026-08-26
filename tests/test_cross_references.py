@@ -4,8 +4,11 @@ import json
 import shutil
 from pathlib import Path
 
+from slidethus.artifact_runtime import ArtifactRuntime
 from slidethus.constants import find_repository_root
+from slidethus.state_machine import Phase
 from slidethus.validation import validate_workspace
+from slidethus.workspace import init_workspace
 
 
 def test_unknown_block_reference_is_detected(tmp_path: Path) -> None:
@@ -268,3 +271,98 @@ def test_complete_research_cycle_with_material_basis_needs_sources(tmp_path: Pat
     evidence_path.write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     report = validate_workspace(workspace)
     assert any(issue.code == "schema_error" and "source_ids" in issue.path for issue in report.issues)
+def test_staged_outline_does_not_require_unpublished_downstream_artifacts(
+    tmp_path: Path,
+) -> None:
+    workspace = init_workspace(tmp_path / "project", title="Staged Validation")
+    runtime = ArtifactRuntime(workspace)
+    brief = runtime.show_artifact("project_brief")
+    brief["intent"]["purpose"] = "Validate staged artifact publication"
+    brief["intent"]["desired_outcome"] = "Publish an outline before slide specs"
+    brief["open_questions"] = []
+    runtime.write_artifact("project_brief", brief, expected_version=1)
+    runtime.record_gate("G0", target_phase=Phase.BRIEF_READY)
+
+    source = runtime.show_artifact("source_ledger")
+    source["sources"] = [
+        {
+            "source_id": "SRC-001",
+            "kind": "user_file",
+            "title": "Fixture",
+            "path_or_url": "fixture.md",
+            "ownership": "user_owned",
+            "confidentiality": "internal",
+            "authority_tier": "user",
+            "parse_status": "parsed",
+            "allowed_use": "internal_only",
+            "notes": [],
+        }
+    ]
+    runtime.write_artifact("source_ledger", source, expected_version=1)
+    runtime.record_gate("G1", target_phase=Phase.SOURCES_READY)
+
+    evidence = runtime.show_artifact("evidence_ledger")
+    evidence["research_cycles"][0]["status"] = "complete"
+    evidence["research_cycles"][0]["basis"] = "user_materials"
+    evidence["research_cycles"][0]["source_ids"] = ["SRC-001"]
+    evidence["claims"] = [
+        {
+            "evidence_id": "EVD-001",
+            "claim": "Fixture claim",
+            "support_status": "verified",
+            "source_refs": [
+                {
+                    "source_id": "SRC-001",
+                    "locator": "line 1",
+                    "support_type": "direct",
+                }
+            ],
+            "use_policy": "internal_only",
+        }
+    ]
+    runtime.write_artifact("evidence_ledger", evidence, expected_version=1)
+    runtime.record_gate("G2", target_phase=Phase.EVIDENCE_READY)
+
+    narrative = {
+        "schema_version": "0.1.0",
+        "project_id": brief["project_id"],
+        "central_thesis": "Fixture thesis",
+        "story_arc": "teaching",
+        "audience_journey": ["Understand", "Apply"],
+        "sections": [
+            {
+                "section_id": "SEC-01",
+                "title": "Fixture",
+                "purpose": "Test staged writes",
+                "key_questions": ["Does it validate?"],
+                "evidence_ids": ["EVD-001"],
+                "transition": "Continue",
+            }
+        ],
+        "objections": [],
+        "excluded_content": [],
+    }
+    runtime.write_artifact("narrative_blueprint", narrative, expected_version=0)
+    runtime.record_gate("G3", target_phase=Phase.NARRATIVE_READY)
+    outline = {
+        "schema_version": "0.1.0",
+        "project_id": brief["project_id"],
+        "deck_id": f"DECK-{brief['project_id']}",
+        "target_page_count": 1,
+        "slides": [
+            {
+                "slide_id": "S-001",
+                "ordinal": 1,
+                "section_id": "SEC-01",
+                "slide_type": "evidence",
+                "headline": "Fixture",
+                "takeaway": "Outline can precede specs",
+                "purpose": "Exercise staged validation",
+                "evidence_ids": ["EVD-001"],
+                "status": "approved",
+            }
+        ],
+    }
+    runtime.write_artifact("deck_outline", outline, expected_version=0)
+
+    assert validate_workspace(workspace, check_hashes=True).ok

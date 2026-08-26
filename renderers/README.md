@@ -15,4 +15,10 @@ A renderer must:
 7. support deterministic reruns from the same inputs where the backend permits;
 8. never label a file visually verified until previews were rendered and inspected.
 
-The current foundation implements only a gray planning-wireframe renderer in `src/slidethus/wireframe.py`.
+Current implementations:
+
+- gray planning-wireframe SVG in `src/slidethus/wireframe.py`;
+- `MinimalPptxRenderBackend` in `src/slidethus/pptx_backend.py`, producing native E3 text/simple-shape PPTX;
+- `LibreOfficeDocumentRenderer` for independent PDF/PNG preview with workspace-isolated profiles and temporary local-font staging.
+
+The PPTX backend is an MVP MinimalImpl, not the planned PptxGenJS/Hybrid ProductionImpl.

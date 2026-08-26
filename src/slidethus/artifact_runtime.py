@@ -708,6 +708,16 @@ class ArtifactRuntime:
             candidate_state["completed_gates"] = [
                 item for item in candidate_state.get("completed_gates", []) if item.get("gate_id") != gate_id
             ] + [summary]
+            if gate_id == "G0" and status in {"pass", "waived"}:
+                candidate_state["blockers"] = [
+                    {
+                        **item,
+                        "status": "resolved",
+                    }
+                    if item.get("blocker_id") == "BKR-001"
+                    else item
+                    for item in candidate_state.get("blockers", [])
+                ]
             if status not in {"pass", "waived"}:
                 self._rollback_for_failed_gate(candidate_state, gate_id)
             elif target_phase is not None:

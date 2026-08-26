@@ -31,6 +31,8 @@
 
 文本框、形状、表格和图表尽量原生。优势是编辑性；缺点是复杂视觉和兼容性成本高。
 
+v0.3 已提供 `MinimalPptxRenderBackend`：通过 `python-pptx` 生成 E3 原生文本和简单形状，重新打开文件验证页数与文本覆盖。图片、图表、复杂 SVG、母版和数据绑定仍未实现。
+
 ### 2.4 Hybrid PPTX
 
 推荐 MVP：
@@ -42,6 +44,8 @@
 ### 2.5 Preview Renderer
 
 将 PPTX/PDF 渲染为 PNG 供视觉审计。至少使用一种与生成器独立的渲染路径，避免“生成成功”被误认为“显示正确”。
+
+当前 `LibreOfficeDocumentRenderer` 使用隔离 profile 和 Poppler；需要中文时只把本机可发现字体临时复制到 profile，预览完成即删除，不把字体打包进 PPTX 或交付。
 
 ## 3. Renderer contract
 

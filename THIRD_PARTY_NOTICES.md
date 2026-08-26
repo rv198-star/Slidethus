@@ -15,3 +15,9 @@ Rules:
 - Do not imply ownership, endorsement, or license transfer.
 - Do not ship raw third-party material in a public release without a rights review.
 - Slidethus architecture decisions are documented separately and are not claims made by the source author.
+
+## Runtime dependencies
+
+The Python package resolves, but does not vendor, `jsonschema`, `python-pptx`, and their transitive dependencies. LibreOffice, Poppler, and Fontconfig tools are optional host capabilities used for preview. Review the license notices supplied by each installed distribution before redistributing an environment or binary bundle.
+
+Fonts discovered on the host are copied only into a temporary LibreOffice profile for the duration of preview. Slidethus does not embed or redistribute those font files in the PPTX, workspace, package, or delivery.

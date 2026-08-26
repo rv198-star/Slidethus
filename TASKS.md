@@ -30,6 +30,22 @@ M0 只代表基础合同成立，不代表端到端 PPT 生成完成。
 
 **Exit Gate：PASS（2026-08-26）。** 示例项目和新建项目均可在中断后恢复；无效引用、非法状态迁移、过期 Gate 或半写入会被检测并阻止推进。验收证据见 `audit/M1-round-2-scorecard.md`。
 
+## MVP0 — Minimal End-to-End Vertical Slice
+
+目标：在不降低正式 Gate 的前提下，用可替换 MinimalImpl 先证明真实工程产出。
+
+- [x] Markdown/TXT 输入与 line-located chunks
+- [x] 用户材料限定的 Evidence、双阶段 research cycle 与事实块绑定
+- [x] 规则式 Narrative、Outline、Slide Specs、Layout Plans、Visual System
+- [x] 原生可编辑 PPTX（E3 文本与简单形状）
+- [x] Wireframe、模型预览和独立 LibreOffice/Poppler 预览
+- [x] 中文字体临时装载；字体不打包进入交付
+- [x] G0–G9 端到端 CLI：`slidethus mvp`
+- [x] 无独立预览时停在 G8 并交付 degraded 结果
+- [x] provider 替换、来源指令隔离和失败路径测试
+
+**Vertical Gate：PASS（2026-08-26）。** 一份真实 Markdown 可稳定生成六页可打开、可编辑 PPTX，独立预览页数一致并推进到 `DELIVERY_READY`。这不等于 M2、M3、M4 或 M5 Exit Gate 完成。
+
 ## M2 — Ingestion, Research, Evidence
 
 - [ ] PDF/DOCX/HTML/PPTX/图片/表格输入适配器

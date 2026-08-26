@@ -354,7 +354,7 @@ def _validate_cross_references(
 
     specs = loaded.get("slide_specs", {}).get("slides", [])
     spec_ids = [slide["slide_id"] for slide in specs if "slide_id" in slide]
-    if slide_ids and set(spec_ids) != set(slide_ids):
+    if "slide_specs" in loaded and slide_ids and set(spec_ids) != set(slide_ids):
         report.add("slide_coverage_mismatch", f"Slide Specs IDs {sorted(spec_ids)} do not match Outline IDs {sorted(slide_ids)}", "slides/slide_specs.json")
     _unique_ids(report, spec_ids, "slides/slide_specs.json", "slide spec")
     block_map: dict[str, set[str]] = {}
@@ -396,7 +396,7 @@ def _validate_cross_references(
     layout = loaded.get("layout_plans", {})
     plans = layout.get("plans", [])
     plan_ids = [plan["slide_id"] for plan in plans if "slide_id" in plan]
-    if slide_ids and set(plan_ids) != set(slide_ids):
+    if "layout_plans" in loaded and slide_ids and set(plan_ids) != set(slide_ids):
         report.add("layout_coverage_mismatch", f"Layout IDs {sorted(plan_ids)} do not match Outline IDs {sorted(slide_ids)}", "layout/layout_plans.json")
     _unique_ids(report, plan_ids, "layout/layout_plans.json", "layout plan")
     canvas = layout.get("canvas", {})

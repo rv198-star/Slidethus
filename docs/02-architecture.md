@@ -23,7 +23,7 @@ flowchart TB
     K1[SKILL.md<br/>workflows<br/>references] --- K
     A1[Project State<br/>Schemas<br/>Gates<br/>Revision graph] --- A
     D1[Validation<br/>Wireframe<br/>Manifest<br/>Diff<br/>Metrics] --- D
-    P1[Research<br/>Image<br/>SVG<br/>PptxGenJS<br/>Office renderer] --- P
+    P1[Research<br/>Image<br/>SVG<br/>python-pptx / PptxGenJS<br/>Office renderer] --- P
 ```
 
 ### 2.1 Skill Orchestration Layer
@@ -195,6 +195,8 @@ flowchart LR
 3. **PPTX Native**：可编辑文本、形状和图表；
 4. **Hybrid PPTX**：原生基础对象 + 复杂 SVG/图片；
 5. **Preview Renderer**：PPTX/PDF → PNG，用于视觉审计。
+
+v0.3 的 `MinimalPptxRenderBackend` 是首个真实 RenderBackend：使用 `python-pptx` 输出 E3 原生文本与简单形状；`LibreOfficeDocumentRenderer` 负责独立 PDF/PNG 预览。它只是一条可替换 MinimalImpl，不完成 Final SVG、PptxGenJS 或 Hybrid ProductionImpl。
 
 逻辑坐标统一为 `1280×720`，后端负责转换到目标单位。
 
