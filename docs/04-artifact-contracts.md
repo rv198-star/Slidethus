@@ -200,6 +200,8 @@ ID 一经发布不能因标题或顺序变化而改变。
 
 `target_editability_level` 表示计划目标；`editability_level` 表示对真实输出的测量结果。`pending`/`draft` 阶段必须允许 `not_measured`，成功渲染和可交付状态则不能继续使用该值。
 
+完整 MVP 还使用 `pipeline_stages` 记录 planning、diagnostics、debug render/preview、design compile、final render/preview 动作，并用 `outputs[].role` 区分每个产出。输出文件扩展名不能替代阶段语义；Debug PPTX 和 Final PPTX 必须是不同文件。
+
 ### 4.11 Quality Report
 
 回答：具体问题、严重度、修复路径和 Gate 结论。

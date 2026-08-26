@@ -6,6 +6,8 @@ Date: 2026-08-26
 
 Slidethus v0.3.0 can take one UTF-8 Markdown/TXT file and produce a real native-editable PPTX through the complete artifact and Gate workflow. The accepted six-slide Chinese run reached `DELIVERY_READY`; its independent LibreOffice/Poppler previews were visually inspected.
 
+**Correction after user review:** this report proved a planning artifact and its PPTX serialization, not separate debug, design, and final-render stages. It is retained as historical evidence but is reclassified as the MVP0 Planning Proof. ADR-0008 and MVP1 define and implement the complete action/output chain.
+
 ## Implemented MinimalImpls
 
 - `PlainTextSourceParser`

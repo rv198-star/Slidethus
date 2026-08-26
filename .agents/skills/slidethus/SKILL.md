@@ -50,7 +50,7 @@ For the repository's real but intentionally limited Markdown/TXT vertical MVP, r
 slidethus mvp <workspace> --source <file.md> --title "<title>" --require-preview
 ```
 
-This route declares D3/E3, still writes every core artifact, and uses MinimalImpl providers. Do not use it for unsupported input formats or describe it as the complete M2–M5 pipeline.
+This route declares D3/E3, writes every core artifact, and uses MinimalImpl providers. Its MVP contract requires distinct planning wireframes, layout diagnostics, debug PPTX, debug Office previews, design previews, final PPTX, and final Office previews. Do not count a planning-file format conversion as a later stage, use it for unsupported input formats, or describe it as the complete M2–M5 ProductionImpl pipeline.
 
 For an existing workspace, validate it before mutation:
 

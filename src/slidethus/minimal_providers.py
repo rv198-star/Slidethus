@@ -401,13 +401,18 @@ class RuleBasedReasoningProvider:
         for slide in slide_specs["slides"]:
             slide_id = slide["slide_id"]
             blocks = slide["content_blocks"]
-            if slide_id == "S-001":
+            family = slide["visual_intent"]["suggested_layout_families"][0]
+            if family == "hero":
                 geometry = [(90, 190, 1100, 120), (150, 330, 980, 90), (470, 610, 340, 40)]
-                family = "hero"
                 alignments = ["center", "center", "center"]
+            elif family == "split":
+                geometry = [(72, 58, 1136, 86), (560, 178, 648, 382), (560, 610, 648, 42)]
+                alignments = ["left", "left", "left"]
+            elif family == "case":
+                geometry = [(72, 58, 900, 86), (188, 190, 1020, 370), (188, 610, 1020, 42)]
+                alignments = ["left", "left", "left"]
             else:
-                geometry = [(64, 54, 1152, 88), (64, 175, 1152, 390), (64, 610, 1152, 42)]
-                family = slide["visual_intent"]["suggested_layout_families"][0]
+                geometry = [(72, 58, 1136, 86), (72, 178, 1136, 382), (72, 610, 1136, 42)]
                 alignments = ["left", "left", "left"]
             regions = []
             for index, (block, (x, y, w, h), align) in enumerate(
@@ -434,8 +439,11 @@ class RuleBasedReasoningProvider:
                     "layout_family": family,
                     "reading_order": [region["region_id"] for region in regions],
                     "regions": regions,
-                    "rationale": "MinimalImpl 使用三层原生文本布局：标题、正文和来源定位。",
-                    "grid_notes": ["所有区域保持在 1280×720 safe area 内。"],
+                    "rationale": f"MinimalImpl 按 {family} 信息关系映射标题、正文与来源定位；装饰区域由 DesignImpl 生成，不伪装成内容块。",
+                    "grid_notes": [
+                        "所有内容区域保持在 1280×720 safe area 内。",
+                        "Region 与 Block 一一映射；调试稿必须显示两类稳定 ID。",
+                    ],
                 }
             )
         return {
@@ -469,8 +477,8 @@ class RuleBasedReasoningProvider:
             "schema_version": SCHEMA_VERSION,
             "project_id": inputs["project_id"],
             "deck_id": f"DECK-{inputs['project_id']}",
-            "theme_id": "THEME-MVP0-INK",
-            "tone": ["专业", "清晰", "克制"],
+            "theme_id": "THEME-MVP1-EDITORIAL",
+            "tone": ["编辑感", "专业", "清晰", "克制"],
             "canvas": {"background": "#F7F4ED", "aspect_ratio": "16:9"},
             "colors": {
                 "background": "#F7F4ED",
@@ -491,10 +499,16 @@ class RuleBasedReasoningProvider:
                 },
             },
             "spacing": {"base": 8, "region_gap": 24, "safe_area": DEFAULT_SAFE_AREA},
-            "shape_rules": {"corner_radius": 10, "border_width": 1, "shadow": "none"},
+            "shape_rules": {
+                "corner_radius": 10,
+                "border_width": 1,
+                "shadow": "subtle",
+                "accent_bar": "left",
+                "section_marker": "large_ordinal",
+            },
             "chart_rules": {"default": "not_supported_in_minimal_impl"},
             "image_rules": {"default": "user_assets_only"},
-            "icon_rules": {"style": "none"},
+            "icon_rules": {"style": "geometric_native_shapes"},
             "layout_policy": {
                 "max_same_family_consecutive": 2,
                 "max_bento_ratio": 0,

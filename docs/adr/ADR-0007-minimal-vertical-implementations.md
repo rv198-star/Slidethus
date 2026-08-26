@@ -20,6 +20,8 @@ M1 已经建立可靠的 Artifact Runtime，但 M2–M5 尚未实现。继续按
 
 首个渲染适配器采用 `python-pptx`，因为它能以小型 Python 依赖生成真实、原生可编辑的 PPTX。PptxGenJS、Final SVG 和 Hybrid 后端仍保留为后续实现。
 
+ADR-0008 补充本决策的完成标准：MVP0 证明了策划与文件写入，但不能把策划稿的格式转换算作独立的调试、设计和最终渲染阶段。完整 MVP 必须逐阶段产生不同输出并通过各自验收。
+
 ## Consequences
 
 - 项目可以较早证明从输入到真实文件的工程闭环。

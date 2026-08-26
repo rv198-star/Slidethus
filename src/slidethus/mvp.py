@@ -8,7 +8,12 @@ from typing import Any
 from slidethus.artifact_runtime import ArtifactRuntime, utc_now
 from slidethus.io_utils import sha256_file
 from slidethus.minimal_providers import PlainTextSourceParser, RuleBasedReasoningProvider
-from slidethus.pptx_backend import LibreOfficeDocumentRenderer, MinimalPptxRenderBackend
+from slidethus.pptx_backend import (
+    DebugPptxRenderBackend,
+    LibreOfficeDocumentRenderer,
+    MinimalDesignPptxRenderBackend,
+    build_layout_diagnostics,
+)
 from slidethus.protocols import (
     DocumentRenderer,
     ReasoningProvider,
@@ -37,7 +42,11 @@ class MvpBuildResult:
     status: str
     workspace: Path
     output_path: Path
-    model_previews: tuple[Path, ...]
+    planning_previews: tuple[Path, ...]
+    diagnostics_path: Path
+    debug_output_path: Path
+    debug_previews: tuple[Path, ...]
+    design_previews: tuple[Path, ...]
     independent_previews: tuple[Path, ...]
     current_phase: str
     limitations: tuple[str, ...]
@@ -251,15 +260,35 @@ def _delivery_refs(runtime: ArtifactRuntime) -> list[dict[str, Any]]:
     ]
 
 
+def _render_output(
+    workspace: Path,
+    path: Path,
+    *,
+    mime_type: str,
+    slide_count: int,
+    role: str,
+    stage: str,
+) -> dict[str, Any]:
+    return {
+        "path": path.relative_to(workspace).as_posix(),
+        "sha256": sha256_file(path),
+        "mime_type": mime_type,
+        "slide_count": slide_count,
+        "role": role,
+        "stage": stage,
+    }
+
+
 def build_minimal_mvp(
     config: MvpBuildConfig,
     *,
     source_parser: SourceParser | None = None,
     reasoning_provider: ReasoningProvider | None = None,
     render_backend: RenderBackend | None = None,
+    debug_render_backend: RenderBackend | None = None,
     document_renderer: DocumentRenderer | None = None,
 ) -> MvpBuildResult:
-    """Run the first real, user-source-limited Slidethus vertical slice."""
+    """Run the user-source-limited MVP with distinct action-stage outputs."""
 
     if not 3 <= config.max_slides <= 20:
         raise ValueError("max_slides must be between 3 and 20")
@@ -339,20 +368,42 @@ def build_minimal_mvp(
         "layout_plans", {**context, "slide_specs": slide_specs}
     )
     _write(runtime, "layout_plans", layouts)
-    render_wireframes(workspace, workspace / "outputs" / "wireframes")
+    planning_previews = tuple(
+        render_wireframes(workspace, workspace / "outputs" / "planning-wireframes")
+    )
     _record(runtime, "G5B", Phase.LAYOUT_READY)
 
     visual = reasoner.generate_artifact("visual_system", {**context, "layout_plans": layouts})
     _write(runtime, "visual_system", visual)
     _record(runtime, "G6", Phase.VISUAL_SYSTEM_READY)
 
-    backend = render_backend or MinimalPptxRenderBackend()
+    diagnostics_path = workspace / "outputs" / "debug" / "layout-diagnostics.json"
+    diagnostics = build_layout_diagnostics(workspace, diagnostics_path)
+    if diagnostics["status"] != "pass":
+        raise RuntimeError(
+            f"Layout diagnostics failed with {len(diagnostics['issues'])} issue(s)"
+        )
+
+    debug_backend = debug_render_backend or DebugPptxRenderBackend()
+    debug_result = debug_backend.render(
+        RenderRequest(
+            workspace=workspace,
+            target_format="pptx",
+            target_editability_level="E3",
+            output_dir=workspace / "outputs" / "debug",
+        )
+    )
+    if debug_result.status != "success" or not debug_result.output_paths:
+        raise RuntimeError("Debug render backend did not produce a successful PPTX")
+    debug_output_path = debug_result.output_paths[0]
+
+    backend = render_backend or MinimalDesignPptxRenderBackend()
     render_result = backend.render(
         RenderRequest(
             workspace=workspace,
             target_format="pptx",
             target_editability_level="E3",
-            output_dir=workspace / "outputs",
+            output_dir=workspace / "outputs" / "final",
         )
     )
     if render_result.status != "success" or not render_result.output_paths:
@@ -360,10 +411,25 @@ def build_minimal_mvp(
     output_path = render_result.output_paths[0]
 
     previewer = document_renderer or LibreOfficeDocumentRenderer()
-    preview_warning: str | None = None
+    debug_preview_warning: str | None = None
+    try:
+        debug_previews = tuple(
+            previewer.preview(
+                debug_output_path, workspace / "outputs" / "debug-office-previews"
+            )
+        )
+        if len(debug_previews) != slide_count:
+            raise RuntimeError(
+                f"Debug preview count mismatch: expected {slide_count}, got {len(debug_previews)}"
+            )
+    except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
+        debug_previews = ()
+        debug_preview_warning = str(exc)
+
+    final_preview_warning: str | None = None
     try:
         independent_previews = tuple(
-            previewer.preview(output_path, workspace / "outputs" / "office-previews")
+            previewer.preview(output_path, workspace / "outputs" / "final-office-previews")
         )
         if len(independent_previews) != slide_count:
             raise RuntimeError(
@@ -371,18 +437,65 @@ def build_minimal_mvp(
             )
     except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
         independent_previews = ()
-        preview_warning = str(exc)
+        final_preview_warning = str(exc)
 
-    warnings = [*render_result.warnings]
-    if preview_warning:
-        warnings.append(f"Independent Office preview unavailable: {preview_warning}")
+    warnings = [*debug_result.warnings, *render_result.warnings]
+    if debug_preview_warning:
+        warnings.append(f"Debug Office preview unavailable: {debug_preview_warning}")
+    if final_preview_warning:
+        warnings.append(f"Final Office preview unavailable: {final_preview_warning}")
     render_manifest = {
         "schema_version": "0.1.0",
         "project_id": project_id,
         "deck_id": f"DECK-{project_id}",
-        "render_id": f"RND-{project_id}-MVP0",
-        "backend": getattr(backend, "name", backend.__class__.__name__),
-        "backend_version": getattr(backend, "version", "unknown"),
+        "render_id": f"RND-{project_id}-MVP1",
+        "backend": "complete-mvp-pipeline",
+        "backend_version": "0.4.0",
+        "pipeline_mode": "complete_mvp",
+        "pipeline_stages": [
+            {
+                "stage_id": "planning",
+                "action": "Render schema-backed Layout Plans as grayscale planning wireframes",
+                "status": "success",
+                "output_roles": ["planning_wireframe"],
+            },
+            {
+                "stage_id": "diagnostics",
+                "action": "Check safe area, bounds, collision, text capacity, and font floor",
+                "status": "success" if diagnostics["status"] == "pass" else "failed",
+                "output_roles": ["layout_diagnostics"],
+            },
+            {
+                "stage_id": "debug_render",
+                "action": "Compile Region/Block mappings into an editable diagnostic PPTX",
+                "status": debug_result.status,
+                "output_roles": ["debug_pptx"],
+            },
+            {
+                "stage_id": "debug_preview",
+                "action": "Render the debug PPTX through an independent Office path",
+                "status": "success" if debug_previews else "failed",
+                "output_roles": ["debug_preview"],
+            },
+            {
+                "stage_id": "design_compile",
+                "action": "Apply Visual System tokens and layout-family design grammar",
+                "status": "success" if render_result.preview_paths else "failed",
+                "output_roles": ["design_preview"],
+            },
+            {
+                "stage_id": "final_render",
+                "action": "Render and reopen the editable final PPTX",
+                "status": render_result.status,
+                "output_roles": ["final_pptx"],
+            },
+            {
+                "stage_id": "final_preview",
+                "action": "Render the final PPTX through an independent Office path",
+                "status": "success" if independent_previews else "failed",
+                "output_roles": ["final_preview"],
+            },
+        ],
         "target_format": "pptx",
         "target_editability_level": "E3",
         "editability_level": render_result.actual_editability_level,
@@ -390,19 +503,72 @@ def build_minimal_mvp(
             runtime, {"slide_specs", "layout_plans", "visual_system", "asset_manifest"}
         ),
         "outputs": [
-            {
-                "path": output_path.relative_to(workspace).as_posix(),
-                "sha256": sha256_file(output_path),
-                "mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                "slide_count": slide_count,
-            },
             *[
-                {
-                    "path": preview_path.relative_to(workspace).as_posix(),
-                    "sha256": sha256_file(preview_path),
-                    "mime_type": "image/png",
-                    "slide_count": 1,
-                }
+                _render_output(
+                    workspace,
+                    path,
+                    mime_type="image/svg+xml",
+                    slide_count=1,
+                    role="planning_wireframe",
+                    stage="planning",
+                )
+                for path in planning_previews
+            ],
+            _render_output(
+                workspace,
+                diagnostics_path,
+                mime_type="application/json",
+                slide_count=slide_count,
+                role="layout_diagnostics",
+                stage="debug",
+            ),
+            _render_output(
+                workspace,
+                debug_output_path,
+                mime_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                slide_count=slide_count,
+                role="debug_pptx",
+                stage="debug",
+            ),
+            *[
+                _render_output(
+                    workspace,
+                    path,
+                    mime_type="image/png",
+                    slide_count=1,
+                    role="debug_preview",
+                    stage="debug",
+                )
+                for path in debug_previews
+            ],
+            *[
+                _render_output(
+                    workspace,
+                    path,
+                    mime_type="image/svg+xml",
+                    slide_count=1,
+                    role="design_preview",
+                    stage="design",
+                )
+                for path in render_result.preview_paths
+            ],
+            _render_output(
+                workspace,
+                output_path,
+                mime_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                slide_count=slide_count,
+                role="final_pptx",
+                stage="final",
+            ),
+            *[
+                _render_output(
+                    workspace,
+                    preview_path,
+                    mime_type="image/png",
+                    slide_count=1,
+                    role="final_preview",
+                    stage="review",
+                )
                 for preview_path in independent_previews
             ],
         ],
@@ -418,24 +584,27 @@ def build_minimal_mvp(
 
     limitations = [
         "D3：只使用用户提供的 Markdown/TXT，不执行外部研究。",
-        "叙事、页面规划和视觉为确定性 MinimalImpl，不代表完整 M2–M5。",
-        "只支持原生文本与简单形状，不生成图片、图表或复杂 Hybrid 视觉。",
+        "叙事、页面规划与设计为确定性 MinimalImpl，不代表完整 M2–M5 ProductionImpl。",
+        "DesignImpl 只支持原生文本、面板、序号与简单几何形状，不生成图片、图表或复杂 Hybrid 视觉。",
     ]
     issues: list[dict[str, Any]] = []
     quality_status = "pass"
     quality_gate_status = "pass"
-    if not independent_previews:
-        limitations.append("未完成独立 Office 预览，PPTX 只通过结构与原生文本覆盖检查。")
+    previews_complete = bool(debug_previews and independent_previews)
+    if not previews_complete:
+        limitations.append(
+            "调试稿或最终稿未完成独立 Office 预览，只能确认结构和原生对象覆盖。"
+        )
         issues.append(
             {
                 "issue_id": "ISS-001",
                 "severity": "major",
                 "category": "preview",
                 "phase": "P7",
-                "finding": "独立 Office 预览不可用。",
-                "impact": "无法把生成器自检等同于最终视觉回归。",
+                "finding": "调试性 PPTX 或最终 PPTX 的独立 Office 预览不完整。",
+                "impact": "无法证明策划编译和最终设计在真实 Office 渲染路径中都成立。",
                 "recommended_fix": "安装 LibreOffice 与 Poppler 后重跑 MVP。",
-                "verification": "独立 PNG 页数与 PPTX 页数一致，并完成视觉抽检。",
+                "verification": "两份 PPTX 的独立 PNG 页数均与 Layout Plans 一致，并完成视觉抽检。",
                 "status": "open",
             }
         )
@@ -445,7 +614,7 @@ def build_minimal_mvp(
     quality_report = {
         "schema_version": "0.1.0",
         "project_id": project_id,
-        "review_id": f"REV-{project_id}-MVP0",
+        "review_id": f"REV-{project_id}-MVP1",
         "review_mode": "combined",
         "reviewer": "minimal-deterministic-review",
         "issues": issues,
@@ -464,9 +633,21 @@ def build_minimal_mvp(
             },
             {
                 "dimension": "readability",
-                "score": 4 if independent_previews else 2,
-                "evidence": "固定 safe area、18pt 以上正文和最多五条内容；独立预览按可用性记录。",
-                "unresolved": [] if independent_previews else ["独立视觉预览缺失。"],
+                "score": 4 if previews_complete else 2,
+                "evidence": "布局诊断检查 safe area、碰撞和文本容量；调试稿与最终稿独立预览按可用性记录。",
+                "unresolved": [] if previews_complete else ["独立视觉预览链不完整。"],
+            },
+            {
+                "dimension": "pipeline_completeness",
+                "score": 5 if previews_complete else 3,
+                "evidence": "Planning、Diagnostics、Debug PPTX、Design Preview、Final PPTX 与两次 Office Preview 均在 Render Manifest 分阶段记录。",
+                "unresolved": [] if previews_complete else ["至少一个独立预览动作失败。"],
+            },
+            {
+                "dimension": "composition",
+                "score": 3,
+                "evidence": "Minimal DesignImpl 按 hero、split、case 家族应用不同几何、面板和序号标记。",
+                "unresolved": ["尚未达到生产级图片、图表或复杂视觉设计。"],
             },
             {
                 "dimension": "export_integrity",
@@ -478,13 +659,13 @@ def build_minimal_mvp(
         "gate_result": {
             "gate_id": "G8",
             "status": quality_gate_status,
-            "reasons": [] if independent_previews else ["独立 Office 预览不可用。"],
+            "reasons": [] if previews_complete else ["调试稿或最终稿独立 Office 预览不可用。"],
         },
         "status": quality_status,
     }
     _write(runtime, "quality_report", quality_report)
 
-    if independent_previews:
+    if previews_complete:
         _record(runtime, "G8", Phase.REVIEWED)
         delivery_status = "ready"
         review_status = "pass"
@@ -496,14 +677,44 @@ def build_minimal_mvp(
     delivery_manifest = {
         "schema_version": "0.1.0",
         "project_id": project_id,
-        "delivery_id": f"DLV-{project_id}-MVP0",
+        "delivery_id": f"DLV-{project_id}-MVP1",
         "delivery_level": "D3",
         "outputs": [
+            *[
+                {
+                    "path": path.relative_to(workspace).as_posix(),
+                    "format": "planning_svg",
+                    "sha256": sha256_file(path),
+                    "validated": diagnostics["status"] == "pass",
+                }
+                for path in planning_previews
+            ],
+            {
+                "path": diagnostics_path.relative_to(workspace).as_posix(),
+                "format": "layout_diagnostics_json",
+                "sha256": sha256_file(diagnostics_path),
+                "validated": diagnostics["status"] == "pass",
+            },
+            {
+                "path": debug_output_path.relative_to(workspace).as_posix(),
+                "format": "debug_pptx",
+                "sha256": sha256_file(debug_output_path),
+                "validated": bool(debug_previews),
+            },
+            *[
+                {
+                    "path": path.relative_to(workspace).as_posix(),
+                    "format": "design_svg",
+                    "sha256": sha256_file(path),
+                    "validated": True,
+                }
+                for path in render_result.preview_paths
+            ],
             {
                 "path": output_path.relative_to(workspace).as_posix(),
-                "format": "pptx",
+                "format": "final_pptx",
                 "sha256": sha256_file(output_path),
-                "validated": True,
+                "validated": bool(independent_previews),
             }
         ],
         "artifact_versions": _delivery_refs(runtime),
@@ -516,7 +727,7 @@ def build_minimal_mvp(
     }
     _write(runtime, "delivery_manifest", delivery_manifest)
 
-    if independent_previews:
+    if previews_complete:
         _record(runtime, "G9", Phase.DELIVERY_READY)
         result_status = "ready"
     else:
@@ -529,7 +740,11 @@ def build_minimal_mvp(
         status=result_status,
         workspace=workspace,
         output_path=output_path,
-        model_previews=tuple(render_result.preview_paths),
+        planning_previews=planning_previews,
+        diagnostics_path=diagnostics_path,
+        debug_output_path=debug_output_path,
+        debug_previews=debug_previews,
+        design_previews=tuple(render_result.preview_paths),
         independent_previews=independent_previews,
         current_phase=state["current_phase"],
         limitations=tuple(limitations),

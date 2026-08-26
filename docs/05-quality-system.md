@@ -79,6 +79,9 @@ Round A 的 Critical/Major 问题修复后，再按维度评分。评分必须�
 - broken SVG/PPTX；
 - export page count；
 - preview rendering。
+- complete-MVP stage/output coverage；
+- debug PPTX Region/Block mapping；
+- debug 与 final 两条独立 Office preview 链。
 
 ## 5. 语义审计维度
 

@@ -45,7 +45,10 @@ def _parser() -> argparse.ArgumentParser:
     render.add_argument("workspace", type=Path)
     render.add_argument("--output-dir", type=Path)
 
-    mvp = sub.add_parser("mvp", help="build a real minimal PPTX from Markdown/TXT")
+    mvp = sub.add_parser(
+        "mvp",
+        help="build planning, debug, design, final, preview, QA, and delivery outputs",
+    )
     mvp.add_argument("workspace", type=Path)
     mvp.add_argument("--source", type=Path, required=True)
     mvp.add_argument("--title")
@@ -141,7 +144,13 @@ def main(argv: list[str] | None = None) -> int:
                         "workspace": str(result.workspace),
                         "output": str(result.output_path),
                         "current_phase": result.current_phase,
-                        "model_previews": [str(path) for path in result.model_previews],
+                        "planning_previews": [
+                            str(path) for path in result.planning_previews
+                        ],
+                        "layout_diagnostics": str(result.diagnostics_path),
+                        "debug_output": str(result.debug_output_path),
+                        "debug_previews": [str(path) for path in result.debug_previews],
+                        "design_previews": [str(path) for path in result.design_previews],
                         "independent_previews": [
                             str(path) for path in result.independent_previews
                         ],

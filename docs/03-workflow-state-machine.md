@@ -43,7 +43,11 @@ stateDiagram-v2
 | P8 Review | 具体哪里有问题 | draft、所有 artifacts | Quality Report、repair plan | G8 Review |
 | P9 Delivery | 交付是否完整 | approved draft | Delivery Manifest | G9 Delivery |
 
-## 2.1 双阶段研究回路
+### 2.1 MVP 动作完整性
+
+在 MVP 路径中，P5B 的策划稿、P7 的调试性 PPTX、设计预览和最终 PPTX 是不同产出。把同一策划内容保存为 `.pptx` 不构成新的阶段完成。`Render Manifest.pipeline_stages` 与 `outputs[].role` 记录每个动作；G7 检查非审阅阶段，G8 检查调试稿和最终稿的独立预览。
+
+## 2.2 双阶段研究回路
 
 研究不是只在流程中单点执行：
 

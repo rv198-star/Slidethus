@@ -196,7 +196,7 @@ flowchart LR
 4. **Hybrid PPTX**：原生基础对象 + 复杂 SVG/图片；
 5. **Preview Renderer**：PPTX/PDF → PNG，用于视觉审计。
 
-v0.3 的 `MinimalPptxRenderBackend` 是首个真实 RenderBackend：使用 `python-pptx` 输出 E3 原生文本与简单形状；`LibreOfficeDocumentRenderer` 负责独立 PDF/PNG 预览。它只是一条可替换 MinimalImpl，不完成 Final SVG、PptxGenJS 或 Hybrid ProductionImpl。
+v0.4 将文件生成拆成不同语义阶段：`DebugPptxRenderBackend` 把 Layout Plans 编译成带网格、safe area 与 Region/Block 映射的调试稿；`MinimalDesignPptxRenderBackend` 再消费 Visual System 生成独立最终稿；`LibreOfficeDocumentRenderer` 分别做独立 PDF/PNG 预览。两份 PPTX 都是可替换 MinimalImpl，不完成 PptxGenJS、Hybrid ProductionImpl 或生产级视觉设计。
 
 逻辑坐标统一为 `1280×720`，后端负责转换到目标单位。
 

@@ -21,7 +21,7 @@
 | 内容和设计之间加入策划稿 | Slide Specs + Layout Plans | 语义/几何分离、灰模、Gate | 基础已实现 |
 | 策划负责结构，设计负责风格 | Layout Plans 与 Visual System 分离 | 后端无关的 render contract | 合同已定义 |
 | Bento Grid 组织信息 | Layout family: `bento` | 与 hero/process/timeline/matrix 等并列 | 规则已定义 |
-| 输出 1280×720 SVG | 默认逻辑画布与 SVG backend | Native/Hybrid PPTX 后端 | Wireframe + E3 Minimal PPTX 已实现，正式多后端待实现 |
+| 输出 1280×720 SVG | 默认逻辑画布与 SVG backend | Native/Hybrid PPTX 后端 | 策划 SVG、设计 SVG、Debug/Final E3 PPTX 已分离，正式多后端待实现 |
 | 大纲 JSON 输出 | Schema-backed artifacts | JSON Schema、跨引用与版本 | 基础已实现 |
 
 ## 3. 直接吸收的核心

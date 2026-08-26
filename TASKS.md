@@ -30,21 +30,37 @@ M0 只代表基础合同成立，不代表端到端 PPT 生成完成。
 
 **Exit Gate：PASS（2026-08-26）。** 示例项目和新建项目均可在中断后恢复；无效引用、非法状态迁移、过期 Gate 或半写入会被检测并阻止推进。验收证据见 `audit/M1-round-2-scorecard.md`。
 
-## MVP0 — Minimal End-to-End Vertical Slice
+## MVP0 — Planning Proof
 
-目标：在不降低正式 Gate 的前提下，用可替换 MinimalImpl 先证明真实工程产出。
+目标：用可替换 MinimalImpl 证明输入、证据、策划 artifacts 和 PPTX 文件写入可以连接。该版本后来被确认只完成最简策划稿，PPTX 是策划内容的直出预览，不能算独立调试或设计阶段。
 
 - [x] Markdown/TXT 输入与 line-located chunks
 - [x] 用户材料限定的 Evidence、双阶段 research cycle 与事实块绑定
 - [x] 规则式 Narrative、Outline、Slide Specs、Layout Plans、Visual System
-- [x] 原生可编辑 PPTX（E3 文本与简单形状）
-- [x] Wireframe、模型预览和独立 LibreOffice/Poppler 预览
+- [x] 策划稿的原生 PPTX 预览（E3 文本与简单形状）
+- [x] Wireframe 和 LibreOffice/Poppler 可行性验证
 - [x] 中文字体临时装载；字体不打包进入交付
 - [x] G0–G9 端到端 CLI：`slidethus mvp`
 - [x] 无独立预览时停在 G8 并交付 degraded 结果
 - [x] provider 替换、来源指令隔离和失败路径测试
 
-**Vertical Gate：PASS（2026-08-26）。** 一份真实 Markdown 可稳定生成六页可打开、可编辑 PPTX，独立预览页数一致并推进到 `DELIVERY_READY`。这不等于 M2、M3、M4 或 M5 Exit Gate 完成。
+**Planning Gate：PASS（2026-08-26）。** 该版本只证明最简策划稿与文件生成，不再称为完整端到端 MVP。
+
+## MVP1 — Complete Action and Output Chain
+
+目标：每个声称完成的动作都有不同产出物和独立验收，不能用格式转换代替缺失阶段。
+
+- [x] Planning wireframes：一页一个灰模 SVG
+- [x] Layout diagnostics：safe area、边界、碰撞、文本容量和字号检查
+- [x] Debug PPTX：网格、safe area、Region/Block ID 与映射
+- [x] Debug Office previews：独立渲染调试稿
+- [x] Design previews：消费 Visual System 和布局家族
+- [x] Final PPTX：独立于调试稿的 E3 最简设计实现
+- [x] Final Office previews：独立渲染最终稿
+- [x] Render Manifest 七段动作记录和 output roles
+- [x] G7 检查非审阅阶段，G8 检查调试/最终两条预览链，G9 检查交付
+
+**MVP Gate：PASS（2026-08-26）。** 六页真实验收生成 27 个分阶段输出，Artifact Validation 与 G7/G8/G9 均通过。设计仍为 MinimalImpl，不代表生产级视觉能力或完整 M2–M5 Exit Gate。
 
 ## M2 — Ingestion, Research, Evidence
 

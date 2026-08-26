@@ -128,6 +128,59 @@ def evaluate_gate(workspace: Path, gate_id: str) -> GateResult:
                 target = render.get("target_editability_level")
                 if actual in EDITABILITY_ORDER and target in EDITABILITY_ORDER and EDITABILITY_ORDER[actual] < EDITABILITY_ORDER[target]:
                     reasons.append(f"actual editability {actual} is below target {target}")
+            if render.get("pipeline_mode") == "complete_mvp":
+                required_stages = {
+                    "planning",
+                    "diagnostics",
+                    "debug_render",
+                    "debug_preview",
+                    "design_compile",
+                    "final_render",
+                    "final_preview",
+                }
+                stages = {item.get("stage_id"): item for item in render.get("pipeline_stages", [])}
+                missing_stages = sorted(required_stages - set(stages))
+                if missing_stages:
+                    reasons.append(f"complete MVP is missing stages: {missing_stages}")
+                required_render_stages = {
+                    "planning",
+                    "diagnostics",
+                    "debug_render",
+                    "design_compile",
+                    "final_render",
+                }
+                failed_render_stages = sorted(
+                    stage_id
+                    for stage_id in required_render_stages
+                    if stages.get(stage_id, {}).get("status") != "success"
+                )
+                if failed_render_stages:
+                    reasons.append(
+                        f"complete MVP render stages did not succeed: {failed_render_stages}"
+                    )
+                output_roles = {item.get("role") for item in render.get("outputs", [])}
+                required_roles = {
+                    "planning_wireframe",
+                    "layout_diagnostics",
+                    "debug_pptx",
+                    "design_preview",
+                    "final_pptx",
+                }
+                missing_roles = sorted(required_roles - output_roles)
+                if missing_roles:
+                    reasons.append(f"complete MVP is missing outputs: {missing_roles}")
+                diagnostics_output = next(
+                    (
+                        item
+                        for item in render.get("outputs", [])
+                        if item.get("role") == "layout_diagnostics"
+                    ),
+                    None,
+                )
+                if diagnostics_output:
+                    diagnostics = read_json(workspace / diagnostics_output["path"])
+                    if diagnostics.get("status") != "pass":
+                        reasons.append("layout diagnostics did not pass")
     elif gate_id == "G8":
         render = read_json(workspace / "renders/render_manifest.json")
         if render.get("status") != "success":
@@ -142,6 +195,12 @@ def evaluate_gate(workspace: Path, gate_id: str) -> GateResult:
             reasons.append("quality report status is not pass")
         if quality_gate.get("gate_id") != "G8" or quality_gate.get("status") != "pass":
             reasons.append("quality report does not record a passing G8 review")
+        if render.get("pipeline_mode") == "complete_mvp":
+            roles = [item.get("role") for item in render.get("outputs", [])]
+            if "debug_preview" not in roles:
+                reasons.append("debug PPTX has no independent preview")
+            if "final_preview" not in roles:
+                reasons.append("final PPTX has no independent preview")
     elif gate_id == "G9":
         render = read_json(workspace / "renders/render_manifest.json")
         quality = read_json(workspace / "review/quality_report.json")

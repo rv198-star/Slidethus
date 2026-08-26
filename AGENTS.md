@@ -77,4 +77,5 @@ A change is done only when:
 - Make small coherent changes and keep the tree runnable.
 - Record decisions, assumptions, and remaining risks.
 - Do not mark roadmap tasks complete because only interfaces or placeholders exist.
+- Do not call a workflow an MVP unless every claimed action has a distinct, inspectable output and acceptance check. Serializing a planning artifact into another file format is not a new completed stage.
 - When the user corrects a recurring project rule, update this file or the closest applicable nested `AGENTS.md`.

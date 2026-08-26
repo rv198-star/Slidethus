@@ -18,7 +18,8 @@ A renderer must:
 Current implementations:
 
 - gray planning-wireframe SVG in `src/slidethus/wireframe.py`;
-- `MinimalPptxRenderBackend` in `src/slidethus/pptx_backend.py`, producing native E3 text/simple-shape PPTX;
+- `DebugPptxRenderBackend`, producing a native E3 layout-debug deck with stable mappings;
+- `MinimalDesignPptxRenderBackend`, producing a different native E3 final deck after applying the Visual System;
 - `LibreOfficeDocumentRenderer` for independent PDF/PNG preview with workspace-isolated profiles and temporary local-font staging.
 
-The PPTX backend is an MVP MinimalImpl, not the planned PptxGenJS/Hybrid ProductionImpl.
+Both PPTX backends are MVP MinimalImpls, not the planned PptxGenJS/Hybrid ProductionImpl.

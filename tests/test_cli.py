@@ -72,4 +72,5 @@ def test_mvp_cli_builds_real_pptx(
     )
     output = capsys.readouterr().out
     assert '"status": "ready"' in output
-    assert (tmp_path / "workspace/outputs/cli-mvp.pptx").exists()
+    assert (tmp_path / "workspace/outputs/debug/cli-mvp-debug.pptx").exists()
+    assert (tmp_path / "workspace/outputs/final/cli-mvp-final.pptx").exists()

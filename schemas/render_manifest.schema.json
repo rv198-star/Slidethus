@@ -111,6 +111,76 @@
           "slide_count": {
             "type": "integer",
             "minimum": 1
+          },
+          "role": {
+            "enum": [
+              "planning_wireframe",
+              "layout_diagnostics",
+              "debug_pptx",
+              "debug_preview",
+              "design_preview",
+              "final_pptx",
+              "final_preview"
+            ]
+          },
+          "stage": {
+            "enum": [
+              "planning",
+              "debug",
+              "design",
+              "final",
+              "review"
+            ]
+          }
+        }
+      }
+    },
+    "pipeline_mode": {
+      "enum": [
+        "single_render",
+        "complete_mvp"
+      ]
+    },
+    "pipeline_stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "stage_id",
+          "action",
+          "status",
+          "output_roles"
+        ],
+        "properties": {
+          "stage_id": {
+            "enum": [
+              "planning",
+              "diagnostics",
+              "debug_render",
+              "debug_preview",
+              "design_compile",
+              "final_render",
+              "final_preview"
+            ]
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "success",
+              "partial",
+              "failed",
+              "skipped"
+            ]
+          },
+          "output_roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       }

@@ -1,4 +1,6 @@
-# MVP0 — Minimal End-to-End Delivery
+# MVP0 — Planning Proof (Reclassified)
+
+> Post-review correction: this plan originally counted a planning artifact serialized to PPTX as a completed downstream render. User review correctly identified that no distinct debug, design, or final-render output existed. The historical implementation remains a planning proof; the corrected complete MVP is `plans/MVP1-complete-action-chain.md` and ADR-0008.
 
 ## 1. Objective
 
@@ -83,9 +85,10 @@ slidethus artifact validate <workspace>
 | 可维护性 | 4 | provider/application/renderer 分离 | 多 workflow 后需拆分 use case |
 | 降级与恢复 | 5 | 无预览停 G8、事务恢复不变 | 应用级断点续跑未实现 |
 
-## 8. Final outcome
+## 8. Final outcome (corrected)
 
-- 已完成：真实 Markdown/TXT → artifacts → E3 PPTX → independent preview → G9。
+- 已完成：真实 Markdown/TXT → structured planning artifacts → planning-preview PPTX → independent preview。
+- 未完成于本版本：独立 Debug PPTX、Design Preview 和 Final PPTX；因此不能称为完整端到端 MVP。
 - 未完成：完整 M2–M5 能力不因 MVP0 而完成；`mvp` 命令尚不支持应用级断点续跑。
 - 后续任务：逐个用 ProductionImpl 替换最简实现。
 - 相关 ADR：ADR-0007。

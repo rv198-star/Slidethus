@@ -72,8 +72,22 @@ def test_minimal_mvp_reaches_delivery_ready_with_replaceable_preview(
     assert result.status == "ready"
     assert result.current_phase == "DELIVERY_READY"
     assert result.output_path.exists()
+    assert result.debug_output_path.exists()
+    assert result.diagnostics_path.exists()
     assert len(Presentation(result.output_path).slides) == 5
+    assert len(Presentation(result.debug_output_path).slides) == 5
+    assert len(result.planning_previews) == 5
+    assert len(result.debug_previews) == 5
+    assert len(result.design_previews) == 5
     assert len(result.independent_previews) == 5
+    diagnostics = read_json(result.diagnostics_path)
+    assert diagnostics["status"] == "pass"
+    assert not diagnostics["issues"]
+    assert all(
+        check["fits_estimate"] and check["within_safe_area"] and check["meets_font_floor"]
+        for slide in diagnostics["slides"]
+        for check in slide["checks"]
+    )
     assert validate_workspace(workspace, check_hashes=True).ok
     state = read_json(workspace / "project_state.json")
     assert next(item for item in state["completed_gates"] if item["gate_id"] == "G9")[
@@ -83,15 +97,43 @@ def test_minimal_mvp_reaches_delivery_ready_with_replaceable_preview(
     assert delivery["status"] == "ready"
     assert delivery["editability_level"] == "E3"
     render_manifest = read_json(workspace / "renders/render_manifest.json")
-    assert len(render_manifest["outputs"]) == 6
+    assert render_manifest["pipeline_mode"] == "complete_mvp"
+    assert {item["stage_id"] for item in render_manifest["pipeline_stages"]} == {
+        "planning",
+        "diagnostics",
+        "debug_render",
+        "debug_preview",
+        "design_compile",
+        "final_render",
+        "final_preview",
+    }
+    assert {item["role"] for item in render_manifest["outputs"]} == {
+        "planning_wireframe",
+        "layout_diagnostics",
+        "debug_pptx",
+        "debug_preview",
+        "design_preview",
+        "final_pptx",
+        "final_preview",
+    }
     assert {item["mime_type"] for item in render_manifest["outputs"]} == {
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "application/json",
         "image/png",
+        "image/svg+xml",
     }
     with zipfile.ZipFile(result.output_path) as archive:
         slide_xml = archive.read("ppt/slides/slide1.xml").decode("utf-8")
     assert "<a:ea typeface=" in slide_xml
     assert "真实纵向 MVP" in slide_xml
+    debug_text = "\n".join(
+        shape.text
+        for slide in Presentation(result.debug_output_path).slides
+        for shape in slide.shapes
+        if getattr(shape, "has_text_frame", False)
+    )
+    assert "REG-S001-01 → BLK-S001-01" in debug_text
+    assert "LAYOUT DEBUG" in debug_text
 
 
 def test_minimal_mvp_delivers_degraded_output_without_false_g8_pass(
@@ -111,11 +153,17 @@ def test_minimal_mvp_delivers_degraded_output_without_false_g8_pass(
     assert result.status == "degraded"
     assert result.current_phase == "DRAFT_RENDERED"
     assert result.output_path.exists()
+    assert result.debug_output_path.exists()
+    assert not result.debug_previews
     quality = read_json(workspace / "review/quality_report.json")
     assert quality["status"] == "fail"
     assert quality["issues"][0]["severity"] == "major"
     delivery = read_json(workspace / "delivery/delivery_manifest.json")
     assert delivery["status"] == "draft"
+    render = read_json(workspace / "renders/render_manifest.json")
+    stages = {item["stage_id"]: item["status"] for item in render["pipeline_stages"]}
+    assert stages["debug_preview"] == "failed"
+    assert stages["final_preview"] == "failed"
     gate_records = ArtifactRuntime(workspace).show_artifact("gate_results")["records"]
     assert next(record for record in gate_records if record["gate_id"] == "G8")["status"] == "fail"
     assert validate_workspace(workspace, check_hashes=True).ok
