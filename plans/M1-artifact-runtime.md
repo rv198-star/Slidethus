@@ -64,12 +64,12 @@ ruff check src tests scripts
 ### 第一轮：开放问题发现
 
 - Critical：0。
-- Major：4 个，均已修复；见 `audit/M1-round-1-open-issues.md`。
+- Major：5 个，均已修复；见 `audit/M1-round-1-open-issues.md`。
 - Minor：1 个，已修复。
 
 ### 修复记录
 
-- 修复 journal 归档顺序、上游依赖失效、waiver 绑定、失败 Gate 持久化和读锁范围，并增加回归测试。
+- 修复 journal 归档顺序、上游依赖失效、waiver 绑定、失败 Gate 持久化、读锁范围和 CI hygiene 误报，并增加回归测试。
 
 ### 第二轮：维度评审
 

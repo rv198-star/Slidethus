@@ -41,6 +41,13 @@ Review the Artifact Runtime without scores and look only for concrete correctnes
 - Root fix: recovery and the complete read/validation now share one workspace lock.
 - Verification: all API/CLI and concurrency-sensitive optimistic-lock tests pass.
 
+### Major — editable-install metadata was misclassified as committed release pollution
+
+- Location: `scripts/audit_package.py`, release-tree hygiene check.
+- Problem: GitHub Actions correctly creates `src/slidethus.egg-info` during `pip install -e`, but the audit treated any on-disk metadata as a tracked release artifact and failed the clean CI run.
+- Root fix: in a Git checkout, hygiene now inspects only tracked generated paths through `git ls-files`; archive mode without `.git` retains the strict on-disk fallback.
+- Verification: local audit passes both before and after creating ignored editable-install metadata; the remote Python 3.11/3.12 matrix is rerun after the fix.
+
 ## Regression checks
 
 - No source-preserved material changed.
@@ -50,4 +57,4 @@ Review the Artifact Runtime without scores and look only for concrete correctnes
 
 ## Result
 
-All identified Critical/Major issues are fixed. Round B may proceed after the complete verification suite passes again.
+All identified Critical/Major issues are fixed. Round B proceeds only after local verification and the clean remote matrix pass.

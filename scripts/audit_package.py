@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -293,7 +294,17 @@ def main() -> int:
     )
 
     generated_paths = [root / "build", root / "dist", root / "src/slidethus.egg-info"]
-    dirty_release_paths = [path.relative_to(root).as_posix() for path in generated_paths if path.exists()]
+    if (root / ".git").exists():
+        tracked = subprocess.run(
+            ["git", "ls-files", "--", *[path.relative_to(root).as_posix() for path in generated_paths]],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.splitlines()
+        dirty_release_paths = sorted(set(tracked))
+    else:
+        dirty_release_paths = [path.relative_to(root).as_posix() for path in generated_paths if path.exists()]
     checks.append(Check("release_tree_hygiene", not dirty_release_paths, "no build/dist/egg-info directories" if not dirty_release_paths else "; ".join(dirty_release_paths)))
 
     no_fake_renderer = not (root / "renderers/pptxgenjs/package.json").exists()
