@@ -11,7 +11,57 @@ class SourceChunk:
     source_id: str
     locator: str
     text: str
+    chunk_id: str = ""
+    ordinal: int = 0
+    content_hash: str = ""
+    kind: str = "text"
     metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class DetectedSourceFormat:
+    family: str
+    media_type: str
+    suffix: str
+    signature: str
+    confidence: str
+
+
+@dataclass(frozen=True)
+class SourceParseLimits:
+    max_source_bytes: int = 50 * 1024 * 1024
+    max_chunks: int = 5000
+    max_chunk_chars: int = 12_000
+
+
+@dataclass(frozen=True)
+class SourceParseRequest:
+    path: Path
+    source_id: str
+    limits: SourceParseLimits = field(default_factory=SourceParseLimits)
+
+
+@dataclass(frozen=True)
+class SourceRisk:
+    risk_id: str
+    category: str
+    severity: str
+    message: str
+    locator: str | None = None
+
+
+@dataclass(frozen=True)
+class SourceParseResult:
+    source_id: str
+    parser_name: str
+    parser_version: str
+    detected_format: DetectedSourceFormat
+    source_sha256: str
+    size_bytes: int
+    parsed_at: str
+    chunks: tuple[SourceChunk, ...]
+    warnings: tuple[str, ...] = ()
+    risks: tuple[SourceRisk, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -54,7 +104,17 @@ class RenderResult:
 
 
 class SourceParser(Protocol):
-    def parse(self, path: Path, source_id: str) -> Sequence[SourceChunk]: ...
+    name: str
+    version: str
+    priority: int
+
+    def supports(self, detected_format: DetectedSourceFormat) -> bool: ...
+
+    def parse(
+        self,
+        request: SourceParseRequest,
+        detected_format: DetectedSourceFormat,
+    ) -> SourceParseResult: ...
 
 
 class ResearchProvider(Protocol):

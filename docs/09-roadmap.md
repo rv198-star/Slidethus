@@ -43,6 +43,8 @@
 
 目标：从素材到经审计的页面策划稿。
 
+当前进展（2026-08-27）：M2.1 Ingestion Core 已完成 Markdown/TXT Production adapter、Parser Registry、格式识别、稳定 Chunk/locator/hash、不可变快照、Source Ledger lineage、风险记录、幂等复用和故障恢复；多格式、研究与 Evidence Engine 仍未完成。
+
 关键产出：
 
 - multi-format ingestion；

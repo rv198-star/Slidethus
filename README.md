@@ -19,7 +19,9 @@ Slidethus 不是“输入标题后套模板”的 PPT 生成器，而是一套�
 - 独立、可版本化的 Gate 结果、决策日志和假设日志；
 - `artifact list/show/validate/migrate/recover` CLI 与故障注入测试；
 - `SourceParser` / `ReasoningProvider` / `RenderBackend` / `DocumentRenderer` 可替换接口；
-- Markdown/TXT 摄取、行号 evidence、规则式 Narrative/Outline/Slide Specs/Layout/Visual System MinimalImpl；
+- M2.1 Parser Registry、格式识别、稳定 Chunk/locator/hash、source risk 与资源限额；
+- Markdown/TXT Production 摄取、create-if-absent 不可变快照、Source Ledger lineage、幂等复用与故障恢复；
+- 用户来源限定的行号 evidence，以及规则式 Narrative/Outline/Slide Specs/Layout/Visual System MinimalImpl；
 - 独立的策划灰模、布局诊断和带 Region/Block 映射的调试性 PPTX；
 - 消费 Layout Plans 与 Visual System 的 Minimal DesignImpl 和设计预览；
 - 基于 `python-pptx` 的最终原生文本/简单形状 PPTX，实测编辑等级 E3；
@@ -32,7 +34,7 @@ Slidethus 不是“输入标题后套模板”的 PPT 生成器，而是一套�
 
 ## 这不是什么
 
-当前包已经完成 **M0 Foundation Contract**、**M1 Artifact Runtime**、**MVP0 Planning Proof** 和跨 M2–M5 的 **MVP1 完整动作链**，但不是生产级端到端 PPT 产品。以下能力仍未完成：
+当前包已经完成 **M0 Foundation Contract**、**M1 Artifact Runtime**、**MVP0 Planning Proof**、跨 M2–M5 的 **MVP1 完整动作链**，以及 M2 的首个子模块 **M2.1 Ingestion Core**，但不是生产级端到端 PPT 产品。以下能力仍未完成：
 
 - LLM/搜索/图片生成服务的真实适配；
 - PDF/DOCX/PPTX/图片/表格等多格式摄取；
@@ -130,7 +132,22 @@ slidethus render-wireframe examples/minimal_project
 examples/minimal_project/outputs/wireframes/
 ```
 
-### 5. 从 Markdown/TXT 生成真实 PPTX
+### 5. 独立摄取并检查来源快照
+
+```bash
+slidethus init /tmp/slidethus-source --title "来源摄取"
+slidethus source ingest /tmp/slidethus-source examples/mvp-input.md \
+  --source-id SRC-001 \
+  --allowed-use internal_only
+slidethus source show /tmp/slidethus-source SRC-001
+slidethus validate /tmp/slidethus-source --check-hashes
+```
+
+生产摄取会把解析正文写入 `.slidethus/cache/ingestion/` 的不可变快照，并在 Source Ledger 中记录 parser、格式、限额、快照哈希与风险计数。重复执行不会增加 artifact 版本；修改来源权限策略会版本化 Ledger；修改来源字节、parser 版本或解析限额会生成新快照。
+
+当前 admitted adapter 仅支持 Markdown/TXT。CSV、HTML、PDF、DOCX、PPTX、XLSX 和图片会在 M2.2 适配器完成前显式返回 unsupported。
+
+### 6. 从 Markdown/TXT 生成真实 PPTX
 
 ```bash
 slidethus mvp /tmp/slidethus-demo \
@@ -156,7 +173,7 @@ slidethus mvp /tmp/slidethus-demo \
 
 MVP0 命令当前要求目标 workspace 为空；Artifact Runtime 的事务恢复仍然生效，但应用级断点续跑属于后续 ProductionImpl。
 
-### 6. 用 Codex 接手
+### 7. 用 Codex 接手
 
 从仓库根目录启动 Codex，然后粘贴 `CODEX_KICKOFF.md` 中的指令。Codex 会自动读取根目录 `AGENTS.md`，并能发现 `.agents/skills/slidethus/SKILL.md`。
 
@@ -196,7 +213,7 @@ audit/                      本包审计记录与完整性清单
 ## 版本定位
 
 - 包版本：`0.4.0`
-- 成熟度：MVP1 Complete Action Chain（MinimalImpl；M2–M5 仍未完整）
+- 成熟度：MVP1 Complete Action Chain + M2.1 Ingestion Core（M2.2–M2.7 与 M3–M5 仍未完整）
 - 默认语言：中文
 - 逻辑画布：`1280 × 720`
 - 推荐最终渲染：Hybrid（原生文本/形状 + SVG/图片复杂视觉）
@@ -204,4 +221,4 @@ audit/                      本包审计记录与完整性清单
 
 ## 下一步
 
-下一步仍是完成 `TASKS.md` 的 **M2：Ingestion, Research, Evidence**。后续能力应逐个用 ProductionImpl 替换当前 MinimalImpl，而不改变 Artifact Runtime、语义 Schema 或 Gate 标准。
+下一步是 **M2.2 Multi-format Adapters**：在同一 Parser Registry、快照和失败语义下实现 HTML、PDF、DOCX、PPTX、CSV/XLSX 与图片元数据适配器。后续能力继续逐个用 ProductionImpl 替换当前 MinimalImpl，不改变 Artifact Runtime、语义 Schema 或 Gate 标准。

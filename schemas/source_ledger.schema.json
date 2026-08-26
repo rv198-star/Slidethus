@@ -101,6 +101,96 @@
               "null"
             ]
           },
+          "media_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "size_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "ingestion": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "parser_name",
+              "parser_version",
+              "detected_family",
+              "snapshot_path",
+              "snapshot_sha256",
+              "chunk_count",
+              "warning_count",
+              "risk_count",
+              "limits",
+              "ingested_at"
+            ],
+            "properties": {
+              "parser_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "parser_version": {
+                "type": "string",
+                "minLength": 1
+              },
+              "detected_family": {
+                "type": "string",
+                "minLength": 1
+              },
+              "snapshot_path": {
+                "type": "string",
+                "pattern": "^\\.slidethus/cache/ingestion/[a-f0-9]{64}\\.json$"
+              },
+              "snapshot_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "chunk_count": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "warning_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "risk_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "limits": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "max_source_bytes",
+                  "max_chunks",
+                  "max_chunk_chars"
+                ],
+                "properties": {
+                  "max_source_bytes": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "max_chunks": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "max_chunk_chars": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              },
+              "ingested_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
           "parse_status": {
             "enum": [
               "pending",

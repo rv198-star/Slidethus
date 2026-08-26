@@ -138,6 +138,10 @@ External adapters implement protocols
 ├── review/quality_report.json
 ├── delivery/delivery_manifest.json
 ├── decisions/
+├── .slidethus/
+│   ├── transactions/
+│   ├── history/
+│   └── cache/ingestion/
 ├── cache/
 └── outputs/
 ```
@@ -185,6 +189,30 @@ flowchart LR
 - `VisualReviewProvider`
 
 协议输入输出必须使用领域 DTO 或 artifact refs，不能以任意长文本为唯一合同。
+
+### 7.1 M2.1 来源摄取边界
+
+```text
+local file
+  → deterministic format detection
+  → Parser Registry selection
+  → SourceParser adapter
+  → immutable input-keyed Source Snapshot
+  → versioned Source Ledger reference
+```
+
+M2.1 将来源解析从 MVP 的内存函数升级为可恢复 ProductionImpl：
+
+- `SourceParseRequest` 明确 source ID 与资源限额；
+- `SourceParseResult` 返回 parser lineage、来源字节哈希、稳定 Chunk IDs、locator、warning 和 source risks；
+- Registry 对 unsupported 与同优先级歧义 fail closed；
+- `.slidethus/cache/ingestion/` 快照先以 create-if-absent 方式发布，Source Ledger 再由 Artifact Runtime 事务提交引用；
+- Source Ledger 的 parser、格式、限额、快照哈希和计数必须与快照相互校验；
+- 同一 source ID 不能重绑到另一文件，同一路径不能再创建别名 ID；
+- 来源不变时可复用解析快照，权限和使用策略修改仍产生新的 Source Ledger 版本；
+- 当前 Production adapter 只接纳 Markdown/TXT，其他已识别格式等待 M2.2 的独立适配器。
+
+`source_snapshot.schema.json` 属于运行时辅助事实，不是顶层可独立推进阶段的 artifact；它通过 Source Ledger 引用进入完整性图。详细决策见 ADR-0009。
 
 ## 8. 渲染策略
 

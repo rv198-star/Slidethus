@@ -6,6 +6,14 @@ class WorkspaceError(SlidethusError):
     """Raised when a workspace is missing, unsafe, or inconsistent."""
 
 
+class SourceIngestionError(SlidethusError):
+    """Raised when a source cannot be identified, parsed, or persisted safely."""
+
+
+class UnsupportedSourceError(SourceIngestionError):
+    """Raised when no admitted parser supports the detected source format."""
+
+
 class SchemaError(SlidethusError):
     """Raised when a schema registry cannot be loaded."""
 

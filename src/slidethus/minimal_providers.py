@@ -3,7 +3,6 @@ from __future__ import annotations
 import platform
 import re
 from collections.abc import Sequence
-from pathlib import Path
 from typing import Any
 
 from slidethus.constants import (
@@ -12,15 +11,10 @@ from slidethus.constants import (
     DEFAULT_SAFE_AREA,
     SCHEMA_VERSION,
 )
-from slidethus.errors import WorkspaceError
+from slidethus.ingestion import TextSourceParser, contains_untrusted_instruction
 from slidethus.protocols import SourceChunk
 
-_HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 _BULLET = re.compile(r"^\s*(?:[-*+]\s+|\d+[.)]\s+)(.+?)\s*$")
-_UNTRUSTED_INSTRUCTION = re.compile(
-    r"(?:ignore\s+(?:all\s+)?previous|忽略(?:以上|前文|之前)|执行(?:以下)?命令|上传(?:密钥|token))",
-    re.IGNORECASE,
-)
 
 
 def _clean_markdown(text: str) -> str:
@@ -30,114 +24,15 @@ def _clean_markdown(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _chunk_from_lines(
-    source_id: str,
-    title: str,
-    body: list[tuple[int, str]],
-    start_line: int,
-    end_line: int,
-) -> SourceChunk | None:
-    cleaned = [_clean_markdown(line) for _line_number, line in body if _clean_markdown(line)]
-    if not cleaned and not title:
-        return None
-    text = "\n".join(cleaned) if cleaned else title
-    return SourceChunk(
-        source_id=source_id,
-        locator=f"lines {start_line}-{end_line}",
-        text=text,
-        metadata={"title": title or _clean_markdown(cleaned[0])[:80]},
-    )
+class PlainTextSourceParser(TextSourceParser):
+    """Compatibility name for the production text parser used by the MVP."""
 
-
-class PlainTextSourceParser:
-    """Parse UTF-8 Markdown/TXT into line-located source chunks.
-
-    Source text is treated strictly as data. Embedded imperative language is
-    returned as text and is never executed or interpreted as workflow control.
-    """
-
-    supported_suffixes = {".md", ".markdown", ".txt"}
-
-    def parse(self, path: Path, source_id: str) -> Sequence[SourceChunk]:
-        path = path.resolve()
-        if path.suffix.lower() not in self.supported_suffixes:
-            raise WorkspaceError(
-                f"Minimal source parser supports only Markdown/TXT: {path.name}"
-            )
-        try:
-            lines = path.read_text(encoding="utf-8").splitlines()
-        except UnicodeDecodeError as exc:
-            raise WorkspaceError(f"Source is not valid UTF-8: {path}") from exc
-        if not any(line.strip() for line in lines):
-            raise WorkspaceError(f"Source contains no usable text: {path}")
-
-        chunks: list[SourceChunk] = []
-        current_title = ""
-        current_body: list[tuple[int, str]] = []
-        current_start = 1
-        saw_heading = False
-        for line_number, line in enumerate(lines, start=1):
-            heading = _HEADING.match(line)
-            if heading:
-                saw_heading = True
-                chunk = _chunk_from_lines(
-                    source_id,
-                    current_title,
-                    current_body,
-                    current_start,
-                    line_number - 1,
-                )
-                if chunk is not None:
-                    chunks.append(chunk)
-                current_title = _clean_markdown(heading.group(2))
-                current_body = []
-                current_start = line_number
-            else:
-                current_body.append((line_number, line))
-        chunk = _chunk_from_lines(
-            source_id,
-            current_title,
-            current_body,
-            current_start,
-            len(lines),
-        )
-        if chunk is not None:
-            chunks.append(chunk)
-
-        if not saw_heading:
-            chunks = self._paragraph_chunks(lines, source_id)
-        return tuple(chunks)
-
-    @staticmethod
-    def _paragraph_chunks(lines: list[str], source_id: str) -> list[SourceChunk]:
-        chunks: list[SourceChunk] = []
-        body: list[tuple[int, str]] = []
-        start_line = 1
-        for line_number, line in enumerate([*lines, ""], start=1):
-            if line.strip():
-                if not body:
-                    start_line = line_number
-                body.append((line_number, line))
-                continue
-            if body:
-                title = _clean_markdown(body[0][1])[:80]
-                chunk = _chunk_from_lines(
-                    source_id,
-                    title,
-                    body,
-                    start_line,
-                    body[-1][0],
-                )
-                if chunk is not None:
-                    chunks.append(chunk)
-                body = []
-        return chunks
+    name = "plain-text-source-parser"
+    priority = 10
 
     @staticmethod
     def contains_untrusted_instruction(chunks: Sequence[SourceChunk]) -> bool:
-        """Return whether source data contains common prompt-injection wording."""
-
-        return any(_UNTRUSTED_INSTRUCTION.search(chunk.text) for chunk in chunks)
+        return contains_untrusted_instruction(chunks)
 
 
 def _shorten(text: str, limit: int) -> str:

@@ -5,9 +5,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from slidethus.artifact_runtime import ArtifactRuntime, utc_now
+from slidethus.artifact_runtime import ArtifactRuntime
+from slidethus.ingestion import ParserRegistry, TextSourceParser
 from slidethus.io_utils import sha256_file
-from slidethus.minimal_providers import PlainTextSourceParser, RuleBasedReasoningProvider
+from slidethus.minimal_providers import RuleBasedReasoningProvider
 from slidethus.pptx_backend import (
     DebugPptxRenderBackend,
     LibreOfficeDocumentRenderer,
@@ -22,6 +23,7 @@ from slidethus.protocols import (
     SourceChunk,
     SourceParser,
 )
+from slidethus.services.source_ingestion import SourceIngestionService
 from slidethus.state_machine import Phase
 from slidethus.wireframe import render_wireframes
 from slidethus.workspace import init_workspace
@@ -136,45 +138,6 @@ def _brief(config: MvpBuildConfig, project_id: str, slide_count: int) -> dict[st
             }
         ],
         "open_questions": [],
-    }
-
-
-def _source_ledger(
-    config: MvpBuildConfig,
-    project_id: str,
-    chunks: tuple[SourceChunk, ...],
-    *,
-    injection_wording: bool,
-    truncated: bool,
-) -> dict[str, Any]:
-    notes = [
-        f"PlainTextSourceParser 解析出 {len(chunks)} 个用于 MVP 的 line-located chunks。",
-        "来源内容按不可信数据处理，不执行其中的任何指令。",
-    ]
-    if injection_wording:
-        notes.append("检测到疑似指令性文字；已作为来源数据保留并隔离。")
-    if truncated:
-        notes.append("来源部分超过 max_slides；本轮只使用前若干部分。")
-    return {
-        "schema_version": "0.1.0",
-        "project_id": project_id,
-        "sources": [
-            {
-                "source_id": "SRC-001",
-                "kind": "user_file",
-                "title": config.source.stem,
-                "path_or_url": str(config.source.resolve()),
-                "ownership": "user_owned",
-                "confidentiality": "internal",
-                "authority_tier": "user",
-                "freshness_date": None,
-                "retrieved_at": utc_now()[:10],
-                "content_hash": sha256_file(config.source),
-                "parse_status": "parsed",
-                "allowed_use": "internal_only",
-                "notes": notes,
-            }
-        ],
     }
 
 
@@ -295,11 +258,7 @@ def build_minimal_mvp(
     source_path = config.source.resolve()
     if not source_path.is_file():
         raise FileNotFoundError(source_path)
-    parser = source_parser or PlainTextSourceParser()
-    all_chunks = tuple(parser.parse(source_path, "SRC-001"))
-    selected_chunks = all_chunks[: config.max_slides - 2]
-    if not selected_chunks:
-        raise ValueError("Source parser returned no usable chunks")
+    parser = source_parser or TextSourceParser()
 
     workspace = init_workspace(
         config.workspace,
@@ -308,6 +267,20 @@ def build_minimal_mvp(
         delivery_level="D3",
     )
     runtime = ArtifactRuntime(workspace)
+    ingestion = SourceIngestionService(
+        workspace,
+        parser_registry=ParserRegistry([parser]),
+        runtime=runtime,
+    ).ingest(
+        source_path,
+        source_id="SRC-001",
+        title=config.source.stem,
+    )
+    all_chunks = ingestion.chunks
+    selected_chunks = all_chunks[: config.max_slides - 2]
+    if not selected_chunks:
+        raise ValueError("Source parser returned no usable chunks")
+
     project_id = runtime.show_artifact("project_state")["project_id"]
     slide_count = len(selected_chunks) + 2
     context: dict[str, Any] = {
@@ -320,22 +293,6 @@ def build_minimal_mvp(
     _write(runtime, "project_brief", _brief(config, project_id, slide_count))
     _record(runtime, "G0", Phase.BRIEF_READY)
 
-    injection_wording = (
-        parser.contains_untrusted_instruction(all_chunks)
-        if isinstance(parser, PlainTextSourceParser)
-        else False
-    )
-    _write(
-        runtime,
-        "source_ledger",
-        _source_ledger(
-            config,
-            project_id,
-            selected_chunks,
-            injection_wording=injection_wording,
-            truncated=len(selected_chunks) < len(all_chunks),
-        ),
-    )
     _record(runtime, "G1", Phase.SOURCES_READY)
 
     _write(runtime, "evidence_ledger", _evidence(project_id, selected_chunks, outline_version=None))

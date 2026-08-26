@@ -80,6 +80,39 @@ def atomic_write_bytes(path: Path, payload: bytes) -> None:
             temporary_path.unlink()
 
 
+def atomic_create_bytes(path: Path, payload: bytes) -> bool:
+    """Atomically create an immutable file and return whether this call won.
+
+    The temporary file is fully written and fsynced before an atomic hard link
+    publishes it at the final path. An existing destination is never replaced.
+    """
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    temporary_path = Path(temporary_name)
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            os.link(temporary_path, path)
+        except FileExistsError:
+            return False
+        _fsync_directory(path.parent)
+        return True
+    finally:
+        if temporary_path.exists():
+            temporary_path.unlink()
+
+
+def atomic_create_json(path: Path, value: Any) -> bool:
+    """Atomically create JSON without replacing an existing immutable file."""
+
+    payload = (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    return atomic_create_bytes(path, payload)
+
+
 def atomic_write_json(path: Path, value: Any, *, backup: bool = False) -> None:
     """Atomically write JSON in the destination directory.
 

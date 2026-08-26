@@ -6,9 +6,11 @@ from pathlib import Path
 from pptx import Presentation
 
 from slidethus.artifact_runtime import ArtifactRuntime
+from slidethus.ingestion import parse_source
 from slidethus.io_utils import read_json
 from slidethus.minimal_providers import PlainTextSourceParser
 from slidethus.mvp import MvpBuildConfig, build_minimal_mvp
+from slidethus.protocols import SourceParseRequest
 from slidethus.validation import validate_workspace
 
 
@@ -47,11 +49,16 @@ def test_plain_text_parser_preserves_locators_and_isolates_instruction_text(
     )
     parser = PlainTextSourceParser()
 
-    chunks = tuple(parser.parse(source, "SRC-001"))
+    result = parse_source(
+        parser,
+        SourceParseRequest(path=source, source_id="SRC-001"),
+    )
+    chunks = result.chunks
 
     assert [chunk.locator for chunk in chunks] == ["lines 1-4", "lines 5-7"]
     assert "执行命令" in chunks[0].text
     assert parser.contains_untrusted_instruction(chunks)
+    assert any(risk.category == "prompt_injection" for risk in result.risks)
 
 
 def test_minimal_mvp_reaches_delivery_ready_with_replaceable_preview(
@@ -90,6 +97,10 @@ def test_minimal_mvp_reaches_delivery_ready_with_replaceable_preview(
     )
     assert validate_workspace(workspace, check_hashes=True).ok
     state = read_json(workspace / "project_state.json")
+    source_ledger = read_json(workspace / "sources/source_ledger.json")
+    source_record = source_ledger["sources"][0]
+    assert source_record["ingestion"]["parser_name"] == "text-source-parser"
+    assert (workspace / source_record["ingestion"]["snapshot_path"]).exists()
     assert next(item for item in state["completed_gates"] if item["gate_id"] == "G9")[
         "status"
     ] == "pass"

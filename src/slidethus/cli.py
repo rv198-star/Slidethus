@@ -13,7 +13,9 @@ from slidethus.errors import SlidethusError
 from slidethus.gates import evaluate_gate
 from slidethus.io_utils import read_json
 from slidethus.mvp import MvpBuildConfig, build_minimal_mvp
+from slidethus.protocols import SourceParseLimits
 from slidethus.schema_registry import SchemaRegistry
+from slidethus.services.source_ingestion import SourceIngestionService
 from slidethus.validation import format_report, validate_workspace
 from slidethus.wireframe import render_wireframes
 from slidethus.workspace import init_workspace
@@ -80,6 +82,38 @@ def _parser() -> argparse.ArgumentParser:
 
     artifact_recover = artifact_sub.add_parser("recover", help="recover interrupted artifact transactions")
     artifact_recover.add_argument("workspace", type=Path)
+
+    source = sub.add_parser("source", help="ingest and inspect source snapshots")
+    source_sub = source.add_subparsers(dest="source_command", required=True)
+
+    source_ingest = source_sub.add_parser("ingest", help="parse one local source into the Source Ledger")
+    source_ingest.add_argument("workspace", type=Path)
+    source_ingest.add_argument("file", type=Path)
+    source_ingest.add_argument("--source-id")
+    source_ingest.add_argument("--title")
+    source_ingest.add_argument(
+        "--ownership",
+        choices=["user_owned", "licensed", "public_reference", "unknown"],
+    )
+    source_ingest.add_argument(
+        "--confidentiality",
+        choices=["public", "internal", "confidential", "restricted"],
+    )
+    source_ingest.add_argument(
+        "--authority-tier",
+        choices=["user", "primary", "secondary", "community", "unknown"],
+    )
+    source_ingest.add_argument(
+        "--allowed-use",
+        choices=["full", "internal_only", "citation_only", "metadata_only", "do_not_use"],
+    )
+    source_ingest.add_argument("--max-source-bytes", type=int, default=50 * 1024 * 1024)
+    source_ingest.add_argument("--max-chunks", type=int, default=5000)
+    source_ingest.add_argument("--max-chunk-chars", type=int, default=12_000)
+
+    source_show = source_sub.add_parser("show", help="verify and show one persisted source snapshot")
+    source_show.add_argument("workspace", type=Path)
+    source_show.add_argument("source_id")
     return parser
 
 
@@ -167,6 +201,41 @@ def main(argv: list[str] | None = None) -> int:
             registry = SchemaRegistry()
             for artifact_type, entry in sorted(registry.entries.items()):
                 print(f"{artifact_type}: {entry.default_path} <- {entry.schema_path.name}")
+            return 0
+        if args.command == "source":
+            service = SourceIngestionService(args.workspace)
+            if args.source_command == "ingest":
+                result = service.ingest(
+                    args.file,
+                    source_id=args.source_id,
+                    title=args.title,
+                    ownership=args.ownership,
+                    confidentiality=args.confidentiality,
+                    authority_tier=args.authority_tier,
+                    allowed_use=args.allowed_use,
+                    limits=SourceParseLimits(
+                        max_source_bytes=args.max_source_bytes,
+                        max_chunks=args.max_chunks,
+                        max_chunk_chars=args.max_chunk_chars,
+                    ),
+                )
+            else:
+                result = service.load(args.source_id)
+            print(
+                json.dumps(
+                    {
+                        "source_id": result.source_id,
+                        "changed": result.changed,
+                        "source": result.source_record,
+                        "snapshot": str(result.snapshot_path),
+                        "chunk_count": len(result.chunks),
+                        "warnings": list(result.warnings),
+                        "risks": list(result.risks),
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
             return 0
         if args.command == "artifact":
             runtime = ArtifactRuntime(args.workspace)

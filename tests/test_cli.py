@@ -42,6 +42,27 @@ def test_artifact_cli_list_show_validate_migrate_and_recover(tmp_path: Path, cap
     assert '"recovered": []' in capsys.readouterr().out
 
 
+def test_source_cli_ingests_and_reuses_snapshot(tmp_path: Path, capsys) -> None:
+    workspace = init_workspace(tmp_path / "project", title="CLI Source")
+    source = tmp_path / "source.md"
+    source.write_text("# Source\n\n可定位事实。\n", encoding="utf-8")
+
+    assert main(["source", "ingest", str(workspace), str(source)]) == 0
+    first = capsys.readouterr().out
+    assert '"source_id": "SRC-001"' in first
+    assert '"changed": true' in first
+    assert '"chunk_count": 1' in first
+
+    assert main(["source", "ingest", str(workspace), str(source)]) == 0
+    second = capsys.readouterr().out
+    assert '"changed": false' in second
+
+    assert main(["source", "show", str(workspace), "SRC-001"]) == 0
+    shown = capsys.readouterr().out
+    assert '"snapshot":' in shown
+    assert '"parser_name": "text-source-parser"' in shown
+
+
 def test_mvp_cli_builds_real_pptx(
     tmp_path: Path,
     capsys,

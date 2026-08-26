@@ -27,7 +27,7 @@ init project
   → recover and read same state
 ```
 
-下一垂直切片应从一个用户文件进入 Source Ledger，形成带 locator 的 Evidence，持久化 research lineage，并在模拟中断后恢复；不能在 Evidence Gate 前进入 Narrative。
+M2.1 已完成该切片的来源侧：用户文件进入版本化 Source Ledger，并持久化可校验、可中断恢复的 locator/Chunk 快照。后续 M2.2–M2.5 继续补齐多格式适配、带 locator 的 Evidence、research lineage 与 Evidence Gate；在生产 Evidence Gate 完成前，MVP 的 Minimal Evidence 不能被描述为完整 M2。
 
 ## 3. 工作拆分
 

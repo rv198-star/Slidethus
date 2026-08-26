@@ -78,9 +78,18 @@ ID 一经发布不能因标题或顺序变化而改变。
 - 类型、路径或 URL；
 - 所有权与许可；
 - 时间、权威和可信等级；
-- 内容哈希；
+- 内容哈希、媒体类型和字节数；
 - 解析状态；
-- 是否允许外部研究补充。
+- parser 名称/版本与识别格式；
+- 不可变解析快照的工作区相对路径和文件哈希；
+- Chunk、warning、risk 数量与解析限额；
+- allowed-use 与保密策略。
+
+M2.1 的生产摄取不会把全部正文复制进 Source Ledger。正文、稳定 Chunk IDs、locator、内容哈希、warning 和 source risks 写入 `source_snapshot.schema.json` 校验的运行时快照，再由 Ledger 的 `ingestion` 字段引用。快照 key 绑定 source ID、来源字节、parser、格式与限额；路径已存在时不得覆盖。
+
+来源正文未变化时可以复用快照，但 title、ownership、confidentiality、authority 或 allowed-use 的变化仍必须创建新的 Source Ledger 版本。Parser 版本或解析限额变化会创建新快照。`source_id` 不允许重绑到另一文件，同一路径不允许创建第二个 source ID。
+
+为兼容 M0/MVP 示例，旧记录可以没有 `ingestion`；由 M2 ProductionImpl 新建、`content_hash` 使用 `sha256:` 前缀且状态为 `parsed` 的记录必须引用有效快照。
 
 ### 4.3 Evidence Ledger
 
@@ -240,9 +249,9 @@ Renderer:      合并三者并输出目标格式
 - 用户素材和外部研究使用不同 source type；
 - 每个来源有稳定 `source_id`；
 - 每个事实块引用 evidence IDs，不直接粘贴 URL；
-- locator 尽量使用页码、表格名、章节或行范围；
+- locator 尽量使用页码、表格名、章节、行范围；同一长行被切分时必须增加字符范围，不能产生无法区分的重复 locator；
 - 研究时记录 retrieved_at；
-- 来源变更后，所有相关 evidence 和 slide 必须失效回归；
+- 来源字节、parser 版本或解析限额变化后，所有相关 evidence 和 slide 必须失效回归；只修改来源权限策略时复用快照但版本化 Source Ledger；
 - 视觉资产同样记录来源与许可。
 
 ## 7. Schema 演进

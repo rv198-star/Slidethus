@@ -9,6 +9,7 @@ from slidethus.errors import WorkspaceError
 from slidethus.gate_contracts import GATE_REQUIRED_PATHS
 from slidethus.io_utils import ensure_within, read_json, sha256_file, sha256_json
 from slidethus.schema_registry import SchemaRegistry
+from slidethus.source_snapshots import source_snapshot_reference_errors
 
 
 @dataclass(frozen=True)
@@ -244,6 +245,33 @@ def _validate_cross_references(
         item.get("source_id"): (item.get("parse_status"), item.get("allowed_use"))
         for item in sources
     }
+    for source in sources:
+        ingestion = source.get("ingestion")
+        parse_status = source.get("parse_status")
+        content_hash = str(source.get("content_hash") or "")
+        if ingestion and parse_status not in {"parsed", "partial"}:
+            report.add(
+                "source_ingestion_status_mismatch",
+                f"{source.get('source_id')}: ingestion snapshot requires parsed or partial status",
+                "sources/source_ledger.json",
+            )
+        if content_hash.startswith("sha256:") and parse_status == "parsed" and not ingestion:
+            report.add(
+                "missing_source_snapshot",
+                f"{source.get('source_id')}: production-parsed source has no ingestion snapshot",
+                "sources/source_ledger.json",
+            )
+        for error in source_snapshot_reference_errors(
+            workspace,
+            str(project_id),
+            source,
+            registry.schema_dir,
+        ):
+            report.add(
+                "invalid_source_snapshot",
+                f"{source.get('source_id')}: {error}",
+                "sources/source_ledger.json",
+            )
 
     evidence_ledger = loaded.get("evidence_ledger", {})
     research_cycles = evidence_ledger.get("research_cycles", [])

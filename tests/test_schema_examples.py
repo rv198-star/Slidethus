@@ -17,6 +17,14 @@ def test_all_catalog_schemas_are_valid() -> None:
         Draft202012Validator.check_schema(registry.schema(artifact_type))
 
 
+def test_supporting_schemas_are_valid() -> None:
+    root = find_repository_root()
+    for path in sorted((root / "schemas").glob("*.schema.json")):
+        Draft202012Validator.check_schema(
+            json.loads(path.read_text(encoding="utf-8"))
+        )
+
+
 def test_minimal_project_validates_with_hashes() -> None:
     root = find_repository_root()
     report = validate_workspace(root / "examples/minimal_project", check_hashes=True)
