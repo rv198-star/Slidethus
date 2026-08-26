@@ -2,7 +2,7 @@
 
 ## Outcome
 
-M1 Artifact Runtime is complete and ready for public repository release. The package remains honest about its scope: M2 ingestion/research and M4 final rendering are not implemented.
+M1 Artifact Runtime is complete and published at `https://github.com/rv198-star/Slidethus`. The package remains honest about its scope: M2 ingestion/research and M4 final rendering are not implemented.
 
 ## Delivered
 

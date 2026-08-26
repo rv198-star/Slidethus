@@ -36,7 +36,7 @@
 | 5 | `artifact list/show/validate/migrate` 与日志/Gate CLI | Step 3-4 | CLI tests | completed |
 | 6 | 示例、README、兼容性文档、TASKS/计划同步 | Step 2-5 | package audit | completed |
 | 7 | 完整门禁、两轮 review、修复与评分 | Step 1-6 | required checks | completed |
-| 8 | 初始化 Git、创建 `rv198-star/Slidethus` 公开仓库并推送 | Step 7 | GitHub repo visibility + remote/HEAD | in_progress |
+| 8 | 初始化 Git、创建 `rv198-star/Slidethus` 公开仓库并推送 | Step 7 | GitHub repo visibility + remote/HEAD | completed |
 
 ## 5. Quality and risk controls
 
@@ -83,7 +83,7 @@ ruff check src tests scripts
 
 ## 8. Final outcome
 
-- 已完成：M1 全清单、Exit Gate、两轮 review、文档和发布前验证。
-- 未完成：GitHub 公开仓库创建与推送正在执行。
+- 已完成：M1 全清单、Exit Gate、两轮 review、文档、公开仓库发布与 GitHub Actions Python 3.11/3.12 验证。
+- 未完成：无 M1 阻断项。
 - 后续任务：M2 Ingestion, Research, Evidence。
 - 相关 ADR：ADR-0001、ADR-0002、ADR-0006。

@@ -38,6 +38,9 @@ exit 0
 
 ruff check src tests scripts
 All checks passed!
+
+GitHub Actions `ci` (Python 3.11 / 3.12)
+PASS — https://github.com/rv198-star/Slidethus/actions/runs/32952814242
 ```
 
 Ruff 0.16.4 was downloaded from the official `astral-sh/ruff` GitHub release after PyPI access was unavailable; its published SHA-256 file verified the archive before execution.
@@ -46,4 +49,4 @@ Ruff 0.16.4 was downloaded from the official `astral-sh/ruff` GitHub release aft
 
 **M1 Artifact Runtime: PASS.**
 
-The requested M1 behavior is implemented, examples/schemas/docs/tests agree, interrupted writes are recoverable, invalid or stale facts cannot advance the workflow, failed Gate results remain auditable, and no production renderer is falsely claimed.
+The requested M1 behavior is implemented, examples/schemas/docs/tests agree, interrupted writes are recoverable, invalid or stale facts cannot advance the workflow, failed Gate results remain auditable, the clean remote matrix passes, and no production renderer is falsely claimed.
