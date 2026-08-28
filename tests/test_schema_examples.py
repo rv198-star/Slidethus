@@ -42,6 +42,13 @@ def test_catalog_paths_are_unique() -> None:
     assert len(schema_paths) == len(set(schema_paths))
 
 
+def test_runtime_schemas_are_valid() -> None:
+    root = find_repository_root()
+    for name in ("research_run.schema.json", "research_cache_snapshot.schema.json"):
+        schema = json.loads((root / "schemas" / name).read_text(encoding="utf-8"))
+        Draft202012Validator.check_schema(schema)
+
+
 def test_packaged_schema_mirror_matches_repository_schemas() -> None:
     root = find_repository_root()
     packaged = root / "src/slidethus/_schemas"

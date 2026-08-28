@@ -5,230 +5,194 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schema_version",
-    "project_id",
-    "deck_id",
-    "render_id",
-    "backend",
-    "target_format",
-    "target_editability_level",
-    "editability_level",
-    "input_artifacts",
-    "outputs",
-    "font_substitutions",
-    "warnings",
-    "status"
+    "schema_version", "project_id", "deck_id", "render_id", "backend",
+    "target_format", "target_editability_level", "editability_level",
+    "input_artifacts", "outputs", "font_substitutions", "warnings", "status"
   ],
   "properties": {
-    "schema_version": {
-      "type": "string",
-      "pattern": "^0\\.1\\.[0-9]+$"
-    },
-    "project_id": {
-      "type": "string",
-      "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"
-    },
-    "deck_id": {
-      "type": "string",
-      "pattern": "^DECK-[A-Z0-9][A-Z0-9_-]{2,63}$"
-    },
-    "render_id": {
-      "type": "string",
-      "pattern": "^RND-[A-Z0-9_-]+$"
-    },
-    "backend": {
-      "type": "string"
-    },
-    "backend_version": {
-      "type": "string"
-    },
-    "target_format": {
-      "enum": [
-        "svg",
-        "pptx",
-        "pdf",
-        "png",
-        "html"
-      ]
-    },
-    "editability_level": {
-      "enum": [
-        "E0",
-        "E1",
-        "E2",
-        "E3",
-        "E4",
-        "not_measured"
-      ]
-    },
+    "schema_version": {"type": "string", "pattern": "^0\\.1\\.[0-9]+$"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "deck_id": {"type": "string", "pattern": "^DECK-[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "render_id": {"type": "string", "pattern": "^RND-[A-Z0-9_-]+$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "backend": {"type": "string", "minLength": 1, "maxLength": 128},
+    "backend_version": {"type": "string", "maxLength": 128},
+    "target_format": {"enum": ["svg", "pptx", "pdf", "png", "html", "multi"]},
+    "target_editability_level": {"enum": ["E0", "E1", "E2", "E3", "E4"]},
+    "editability_level": {"enum": ["E0", "E1", "E2", "E3", "E4", "not_measured"]},
+    "pipeline_mode": {"enum": ["single_render", "complete_mvp", "production_multi_backend"]},
+    "renderer_ir": {"$ref": "#/$defs/rendererIrRef"},
+    "preflight": {"$ref": "#/$defs/preflightRef"},
     "input_artifacts": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "path",
-          "sha256",
-          "version"
-        ],
-        "properties": {
-          "path": {
-            "type": "string"
-          },
-          "sha256": {
-            "type": "string",
-            "pattern": "^[0-9a-f]{64}$"
-          },
-          "version": {
-            "type": "integer",
-            "minimum": 1
-          }
-        }
-      }
+      "items": {"$ref": "#/$defs/inputArtifact"}
     },
     "outputs": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "path",
-          "sha256",
-          "mime_type",
-          "slide_count"
-        ],
-        "properties": {
-          "path": {
-            "type": "string"
-          },
-          "sha256": {
-            "type": "string",
-            "pattern": "^[0-9a-f]{64}$"
-          },
-          "mime_type": {
-            "type": "string"
-          },
-          "slide_count": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "role": {
-            "enum": [
-              "planning_wireframe",
-              "layout_diagnostics",
-              "debug_pptx",
-              "debug_preview",
-              "design_preview",
-              "final_pptx",
-              "final_preview"
-            ]
-          },
-          "stage": {
-            "enum": [
-              "planning",
-              "debug",
-              "design",
-              "final",
-              "review"
-            ]
-          }
-        }
-      }
+      "items": {"$ref": "#/$defs/output"}
     },
-    "pipeline_mode": {
-      "enum": [
-        "single_render",
-        "complete_mvp"
-      ]
+    "backend_runs": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/backendRun"}
     },
     "pipeline_stages": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "stage_id",
-          "action",
-          "status",
-          "output_roles"
-        ],
-        "properties": {
-          "stage_id": {
-            "enum": [
-              "planning",
-              "diagnostics",
-              "debug_render",
-              "debug_preview",
-              "design_compile",
-              "final_render",
-              "final_preview"
-            ]
-          },
-          "action": {
-            "type": "string",
-            "minLength": 1
-          },
-          "status": {
-            "enum": [
-              "success",
-              "partial",
-              "failed",
-              "skipped"
-            ]
-          },
-          "output_roles": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      }
+      "items": {"$ref": "#/$defs/pipelineStage"}
     },
     "font_substitutions": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "requested",
-          "actual"
-        ],
-        "properties": {
-          "requested": {
-            "type": "string"
-          },
-          "actual": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string"
-          }
-        }
-      }
+      "items": {"$ref": "#/$defs/fontSubstitution"}
     },
-    "warnings": {
+    "asset_ids": {
       "type": "array",
-      "items": {
-        "type": "string"
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^AST-[0-9]{3}$"}
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/capability"}
+    },
+    "preview_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["svg_export", "pptx_office_preview"],
+      "properties": {
+        "svg_export": {"enum": ["available", "degraded", "missing", "not_requested"]},
+        "pptx_office_preview": {"enum": ["available", "degraded", "missing", "not_requested"]},
+        "detail": {"type": "string", "maxLength": 4000}
       }
     },
-    "status": {
-      "enum": [
-        "pending",
-        "success",
-        "partial",
-        "failed"
-      ]
+    "warnings": {"type": "array", "items": {"type": "string", "maxLength": 4000}},
+    "status": {"enum": ["pending", "success", "partial", "failed"]}
+  },
+  "$defs": {
+    "inputArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "version"],
+      "properties": {
+        "artifact_type": {"type": "string", "maxLength": 128},
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "version": {"type": "integer", "minimum": 1}
+      }
     },
-    "target_editability_level": {
-      "enum": [
-        "E0",
-        "E1",
-        "E2",
-        "E3",
-        "E4"
-      ]
+    "rendererIrRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ir_id", "path", "sha256"],
+      "properties": {
+        "ir_id": {"type": "string", "pattern": "^RIR-[A-F0-9]{16}$"},
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "preflightRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preflight_id", "path", "sha256", "status"],
+      "properties": {
+        "preflight_id": {"type": "string", "pattern": "^RPF-[A-F0-9]{16}$"},
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "status": {"enum": ["pass", "blocked"]}
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "mime_type", "slide_count"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "mime_type": {"type": "string", "minLength": 1, "maxLength": 255},
+        "slide_count": {"type": "integer", "minimum": 1},
+        "role": {
+          "enum": [
+            "planning_wireframe", "layout_diagnostics", "debug_pptx", "debug_preview",
+            "design_preview", "final_pptx", "final_preview", "renderer_ir",
+            "render_preflight", "final_svg", "native_pptx", "hybrid_pptx",
+            "export_pdf", "export_png", "backend_measurement", "office_preview"
+          ]
+        },
+        "stage": {"enum": ["planning", "debug", "design", "final", "review", "compile", "preflight", "render", "export", "measure"]},
+        "backend": {"type": ["string", "null"], "maxLength": 128},
+        "editability_level": {"enum": ["E0", "E1", "E2", "E3", "E4", "not_measured"]},
+        "source_output": {"type": ["string", "null"], "maxLength": 4096}
+      }
+    },
+    "backendRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "backend", "backend_version", "target_format", "target_editability_level",
+        "editability_level", "status", "output_roles", "warnings"
+      ],
+      "properties": {
+        "backend": {"enum": ["final-svg", "pptxgenjs-native", "pptxgenjs-hybrid"]},
+        "backend_version": {"type": "string", "minLength": 1, "maxLength": 128},
+        "target_format": {"enum": ["svg", "pptx"]},
+        "target_editability_level": {"enum": ["E0", "E1", "E2", "E3", "E4"]},
+        "editability_level": {"enum": ["E0", "E1", "E2", "E3", "E4", "not_measured"]},
+        "status": {"enum": ["success", "partial", "failed", "skipped"]},
+        "output_roles": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1, "maxLength": 128}
+        },
+        "object_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "text": {"type": "integer", "minimum": 0},
+            "shape": {"type": "integer", "minimum": 0},
+            "table": {"type": "integer", "minimum": 0},
+            "chart": {"type": "integer", "minimum": 0},
+            "image": {"type": "integer", "minimum": 0},
+            "embedded_svg": {"type": "integer", "minimum": 0},
+            "pictures": {"type": "integer", "minimum": 0},
+            "native_shapes": {"type": "integer", "minimum": 0}
+          }
+        },
+        "warnings": {"type": "array", "items": {"type": "string", "maxLength": 4000}}
+      }
+    },
+    "pipelineStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage_id", "action", "status", "output_roles"],
+      "properties": {
+        "stage_id": {
+          "enum": [
+            "planning", "diagnostics", "debug_render", "debug_preview", "design_compile",
+            "final_render", "final_preview", "compile", "preflight", "final_svg",
+            "native_render", "hybrid_render", "svg_export", "office_preview", "measurement"
+          ]
+        },
+        "action": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "status": {"enum": ["success", "partial", "failed", "skipped"]},
+        "output_roles": {"type": "array", "items": {"type": "string", "maxLength": 128}}
+      }
+    },
+    "fontSubstitution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested", "actual"],
+      "properties": {
+        "requested": {"type": "string", "minLength": 1},
+        "actual": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "maxLength": 4000},
+        "status": {"enum": ["available", "substituted"]}
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability", "status", "detail"],
+      "properties": {
+        "capability": {"type": "string", "minLength": 1, "maxLength": 128},
+        "status": {"enum": ["available", "degraded", "missing"]},
+        "detail": {"type": "string", "minLength": 1, "maxLength": 4000}
+      }
     }
   }
 }

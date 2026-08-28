@@ -26,12 +26,28 @@ class DetectedSourceFormat:
     signature: str
     confidence: str
 
+    @property
+    def detection_method(self) -> str:
+        """Return the stable admission method while preserving snapshot field compatibility."""
+
+        return self.signature
+
 
 @dataclass(frozen=True)
 class SourceParseLimits:
     max_source_bytes: int = 50 * 1024 * 1024
     max_chunks: int = 5000
     max_chunk_chars: int = 12_000
+    max_risks: int = 10_000
+    max_pages: int = 500
+    max_slides: int = 500
+    max_sheets: int = 100
+    max_rows: int = 100_000
+    max_cells: int = 1_000_000
+    max_archive_entries: int = 10_000
+    max_archive_member_bytes: int = 64 * 1024 * 1024
+    max_uncompressed_bytes: int = 512 * 1024 * 1024
+    max_image_pixels: int = 100_000_000
 
 
 @dataclass(frozen=True)
@@ -60,8 +76,21 @@ class SourceParseResult:
     size_bytes: int
     parsed_at: str
     chunks: tuple[SourceChunk, ...]
+    parse_status: str = "parsed"
     warnings: tuple[str, ...] = ()
     risks: tuple[SourceRisk, ...] = ()
+
+
+@dataclass(frozen=True)
+class ResearchLimits:
+    max_queries: int = 24
+    max_query_chars: int = 600
+    max_results_per_query: int = 12
+    max_total_results: int = 120
+    max_title_chars: int = 500
+    max_summary_chars: int = 20_000
+    max_metadata_bytes: int = 64 * 1024
+    cache_ttl_seconds: int = 86_400
 
 
 @dataclass(frozen=True)
@@ -73,6 +102,19 @@ class ResearchQuery:
     outline_version: int | None = None
     freshness_requirement: str | None = None
     preferred_source_tiers: tuple[str, ...] = ()
+    purpose: str = ""
+    slide_id: str | None = None
+
+
+@dataclass(frozen=True)
+class ResearchPlan:
+    plan_id: str
+    project_id: str
+    cycle_id: str
+    cycle_kind: str
+    outline_version: int | None
+    queries: tuple[ResearchQuery, ...]
+    limits: ResearchLimits = field(default_factory=ResearchLimits)
 
 
 @dataclass(frozen=True)
@@ -83,6 +125,85 @@ class ResearchResult:
     summary: str
     source_tier: str
     retrieved_at: str
+    url: str | None = None
+    published_at: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class EvidenceCandidate:
+    candidate_id: str
+    claim: str
+    source_id: str | None
+    locator: str | None
+    support_type: str = "direct"
+    origin_kind: str = "source_chunk"
+    source_chunk_id: str | None = None
+    research_run_id: str | None = None
+    research_result_id: str | None = None
+    freshness_date: str | None = None
+    conflict_key: str | None = None
+    stance: str | None = None
+    tags: tuple[str, ...] = ()
+    reasoning: str = ""
+
+
+@dataclass(frozen=True)
+class EvidencePolicyDecision:
+    support_status: str
+    use_policy: str
+    strongest_authority: str
+    weakest_authority: str
+    freshness_status: str
+    reason_codes: tuple[str, ...] = ()
+    conflict_group: str | None = None
+
+
+@dataclass(frozen=True)
+class PlanningLimits:
+    """Bound M3 provider proposals and deterministic planning artifacts."""
+
+    max_blocking_questions: int = 3
+    max_assumptions: int = 24
+    max_sections: int = 12
+    max_slides: int = 120
+    max_blocks_per_slide: int = 12
+    max_words_per_slide: int = 240
+    max_provider_payload_bytes: int = 2 * 1024 * 1024
+    max_change_targets: int = 64
+
+
+@dataclass(frozen=True)
+class BriefCompletionHints:
+    """Explicit user/host hints admitted by deterministic Brief completion."""
+
+    request_text: str = ""
+    purpose: str | None = None
+    desired_outcome: str | None = None
+    call_to_action: str | None = None
+    delivery_context: str | None = None
+    presentation_mode: str | None = None
+    audience_role: str | None = None
+    audience_needs: tuple[str, ...] = ()
+    audience_objections: tuple[str, ...] = ()
+    decision_power: str | None = None
+    knowledge_level: str | None = None
+    page_target: int | None = None
+    duration_minutes: float | None = None
+    output_formats: tuple[str, ...] = ()
+    editability_target: str | None = None
+    approval_mode: str | None = None
+    quality_profile: str | None = None
+
+
+@dataclass(frozen=True)
+class PlanningProposal:
+    """One provider proposal before deterministic identity/lineage admission."""
+
+    artifact_type: str
+    content: dict[str, Any]
+    warnings: tuple[str, ...] = ()
+    assumptions: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -118,6 +239,9 @@ class SourceParser(Protocol):
 
 
 class ResearchProvider(Protocol):
+    name: str
+    version: str
+
     def search(self, queries: Sequence[ResearchQuery]) -> Sequence[ResearchResult]: ...
 
 
@@ -127,6 +251,20 @@ class AssetProvider(Protocol):
 
 class ReasoningProvider(Protocol):
     def generate_artifact(self, artifact_type: str, inputs: dict[str, Any]) -> dict[str, Any]: ...
+
+
+class PlanningProvider(Protocol):
+    """Provider-neutral structured proposal port for M3 planning."""
+
+    name: str
+    version: str
+
+    def propose(
+        self,
+        artifact_type: str,
+        context: dict[str, Any],
+        limits: PlanningLimits,
+    ) -> PlanningProposal: ...
 
 
 class ChartProvider(Protocol):

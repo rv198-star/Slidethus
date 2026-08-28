@@ -3,6 +3,7 @@ from __future__ import annotations
 import mimetypes
 import re
 from collections.abc import Iterable
+from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from slidethus.io_utils import sha256_bytes
 from slidethus.protocols import (
     DetectedSourceFormat,
     SourceChunk,
+    SourceParseLimits,
     SourceParser,
     SourceParseRequest,
     SourceParseResult,
@@ -52,18 +54,12 @@ def _clean_markdown(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def detect_source_format(path: Path) -> DetectedSourceFormat:
-    """Detect a source family from signatures first and suffixes second."""
+def detect_source_format_bytes(path: Path, payload: bytes) -> DetectedSourceFormat:
+    """Detect a source family from one captured payload and its filename."""
 
     path = path.resolve()
-    if not path.exists():
-        raise FileNotFoundError(path)
-    if not path.is_file():
-        raise SourceIngestionError(f"Source is not a regular file: {path}")
-
     suffix = path.suffix.lower()
-    with path.open("rb") as handle:
-        head = handle.read(8192)
+    head = payload[:8192]
     guessed_type = mimetypes.guess_type(path.name)[0]
 
     if head.startswith(b"%PDF-"):
@@ -84,6 +80,12 @@ def detect_source_format(path: Path) -> DetectedSourceFormat:
         return DetectedSourceFormat("image", "image/gif", suffix, "gif-header", "high")
     if head.startswith(b"RIFF") and head[8:12] == b"WEBP":
         return DetectedSourceFormat("image", "image/webp", suffix, "webp-header", "high")
+    if head.startswith(b"BM"):
+        return DetectedSourceFormat("image", "image/bmp", suffix, "bmp-header", "high")
+    if head.startswith((b"II*\x00", b"MM\x00*")):
+        return DetectedSourceFormat("image", "image/tiff", suffix, "tiff-header", "high")
+    if head.startswith(b"\x00\x00\x01\x00"):
+        return DetectedSourceFormat("image", "image/x-icon", suffix, "ico-header", "high")
     if head.startswith(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"):
         return DetectedSourceFormat(
             "ole",
@@ -94,7 +96,9 @@ def detect_source_format(path: Path) -> DetectedSourceFormat:
         )
 
     stripped = head.lstrip().lower()
-    if suffix in {".html", ".htm"} or stripped.startswith((b"<!doctype html", b"<html", b"<head", b"<body")):
+    if suffix in {".html", ".htm"} or stripped.startswith(
+        (b"<!doctype html", b"<html", b"<head", b"<body")
+    ):
         return DetectedSourceFormat("html", "text/html", suffix, "html-text", "high")
 
     family = {
@@ -116,8 +120,18 @@ def detect_source_format(path: Path) -> DetectedSourceFormat:
         except UnicodeDecodeError:
             pass
         else:
-            confidence = "high" if suffix in {".md", ".markdown", ".txt", ".csv", ".tsv"} else "medium"
-            return DetectedSourceFormat(family, media_type, suffix, "decodable-text", confidence)
+            confidence = (
+                "high"
+                if suffix in {".md", ".markdown", ".txt", ".csv", ".tsv"}
+                else "medium"
+            )
+            return DetectedSourceFormat(
+                family,
+                media_type,
+                suffix,
+                "decodable-text",
+                confidence,
+            )
 
     return DetectedSourceFormat(
         "unknown",
@@ -126,6 +140,47 @@ def detect_source_format(path: Path) -> DetectedSourceFormat:
         "unknown",
         "low",
     )
+
+
+def detect_source_format(path: Path) -> DetectedSourceFormat:
+    """Detect a source family from signatures first and suffixes second."""
+
+    path = path.resolve()
+    if not path.exists():
+        raise FileNotFoundError(path)
+    if not path.is_file():
+        raise SourceIngestionError(f"Source is not a regular file: {path}")
+    with path.open("rb") as handle:
+        head = handle.read(8192)
+    return detect_source_format_bytes(path, head)
+
+
+def verify_detected_source_format(
+    path: Path,
+    payload: bytes,
+    expected: DetectedSourceFormat,
+) -> None:
+    """Reject a file whose captured bytes no longer match parser selection."""
+
+    actual = detect_source_format_bytes(path, payload)
+    expected_contract = (
+        expected.family,
+        expected.media_type,
+        expected.suffix,
+        expected.detection_method,
+    )
+    actual_contract = (
+        actual.family,
+        actual.media_type,
+        actual.suffix,
+        actual.detection_method,
+    )
+    if actual_contract != expected_contract:
+        raise SourceIngestionError(
+            "Source format changed between detection and parsing: "
+            f"expected {expected.family}/{expected.detection_method}, "
+            f"captured {actual.family}/{actual.detection_method}"
+        )
 
 
 class ParserRegistry:
@@ -192,6 +247,88 @@ def contains_untrusted_instruction(chunks: Iterable[SourceChunk]) -> bool:
     )
 
 
+def validate_source_parse_limits(limits: SourceParseLimits) -> None:
+    """Validate shared source limits before cache lookup or adapter execution."""
+
+    for name, value in asdict(limits).items():
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise SourceIngestionError(f"Source parse limit {name} must be a positive integer")
+    if limits.max_chunks > 9999:
+        raise SourceIngestionError("max_chunks must not exceed 9999")
+    if limits.max_risks > 99_999:
+        raise SourceIngestionError("max_risks must not exceed 99999")
+
+
+def build_source_risks(
+    chunks: Iterable[SourceChunk],
+    source_id: str,
+    extra_findings: Iterable[tuple[str, str, str, str | None]] = (),
+    *,
+    max_risks: int = 10_000,
+) -> tuple[SourceRisk, ...]:
+    """Build deterministic source-risk records from extracted data and adapter findings."""
+
+    unique: list[tuple[str, str, str, str | None]] = []
+    seen: set[tuple[str, str | None, str]] = set()
+
+    def add(finding: tuple[str, str, str, str | None]) -> None:
+        key = (finding[0], finding[3], finding[2])
+        if key in seen:
+            return
+        if len(unique) >= max_risks:
+            raise SourceIngestionError(
+                f"Source exceeds max_risks: {len(unique) + 1} > {max_risks}"
+            )
+        seen.add(key)
+        unique.append(finding)
+
+    for chunk in chunks:
+        searchable = "\n".join(
+            part
+            for part in (str(chunk.metadata.get("title", "")), chunk.text)
+            if part
+        )
+        if any(pattern.search(searchable) for pattern in _UNTRUSTED_INSTRUCTION_PATTERNS):
+            add(
+                (
+                    "prompt_injection",
+                    "high",
+                    "Source contains instruction-like wording; preserve as data and never execute it.",
+                    chunk.locator,
+                )
+            )
+        if _ACTIVE_CONTENT.search(searchable):
+            add(
+                (
+                    "active_content",
+                    "high",
+                    "Source contains active-content wording or script markers.",
+                    chunk.locator,
+                )
+            )
+        if _EXTERNAL_LINK.search(searchable):
+            add(
+                (
+                    "external_link",
+                    "info",
+                    "Source contains external links; links were not opened during parsing.",
+                    chunk.locator,
+                )
+            )
+    for finding in extra_findings:
+        add(finding)
+    return tuple(
+        SourceRisk(
+            risk_id=f"RSK-{source_id}-{index:03d}",
+            category=category,
+            severity=severity,
+            message=message,
+            locator=locator,
+        )
+        for index, (category, severity, message, locator) in enumerate(unique, start=1)
+    )
+
+
 class TextSourceParser:
     """Production text/Markdown parser with stable locators, hashes, limits, and risks."""
 
@@ -219,8 +356,7 @@ class TextSourceParser:
                 f"{self.name} does not support detected family {detected_format.family}"
             )
         limits = request.limits
-        if min(limits.max_source_bytes, limits.max_chunks, limits.max_chunk_chars) < 1:
-            raise SourceIngestionError("Source parse limits must all be positive")
+        validate_source_parse_limits(limits)
 
         stat_size = path.stat().st_size
         if stat_size > limits.max_source_bytes:
@@ -228,6 +364,7 @@ class TextSourceParser:
                 f"Source exceeds max_source_bytes: {stat_size} > {limits.max_source_bytes}"
             )
         payload = path.read_bytes()
+        verify_detected_source_format(path, payload, detected_format)
         size_bytes = len(payload)
         if size_bytes > limits.max_source_bytes:
             raise SourceIngestionError(
@@ -256,7 +393,11 @@ class TextSourceParser:
         if encoding != "utf-8":
             warnings.append(f"Source decoded as {encoding}; normalized to Unicode text")
 
-        risks = self._risks(chunks, request.source_id)
+        risks = build_source_risks(
+            chunks,
+            request.source_id,
+            max_risks=request.limits.max_risks,
+        )
         return SourceParseResult(
             source_id=request.source_id,
             parser_name=self.name,
@@ -447,61 +588,8 @@ class TextSourceParser:
             )
         return chunks
 
-    @staticmethod
-    def _risks(chunks: Iterable[SourceChunk], source_id: str) -> list[SourceRisk]:
-        findings: list[tuple[str, str, str, str]] = []
-        for chunk in chunks:
-            searchable = "\n".join(
-                part
-                for part in (str(chunk.metadata.get("title", "")), chunk.text)
-                if part
-            )
-            if any(pattern.search(searchable) for pattern in _UNTRUSTED_INSTRUCTION_PATTERNS):
-                findings.append(
-                    (
-                        "prompt_injection",
-                        "high",
-                        "Source contains instruction-like wording; preserve as data and never execute it.",
-                        chunk.locator,
-                    )
-                )
-            if _ACTIVE_CONTENT.search(searchable):
-                findings.append(
-                    (
-                        "active_content",
-                        "high",
-                        "Source contains active-content wording or script markers.",
-                        chunk.locator,
-                    )
-                )
-            if _EXTERNAL_LINK.search(searchable):
-                findings.append(
-                    (
-                        "external_link",
-                        "info",
-                        "Source contains external links; links were not opened during parsing.",
-                        chunk.locator,
-                    )
-                )
-
-        unique: list[tuple[str, str, str, str]] = []
-        seen: set[tuple[str, str]] = set()
-        for finding in findings:
-            key = (finding[0], finding[3])
-            if key not in seen:
-                seen.add(key)
-                unique.append(finding)
-        return [
-            SourceRisk(
-                risk_id=f"RSK-{source_id}-{index:03d}",
-                category=category,
-                severity=severity,
-                message=message,
-                locator=locator,
-            )
-            for index, (category, severity, message, locator) in enumerate(unique, start=1)
-        ]
-
 
 def default_parser_registry() -> ParserRegistry:
-    return ParserRegistry([TextSourceParser()])
+    from slidethus.adapters.ingestion import default_source_adapters
+
+    return ParserRegistry([TextSourceParser(), *default_source_adapters()])

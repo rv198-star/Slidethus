@@ -316,6 +316,60 @@ class ArtifactRuntime:
             self._recover_unlocked()
             return self._show_artifact_unlocked(artifact_type, version=version)
 
+    def read_artifact_snapshot(self, artifact_type: str) -> tuple[dict[str, Any], int]:
+        """Atomically read the current artifact body together with its optimistic-lock version."""
+
+        with self._lock():
+            self._recover_unlocked()
+            state = self._state()
+            if artifact_type == "project_state":
+                return state, int(state["revision"])
+            entry = self._entry(state, artifact_type)
+            if entry is None:
+                raise ArtifactError(f"Artifact is not registered: {artifact_type}")
+            return read_json(self.workspace / entry["path"]), int(entry["version"])
+
+    def read_artifact_graph_snapshot(
+        self,
+        artifact_types: tuple[str, ...],
+        *,
+        optional_artifact_types: tuple[str, ...] = (),
+    ) -> dict[str, dict[str, Any]]:
+        """Read several current artifacts and registry facts under one workspace lock."""
+
+        if len(artifact_types) != len(set(artifact_types)):
+            raise ArtifactError("Artifact graph snapshot contains duplicate artifact types")
+        optional = set(optional_artifact_types)
+        if not optional.issubset(set(artifact_types)):
+            raise ArtifactError("Optional artifact types must be included in the graph request")
+        with self._lock():
+            self._recover_unlocked()
+            state = self._state()
+            snapshots: dict[str, dict[str, Any]] = {}
+            for artifact_type in artifact_types:
+                if artifact_type == "project_state":
+                    snapshots[artifact_type] = {
+                        "data": copy.deepcopy(state),
+                        "version": int(state["revision"]),
+                        "content_hash": f"sha256:{sha256_json(state)}",
+                        "updated_at": None,
+                        "status": "approved",
+                    }
+                    continue
+                entry = self._entry(state, artifact_type)
+                if entry is None:
+                    if artifact_type in optional:
+                        continue
+                    raise ArtifactError(f"Artifact is not registered: {artifact_type}")
+                snapshots[artifact_type] = {
+                    "data": read_json(self.workspace / entry["path"]),
+                    "version": int(entry["version"]),
+                    "content_hash": str(entry["content_hash"]),
+                    "updated_at": str(entry["updated_at"]),
+                    "status": str(entry["status"]),
+                }
+            return snapshots
+
     def _show_artifact_unlocked(
         self, artifact_type: str, *, version: int | None = None
     ) -> dict[str, Any]:
@@ -514,6 +568,149 @@ class ArtifactRuntime:
             files[self.workspace / "project_state.json"] = candidate_state
             self._commit(files)
             return new_entry
+
+    def write_artifact_with_runtime_fact(
+        self,
+        artifact_type: str,
+        data: dict[str, Any],
+        *,
+        expected_version: int,
+        fact_path: Path,
+        fact_data: dict[str, Any],
+        status: str = "draft",
+        created_by: str = "agent",
+    ) -> tuple[dict[str, Any], bool]:
+        """Atomically publish one semantic artifact version and one immutable runtime fact."""
+
+        with self._lock():
+            self._recover_unlocked()
+            state = self._state()
+            if state.get("schema_version") != PROJECT_STATE_SCHEMA_VERSION:
+                raise MigrationError("Workspace must be migrated before artifact writes")
+            admitted_fact_path = ensure_within(self.workspace, fact_path)
+            if admitted_fact_path.exists():
+                if read_json(admitted_fact_path) != fact_data:
+                    raise ArtifactConflictError(
+                        f"Immutable runtime fact path contains different content: {admitted_fact_path}"
+                    )
+                fact_created = False
+            else:
+                fact_created = True
+            files, candidate_state, new_entry = self._prepare_artifact_update(
+                state,
+                artifact_type,
+                data,
+                expected_version=expected_version,
+                status=status,
+                created_by=created_by,
+            )
+            self._invalidate_downstream(candidate_state, artifact_type)
+            if fact_created:
+                files[admitted_fact_path] = fact_data
+            files[self.workspace / "project_state.json"] = candidate_state
+            self._commit(files)
+            return new_entry, fact_created
+
+    def route_rework(
+        self,
+        target_phase: Phase,
+        *,
+        reason: str,
+        expected_artifact_versions: dict[str, int] | None = None,
+    ) -> dict[str, Any]:
+        """Persist one explicit backward workflow transition and invalidate later Gates/artifacts."""
+
+        normalized_reason = " ".join(reason.split()).strip()
+        if not normalized_reason:
+            raise ArtifactError("Rework routing requires a reason")
+        with self._lock():
+            self._recover_unlocked()
+            state = self._state()
+            for artifact_type, expected_version in (
+                expected_artifact_versions or {}
+            ).items():
+                entry = self._entry(state, artifact_type)
+                current_version = int(entry["version"]) if entry is not None else 0
+                if current_version != int(expected_version):
+                    raise ArtifactConflictError(
+                        f"Rework input changed for {artifact_type}: expected "
+                        f"{expected_version}, current {current_version}"
+                    )
+            current = Phase(state["current_phase"])
+            if current is target_phase:
+                return copy.deepcopy(state)
+            require_transition(current, target_phase)
+            if FORWARD_SEQUENCE.index(target_phase) >= FORWARD_SEQUENCE.index(current):
+                raise ArtifactError(
+                    f"Rework target must be earlier than current phase: {current} -> {target_phase}"
+                )
+
+            decision_entry = self._entry(state, "decision_log")
+            if decision_entry is None:
+                raise ArtifactError("decision_log artifact is not registered")
+            decision_data = read_json(self.workspace / decision_entry["path"])
+            decision_id = self._next_log_id(
+                decision_data.get("decisions", []),
+                "decision_id",
+                "DEC",
+            )
+            decision = {
+                "decision_id": decision_id,
+                "statement": f"Route workflow rework from {current.value} to {target_phase.value}",
+                "rationale": normalized_reason,
+                "status": "active",
+                "created_at": utc_now(),
+                "created_by": "artifact-runtime-rework",
+                "supersedes": None,
+            }
+            candidate_decision_data = copy.deepcopy(decision_data)
+            candidate_decision_data["decisions"].append(decision)
+            files, candidate_state, _decision_artifact_entry = self._prepare_artifact_update(
+                state,
+                "decision_log",
+                candidate_decision_data,
+                expected_version=int(decision_entry["version"]),
+                status="approved",
+                created_by="artifact-runtime-rework",
+            )
+            candidate_state["current_phase"] = target_phase.value
+            candidate_state["status"] = "blocked" if any(
+                item.get("status") == "open"
+                for item in candidate_state.get("blockers", [])
+            ) else "active"
+
+            admitted_gate_count = min(
+                FORWARD_SEQUENCE.index(target_phase),
+                len(GATE_ORDER),
+            )
+            candidate_state["completed_gates"] = [
+                item
+                for item in candidate_state.get("completed_gates", [])
+                if GATE_ORDER.index(item["gate_id"]) < admitted_gate_count
+            ]
+            artifact_stage = {
+                artifact_type: GATE_ORDER.index(gate_id)
+                for artifact_type, (_phase, gate_id) in ARTIFACT_PHASE.items()
+            }
+            for entry in candidate_state.get("artifacts", []):
+                stage = artifact_stage.get(str(entry.get("artifact_type")))
+                if stage is not None and stage >= admitted_gate_count:
+                    entry["status"] = "draft"
+
+            candidate_state["decisions"] = [
+                item
+                for item in candidate_state.get("decisions", [])
+                if item.get("decision_id") != decision_id
+            ] + [
+                {
+                    "decision_id": decision_id,
+                    "statement": decision["statement"],
+                    "status": "active",
+                }
+            ]
+            files[self.workspace / "project_state.json"] = candidate_state
+            self._commit(files)
+            return copy.deepcopy(candidate_state)
 
     def _next_log_id(self, items: list[dict[str, Any]], key: str, prefix: str) -> str:
         numbers = [int(str(item[key]).split("-")[-1]) for item in items if key in item]

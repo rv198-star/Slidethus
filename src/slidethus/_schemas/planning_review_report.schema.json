@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/planning-review-report.schema.json",
+  "title": "Planning Review Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "project_id", "report_id", "generated_at", "status",
+    "review_mode", "inputs", "issues", "dimensions", "summary",
+    "requires_rework", "target_phase"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "pattern": "^0\\.1\\.[0-9]+$"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "report_id": {"type": "string", "pattern": "^PRV-[A-F0-9]{16}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "status": {"enum": ["pass", "issues"]},
+    "review_mode": {"enum": ["deterministic", "open_issue", "scorecard"]},
+    "inputs": {
+      "type": "array",
+      "minItems": 5,
+      "items": {"$ref": "#/$defs/artifactRef"}
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "issue_id", "code", "severity", "status", "artifact_type",
+          "slide_id", "block_id", "region_id", "earliest_phase", "message",
+          "evidence_ids", "suggested_action", "repairability"
+        ],
+        "properties": {
+          "issue_id": {"type": "string", "pattern": "^PRI-[A-F0-9]{16}$"},
+          "code": {"type": "string", "minLength": 1, "maxLength": 128},
+          "severity": {"enum": ["critical", "major", "minor"]},
+          "status": {"enum": ["open", "resolved", "waived"]},
+          "artifact_type": {
+            "enum": [
+              "project_brief", "evidence_ledger", "narrative_blueprint",
+              "deck_outline", "slide_specs", "layout_plans"
+            ]
+          },
+          "slide_id": {"type": ["string", "null"], "pattern": "^S-[0-9]{3}$"},
+          "block_id": {"type": ["string", "null"], "pattern": "^BLK-S[0-9]{3}-[0-9]{2}$"},
+          "region_id": {"type": ["string", "null"], "pattern": "^REG-S[0-9]{3}-[0-9]{2}$"},
+          "earliest_phase": {"enum": ["P0", "P2", "P3", "P4", "P5A", "P5B"]},
+          "message": {"type": "string", "minLength": 1, "maxLength": 4000},
+          "evidence_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^EVD-[0-9]{3}$"}
+          },
+          "suggested_action": {"type": "string", "minLength": 1, "maxLength": 4000},
+          "repairability": {"enum": ["automatic", "assisted", "manual"]}
+        }
+      }
+    },
+    "dimensions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["dimension", "score", "rationale", "issue_ids"],
+        "properties": {
+          "dimension": {
+            "enum": ["brief", "narrative", "outline", "slide_specs", "layout", "evidence", "rhythm", "recovery"]
+          },
+          "score": {"type": "integer", "minimum": 0, "maximum": 5},
+          "rationale": {"type": "string", "minLength": 1, "maxLength": 2000},
+          "issue_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^PRI-[A-F0-9]{16}$"}
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["critical_count", "major_count", "minor_count", "open_count", "overall_score"],
+      "properties": {
+        "critical_count": {"type": "integer", "minimum": 0},
+        "major_count": {"type": "integer", "minimum": 0},
+        "minor_count": {"type": "integer", "minimum": 0},
+        "open_count": {"type": "integer", "minimum": 0},
+        "overall_score": {"type": "number", "minimum": 0, "maximum": 5}
+      }
+    },
+    "requires_rework": {"type": "boolean"},
+    "target_phase": {
+      "type": ["string", "null"],
+      "enum": [null, "BRIEF_READY", "EVIDENCE_READY", "NARRATIVE_READY", "OUTLINE_READY", "SLIDE_SPECS_READY", "LAYOUT_READY"]
+    }
+  },
+  "$defs": {
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_type", "version", "content_hash"],
+      "properties": {
+        "artifact_type": {"type": "string", "minLength": 1},
+        "version": {"type": "integer", "minimum": 1},
+        "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      }
+    }
+  }
+}

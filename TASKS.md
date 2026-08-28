@@ -64,41 +64,41 @@ M0 只代表基础合同成立，不代表端到端 PPT 生成完成。
 
 ## M2 — Ingestion, Research, Evidence
 
-- [ ] PDF/DOCX/HTML/PPTX/图片/表格输入适配器
-- [ ] source inventory、哈希与内容分块
-- [ ] 方向性扫描 + outline-driven 定向研究的查询规划与 provider-neutral research port
-- [ ] research cycle/query/task lineage、缓存、失效与恢复
-- [ ] 证据去重、冲突、时效和可信等级
-- [ ] 每个事实性内容块绑定 evidence IDs
-- [ ] 来源注入防护与不可信指令隔离
-- [ ] 无联网降级模式
+- [x] PDF/DOCX/HTML/PPTX/图片/表格输入适配器
+- [x] source inventory、哈希与内容分块
+- [x] 方向性扫描 + outline-driven 定向研究的查询规划与 provider-neutral research port
+- [x] research cycle/query/task lineage、缓存、失效与恢复
+- [x] 证据去重、冲突、时效和可信等级
+- [x] 每个事实性内容块绑定 evidence IDs
+- [x] 来源注入防护与不可信指令隔离
+- [x] 无联网降级模式
 
-**Exit Gate：** 任何进入 deck 的外部事实都可追溯；冲突和不支持声明不会静默进入后续阶段。
+**Exit Gate：PASS（2026-08-27）。** M2.1–M2.6 Submodule Gates 与 M2.7 repository-wide Gate 均通过，无 waiver。外部事实必须经过 Source/Research/Evidence lineage；冲突、不支持、失效或未限定声明不能静默进入页面。验收证据见 `audit/M2.7-round-2-scorecard.md` 与 `audit/M2-BUILD_REPORT.md`。
 
 ## M3 — Narrative and Planning
 
-- [ ] Project Brief 智能补全与最少提问策略
-- [ ] Narrative Blueprint 生成与审计
-- [ ] Deck Outline 数字便利贴操作：增删、重排、拆分、合并
-- [ ] Slide Specs 生成
-- [ ] Layout Plans / 灰模生成
-- [ ] 页面密度、重复、节奏和过渡检查
-- [ ] 局部返工与依赖传播
+- [x] Project Brief 智能补全与最少提问策略
+- [x] Narrative Blueprint 生成与审计
+- [x] Deck Outline 数字便利贴操作：增删、重排、拆分、合并
+- [x] Slide Specs 生成
+- [x] Layout Plans / 灰模生成
+- [x] 页面密度、重复、节奏和过渡检查
+- [x] 局部返工与依赖传播
 
-**Exit Gate：** 内容可以在不做最终视觉的情况下完成结构、证据和页面策划审阅。
+**Exit Gate：PASS（2026-08-27）。** Production Brief、Narrative、stable Outline、Evidence-qualified Slide Specs、Layout Plans、immutable wireframes、Planning Review/Repair 与 M3 Application 已形成 current-version、可恢复、provider-neutral 的策划边界；Round A Critical/Major 全部根修，无 waiver。证据见 `audit/M3-round-2-scorecard.md` 与 `audit/M3-BUILD_REPORT.md`。
 
 ## M4 — Rendering Backends
 
-- [ ] 最终 SVG renderer
-- [ ] PptxGenJS native renderer
-- [ ] Hybrid renderer
-- [ ] 图片、图标、图表和表格资产合同
-- [ ] 字体探测与替代
-- [ ] overflow、collision、safe-area 检测
-- [ ] PPTX/PDF/PNG 导出与 render manifest
-- [ ] 编辑等级声明和验证
+- [x] 最终 SVG renderer
+- [x] PptxGenJS native renderer
+- [x] Hybrid renderer
+- [x] 图片、图标、图表和表格资产合同
+- [x] 字体探测与替代
+- [x] overflow、collision、safe-area 检测
+- [x] PPTX/PDF/PNG 导出与 render manifest
+- [x] 编辑等级声明和验证
 
-**Exit Gate：** 同一语义资产可由至少两个后端渲染；后端切换不修改领域 Schema。
+**Exit Gate：PASS（2026-08-28）。** 同一 current Renderer IR 已由 Final SVG、PptxGenJS Native 与 Hybrid 三个 Production backend 渲染；真实 PPTX/SVG/PNG/PDF 输出、资产/字体/几何 preflight、实际 editability、Production Render Manifest、M4 Application/CLI 和 G6/G7 均已形成可验证边界。后端切换不修改 M2/M3 领域 Schema。证据见 `audit/M4-round-2-scorecard.md` 与 `audit/M4-BUILD_REPORT.md`。
 
 ## M5 — Review and Repair Loop
 

@@ -14,13 +14,13 @@
 
 | 原素材表达 | Slidethus 保留方式 | 工程化扩展 | 状态 |
 |---|---|---|---|
-| 提问前先做背景调研 | P0 前置方向性扫描 | 有界检索、只用于理解上下文与缺口 | 合同已定义，适配器待 M2 |
-| 需求调研后再做大纲 | Phase 0 Project Brief | 最少提问、阻断问题、审批模式 | 合同已定义 |
-| 每页作为数字便利贴 | Deck Outline 的 slide objects | 稳定 ID、增删/重排/拆分/合并 | Schema 已定义 |
-| 围绕大纲逐页检索 | P2 定向证据补全 | 查询计划、来源等级、冲突、时效与返工路由 | 合同已定义，适配器待 M2 |
-| 内容和设计之间加入策划稿 | Slide Specs + Layout Plans | 语义/几何分离、灰模、Gate | 基础已实现 |
-| 策划负责结构，设计负责风格 | Layout Plans 与 Visual System 分离 | 后端无关的 render contract | 合同已定义 |
-| Bento Grid 组织信息 | Layout family: `bento` | 与 hero/process/timeline/matrix 等并列 | 规则已定义 |
+| 提问前先做背景调研 | P0 前置方向性扫描 | 有界检索、只用于理解上下文与缺口 | M2 Production 完成 |
+| 需求调研后再做大纲 | Phase 0 Project Brief | 最少提问、阻断问题、审批模式、answer/resume | M3 Production 完成 |
+| 每页作为数字便利贴 | Deck Outline 的 slide objects | 稳定 ID、增删/重排/拆分/合并/冻结、Change Report | M3 Production 完成 |
+| 围绕大纲逐页检索 | P2 定向证据补全 | 查询计划、来源等级、冲突、时效与返工路由 | M2 Production 完成 |
+| 内容和设计之间加入策划稿 | Slide Specs + Layout Plans | 语义/几何分离、灰模、Gate、Planning Review | M3 Production 完成 |
+| 策划负责结构，设计负责风格 | Layout Plans 与 Visual System 分离 | 后端无关的 render contract | M3 planning 完成，M4 render 待实现 |
+| Bento Grid 组织信息 | Layout family: `bento` | 与 hero/process/timeline/matrix 等并列，受比例/连续使用审计 | M3 Production 完成 |
 | 输出 1280×720 SVG | 默认逻辑画布与 SVG backend | Native/Hybrid PPTX 后端 | 策划 SVG、设计 SVG、Debug/Final E3 PPTX 已分离，正式多后端待实现 |
 | 大纲 JSON 输出 | Schema-backed artifacts | JSON Schema、跨引用与版本 | 基础已实现 |
 

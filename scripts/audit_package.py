@@ -37,7 +37,7 @@ def check_relative_links(root: Path) -> list[str]:
     missing: list[str] = []
     pattern = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
     for path in root.rglob("*.md"):
-        if "source_material" in path.parts:
+        if "source_material" in path.parts or "node_modules" in path.parts:
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
         for raw_target in pattern.findall(text):
@@ -58,6 +58,8 @@ def unresolved_placeholders(root: Path) -> list[str]:
     ]
     for path in root.rglob("*"):
         if not path.is_file() or path.suffix.lower() not in {".md", ".json", ".toml"}:
+            continue
+        if "node_modules" in path.parts:
             continue
         resolved = path.resolve()
         if any(prefix.resolve() in [resolved, *resolved.parents] for prefix in excluded_prefixes):
@@ -126,13 +128,78 @@ def required_paths(root: Path) -> list[Path]:
         root / "audit/M1-round-1-open-issues.md",
         root / "audit/M1-round-2-scorecard.md",
         root / "audit/M1-BUILD_REPORT.md",
+        root / "plans/M2-ingestion-research-evidence.md",
+        root / "plans/M2.2-multiformat-adapters.md",
+        root / "audit/M2.1-round-1-open-issues.md",
+        root / "audit/M2.1-round-2-scorecard.md",
+        root / "audit/M2.1-BUILD_REPORT.md",
+        root / "audit/M2.2-round-1-open-issues.md",
+        root / "audit/M2.2-round-2-scorecard.md",
+        root / "audit/M2.2-BUILD_REPORT.md",
+        root / "plans/M2.3-research-planning-runtime.md",
+        root / "docs/adr/ADR-0011-resumable-research-runtime.md",
+        root / "schemas/research_run.schema.json",
+        root / "schemas/research_cache_snapshot.schema.json",
+        root / "src/slidethus/services/research.py",
+        root / "tests/test_research_runtime.py",
+        root / "audit/M2.3-round-1-open-issues.md",
+        root / "audit/M2.3-round-2-scorecard.md",
+        root / "audit/M2.3-BUILD_REPORT.md",
+        root / "plans/M2.4-evidence-engine.md",
+        root / "docs/adr/ADR-0012-deterministic-evidence-adjudication.md",
+        root / "src/slidethus/evidence_identity.py",
+        root / "src/slidethus/services/evidence.py",
+        root / "tests/test_evidence_engine.py",
+        root / "audit/M2.4-round-1-open-issues.md",
+        root / "audit/M2.4-round-2-scorecard.md",
+        root / "audit/M2.4-BUILD_REPORT.md",
+        root / "plans/M2.5-evidence-binding-gap-rework.md",
+        root / "docs/adr/ADR-0013-block-evidence-gaps-and-rework.md",
+        root / "schemas/evidence_gap_report.schema.json",
+        root / "src/slidethus/services/evidence_binding.py",
+        root / "tests/test_evidence_binding.py",
+        root / "audit/M2.5-round-1-open-issues.md",
+        root / "audit/M2.5-round-2-scorecard.md",
+        root / "audit/M2.5-BUILD_REPORT.md",
+        root / "plans/M2.6-application-capability-security.md",
+        root / "docs/adr/ADR-0014-m2-application-capability-boundary.md",
+        root / "schemas/m2_application_report.schema.json",
+        root / "src/slidethus/m2_application_reports.py",
+        root / "src/slidethus/services/m2_application.py",
+        root / "tests/test_m2_application.py",
+        root / "audit/M2.6-round-1-open-issues.md",
+        root / "audit/M2.6-round-2-scorecard.md",
+        root / "audit/M2.6-BUILD_REPORT.md",
+        root / "plans/M2.7-m2-exit-gate.md",
+        root / "scripts/validate_m2_exit.py",
+        root / "tests/test_m2_exit.py",
+        root / "audit/M2.7-round-1-open-issues.md",
+        root / "audit/M2.7-round-2-scorecard.md",
+        root / "audit/M2-BUILD_REPORT.md",
+        root / "plans/M3-narrative-planning.md",
+        root / "docs/adr/ADR-0015-production-brief-completion.md",
+        root / "docs/adr/ADR-0016-provider-neutral-production-planning-lineage.md",
+        root / "docs/adr/ADR-0017-stable-sticky-notes-review-and-local-repair.md",
+        root / "docs/adr/ADR-0018-m3-application-and-exit-boundary.md",
+        root / "schemas/m3_application_report.schema.json",
+        root / "schemas/planning_change_report.schema.json",
+        root / "schemas/planning_review_report.schema.json",
+        root / "schemas/planning_repair_report.schema.json",
+        root / "src/slidethus/services/m3_application.py",
+        root / "src/slidethus/m3_application_reports.py",
+        root / "tests/test_m3_application.py",
+        root / "scripts/validate_m3_exit.py",
+        root / "tests/test_m3_exit.py",
+        root / "audit/M3-round-1-open-issues.md",
+        root / "audit/M3-round-2-scorecard.md",
+        root / "audit/M3-BUILD_REPORT.md",
     ]
 
 
 def write_hash_manifest(root: Path) -> int:
     output = root / "audit/manifest.sha256"
     excluded = {output.resolve()}
-    excluded_parts = {".git", ".venv", "__pycache__", ".pytest_cache", ".ruff_cache", "build", "dist"}
+    excluded_parts = {".git", ".venv", "node_modules", "__pycache__", ".pytest_cache", ".ruff_cache", "build", "dist"}
     files = []
     for path in root.rglob("*"):
         if not path.is_file() or path.resolve() in excluded:
@@ -165,12 +232,23 @@ def main() -> int:
 
     registry = SchemaRegistry(root / "schemas")
     schema_errors: list[str] = []
-    for artifact_type in registry.entries:
+    schema_files = sorted((root / "schemas").glob("*.schema.json"))
+    for schema_path in schema_files:
         try:
-            Draft202012Validator.check_schema(registry.schema(artifact_type))
+            Draft202012Validator.check_schema(
+                json.loads(schema_path.read_text(encoding="utf-8"))
+            )
         except Exception as exc:  # noqa: BLE001
-            schema_errors.append(f"{artifact_type}: {exc}")
-    checks.append(Check("schemas", not schema_errors, f"{len(registry.entries)} valid" if not schema_errors else "; ".join(schema_errors)))
+            schema_errors.append(f"{schema_path.name}: {exc}")
+    checks.append(
+        Check(
+            "schemas",
+            not schema_errors,
+            f"{len(schema_files)} valid ({len(registry.entries)} catalog artifacts)"
+            if not schema_errors
+            else "; ".join(schema_errors),
+        )
+    )
 
     root_schema_files = {path.name: path.read_bytes() for path in (root / "schemas").glob("*.json")}
     package_schema_files = {path.name: path.read_bytes() for path in (root / "src/slidethus/_schemas").glob("*.json")}
@@ -213,21 +291,115 @@ def main() -> int:
     validation_text = (root / "src/slidethus/validation.py").read_text(encoding="utf-8")
     gates_text = (root / "src/slidethus/gates.py").read_text(encoding="utf-8")
     protocols_text = (root / "src/slidethus/protocols.py").read_text(encoding="utf-8")
+    research_runtime_text = (root / "src/slidethus/services/research.py").read_text(encoding="utf-8")
+    research_run_schema = root / "schemas/research_run.schema.json"
+    research_cache_schema = root / "schemas/research_cache_snapshot.schema.json"
     research_contract_ok = (
         "research_cycles" in evidence_schema.get("required", [])
         and {"query_count", "waiver_reason"}.issubset(set(cycle_schema.get("required", [])))
         and "targeted_evidence_incomplete" in validation_text
         and "orientation research cycle" in gates_text
-        and "cycle_kind" in protocols_text
-        and "outline_version" in protocols_text
+        and "ResearchPlan" in protocols_text
+        and "class ResearchProvider" in protocols_text
+        and "class ResearchRuntime" in research_runtime_text
+        and "OfflineResearchProvider" in research_runtime_text
+        and "research_workspace_errors" in validation_text
+        and research_run_schema.exists()
+        and research_cache_schema.exists()
     )
     checks.append(
         Check(
             "research_contract_alignment",
             research_contract_ok,
-            "two-pass cycles, outline binding, gates, and provider protocol align"
+            "two-pass cycles, runtime lineage/cache, outline binding, gates, and provider protocol align"
             if research_contract_ok
             else "two-pass research contract drift",
+        )
+    )
+
+    evidence_engine_text = (root / "src/slidethus/services/evidence.py").read_text(
+        encoding="utf-8"
+    )
+    evidence_identity_text = (root / "src/slidethus/evidence_identity.py").read_text(
+        encoding="utf-8"
+    )
+    evidence_tests_text = (root / "tests/test_evidence_engine.py").read_text(
+        encoding="utf-8"
+    )
+    evidence_claim_schema = (
+        evidence_schema.get("properties", {}).get("claims", {}).get("items", {})
+    )
+    evidence_contract_ok = (
+        "candidate_bindings" in evidence_claim_schema.get("properties", {})
+        and "source_chunk_id" in evidence_engine_text
+        and "remote_body_fetched" in evidence_engine_text
+        and "complete_research_cycle" in evidence_engine_text
+        and "normalize_claim" in evidence_identity_text
+        and "test_multiple_provider_runs_for_one_cycle" in evidence_tests_text
+        and "stale_evidence_source_binding" in validation_text
+        and "evidence lineage is invalidated" in gates_text
+    )
+    checks.append(
+        Check(
+            "evidence_engine_alignment",
+            evidence_contract_ok,
+            "candidate/source/research lineage, policy adjudication, invalidation, and G2 align"
+            if evidence_contract_ok
+            else "M2.4 Evidence Engine contract drift",
+        )
+    )
+
+    m2_exit_process = subprocess.run(
+        [sys.executable, str(root / "scripts/validate_m2_exit.py")],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    m2_exit_output = (m2_exit_process.stdout + m2_exit_process.stderr).strip()
+    checks.append(
+        Check(
+            "m2_exit_gate",
+            m2_exit_process.returncode == 0,
+            "repository-wide M2 Exit Gate passes"
+            if m2_exit_process.returncode == 0
+            else m2_exit_output[-4000:],
+        )
+    )
+
+    m3_exit_process = subprocess.run(
+        [sys.executable, str(root / "scripts/validate_m3_exit.py")],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    m3_exit_output = (m3_exit_process.stdout + m3_exit_process.stderr).strip()
+    checks.append(
+        Check(
+            "m3_exit_gate",
+            m3_exit_process.returncode == 0,
+            "repository-wide M3 Exit Gate passes"
+            if m3_exit_process.returncode == 0
+            else m3_exit_output[-4000:],
+        )
+    )
+
+    m4_exit_process = subprocess.run(
+        [sys.executable, str(root / "scripts/validate_m4_exit.py")],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    m4_exit_output = (m4_exit_process.stdout + m4_exit_process.stderr).strip()
+    checks.append(
+        Check(
+            "m4_exit_gate",
+            m4_exit_process.returncode == 0,
+            "repository-wide M4 Exit Gate passes"
+            if m4_exit_process.returncode == 0
+            else m4_exit_output[-4000:],
         )
     )
 
@@ -307,8 +479,31 @@ def main() -> int:
         dirty_release_paths = [path.relative_to(root).as_posix() for path in generated_paths if path.exists()]
     checks.append(Check("release_tree_hygiene", not dirty_release_paths, "no build/dist/egg-info directories" if not dirty_release_paths else "; ".join(dirty_release_paths)))
 
-    no_fake_renderer = not (root / "renderers/pptxgenjs/package.json").exists()
-    checks.append(Check("no_fake_renderer", no_fake_renderer, "planned renderer is documented, not presented as runnable" if no_fake_renderer else "unexpected placeholder package"))
+    renderer_root = root / "renderers/pptxgenjs"
+    renderer_package = renderer_root / "package.json"
+    renderer_lock = renderer_root / "package-lock.json"
+    renderer_source = renderer_root / "render.mjs"
+    renderer_preview = renderer_root / "preview.mjs"
+    renderer_tests = tuple((renderer_root / "test").glob("*.test.mjs"))
+    renderer_contract_ok = (
+        renderer_package.is_file()
+        and renderer_lock.is_file()
+        and renderer_source.is_file()
+        and renderer_preview.is_file()
+        and len(renderer_tests) >= 2
+        and '"pptxgenjs": "4.0.1"' in renderer_package.read_text(encoding="utf-8")
+        and '"@resvg/resvg-js": "2.6.2"' in renderer_package.read_text(encoding="utf-8")
+        and '"pdf-lib": "1.17.1"' in renderer_package.read_text(encoding="utf-8")
+    )
+    checks.append(
+        Check(
+            "production_renderer_contract",
+            renderer_contract_ok,
+            "PptxGenJS/Hybrid and independent SVG export sidecar are pinned and tested"
+            if renderer_contract_ok
+            else "M4 renderer sidecar/package-lock contract is incomplete",
+        )
+    )
 
     output_json = root / "audit/automated-audit.json"
     output_md = root / "audit/automated-audit.md"

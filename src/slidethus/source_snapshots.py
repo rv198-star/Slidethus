@@ -32,6 +32,7 @@ def build_source_snapshot(
         "source_sha256": result.source_sha256,
         "size_bytes": result.size_bytes,
         "created_at": result.parsed_at,
+        "parse_status": result.parse_status,
         "detected_format": asdict(result.detected_format),
         "parser": {"name": result.parser_name, "version": result.parser_version},
         "limits": asdict(limits),
@@ -181,6 +182,8 @@ def source_snapshot_reference_errors(
         errors.append("snapshot source content hash mismatch")
     if data.get("size_bytes") != source.get("size_bytes"):
         errors.append("snapshot size mismatch")
+    if data.get("parse_status", "parsed") != source.get("parse_status"):
+        errors.append("snapshot parse status mismatch")
     parser = data.get("parser", {})
     if parser.get("name") != ingestion.get("parser_name"):
         errors.append("snapshot parser name mismatch")

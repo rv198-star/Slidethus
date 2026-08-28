@@ -58,6 +58,30 @@ stateDiagram-v2
 
 这是一条显式返工边，不是跳过状态机；Evidence Ledger 仍是唯一证据事实源。
 
+## 2.3 M3 Production planning 回路
+
+M3 的单一应用链为：
+
+```text
+Brief completion / G0
+  → M2 orientation / G2
+  → Narrative / G3
+  → stable Outline / G4
+  → Slide Specs
+  → M2 targeted Evidence / G5A
+  → Layout + immutable wireframes / G5B
+  → Planning Review / bounded Repair
+```
+
+- Production Narrative、Outline、Specs、Layout 都携带 `planning_lineage`，绑定当前上游 artifact version/content hash、provider、proposal 与 policy；
+- `S-*` 是稳定页面身份，ordinal 只是顺序；insert/exclude/reorder/split/merge/freeze/update 产生 `PCH-*`，并只失效依赖该 Outline 的下游；
+- Planning Review 产生 `PRV-*`，把具体问题定位到 P0/P2/P3/P4/P5A/P5B 中最早责任阶段；
+- 自动 Repair 只处理已显式准入的 deterministic 问题，产生 `PRP-*`，并重跑 G2/G3/G4/G5A/G5B 与全套 Planning Review；
+- assisted/manual 问题不自动改写语义，而是正式路由到最早责任阶段；
+- `M3 Application Report` 的 planning level P0/P2/P3/P4/P5A/P5B 必须与最终 Project State 一致，部分失败不能冒充 P5B。
+
+M3 Exit 是仓库级 Gate，不加入 deck G0–G9。它只证明不做最终视觉时，结构、证据、页面语义、几何和灰模已可审阅。
+
 ## 3. Gate 语义
 
 ### M1 当前记录
@@ -112,6 +136,22 @@ Critical 规则不能被 waiver。Major waiver 只允许显式审批者、原因
 | 审计遗漏或修复回归 | P8 |
 
 禁止在 P7 用缩小所有文字的方式掩盖 P5 的内容过载。
+
+M2.5 将 Evidence gap 返工实现为正式 Runtime 事务：
+
+- Gap Report 绑定当前 Brief/Source/Evidence/Outline/Specs 版本；
+- 只允许从 `OUTLINE_READY` 或 `SLIDE_SPECS_READY` 回到 `EVIDENCE_READY`；
+- 保留 G0–G2，移除后续 Gate 摘要；
+- Narrative、Outline、Slide Specs 与后续 staged artifacts 标为 draft；
+- 返工原因写入 Decision Log；
+- 输入版本在事务锁内再次核对，过期报告不能路由状态。
+
+M3 将策划返工拆成两类：
+
+- **显式数字便利贴操作**：Outline 与 Change Report 在同一事务提交；stable Slide IDs 和 mappings 保留页面历史；
+- **Planning Review/Repair**：Review 绑定当前六类规划事实，Repair 绑定选中 issues、limits、provider 和 result Review；中断后保留最后一个有效阶段，M3 Application 发布 failed/rework report。
+
+改变 Outline 会使 Specs/Layout/Visual/Render/Review/Delivery draft，但不会无故重写 Narrative 或 Evidence；事实缺口仍回 P2，故事线问题回 P3，页面职责问题回 P4，内容块问题回 P5A，几何容量问题回 P5B。
 
 ## 6. 局部重生成
 

@@ -1,4 +1,4 @@
-.PHONY: install test lint validate demo audit verify clean
+.PHONY: install test lint validate m2-exit m3-exit m4-exit renderer-test demo audit verify clean
 
 install:
 	python -m pip install -e '.[dev]'
@@ -13,13 +13,25 @@ lint:
 validate:
 	python scripts/validate_all.py
 
+m2-exit:
+	python scripts/validate_m2_exit.py
+
+m3-exit:
+	python scripts/validate_m3_exit.py
+
+m4-exit:
+	python scripts/validate_m4_exit.py
+
+renderer-test:
+	npm test --prefix renderers/pptxgenjs
+
 demo:
 	python -m slidethus.cli render-wireframe examples/minimal_project
 
 audit:
 	python scripts/audit_package.py
 
-verify: lint test validate audit
+verify: lint test validate m2-exit m3-exit m4-exit renderer-test audit
 
 clean:
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +

@@ -3,8 +3,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from slidethus.evidence_binding_rules import binding_gate_reasons
 from slidethus.gate_contracts import GATE_REQUIRED_PATHS
 from slidethus.io_utils import read_json
+from slidethus.planning_lineage import workspace_planning_graph
+from slidethus.planning_rules import (
+    layout_gate_reasons,
+    narrative_gate_reasons,
+    outline_gate_reasons,
+    slide_specs_gate_reasons,
+)
+from slidethus.rendering_rules import (
+    production_render_gate_reasons,
+    visual_system_gate_reasons,
+)
 from slidethus.validation import EDITABILITY_ORDER, validate_workspace
 
 
@@ -48,6 +60,26 @@ def evaluate_gate(workspace: Path, gate_id: str) -> GateResult:
             reasons.append("purpose is not resolved")
         if brief.get("intent", {}).get("desired_outcome") in placeholders:
             reasons.append("desired outcome is not resolved")
+        completion = brief.get("completion")
+        if completion:
+            if brief.get("intent", {}).get("delivery_context") in placeholders:
+                reasons.append("delivery context is not resolved")
+            audiences = brief.get("audiences", [])
+            if not audiences or audiences[0].get("role") in placeholders:
+                reasons.append("primary audience is not resolved")
+        page_count = brief.get("constraints", {}).get("page_count", {})
+        minimum = page_count.get("min")
+        target = page_count.get("target")
+        maximum = page_count.get("max")
+        if not (
+            isinstance(minimum, int)
+            and isinstance(target, int)
+            and isinstance(maximum, int)
+            and minimum <= target <= maximum
+        ):
+            reasons.append("page-count contract is invalid")
+        if completion and completion.get("status") != "resolved":
+            reasons.append("brief completion still needs input")
         if reasons:
             return GateResult(gate_id, "blocked", tuple(reasons))
     elif gate_id == "G1":
@@ -60,14 +92,39 @@ def evaluate_gate(workspace: Path, gate_id: str) -> GateResult:
         brief = read_json(workspace / "brief/project_brief.json")
         evidence = read_json(workspace / "evidence/evidence_ledger.json")
         claims = evidence.get("claims", [])
+        lineage_issue_codes = {
+            "unusable_source",
+            "invalid_evidence_locator",
+            "stale_evidence_source_binding",
+            "stale_evidence_source_content",
+            "invalid_verified_evidence",
+        }
+        if any(issue.code in lineage_issue_codes for issue in validation.issues):
+            reasons.append("evidence lineage is invalidated by current sources")
         orientation_complete = any(
             cycle.get("kind") == "orientation" and cycle.get("status") in {"complete", "waived"}
             for cycle in evidence.get("research_cycles", [])
         )
         if not orientation_complete:
             reasons.append("orientation research cycle is not complete or waived")
-        if brief.get("source_policy", {}).get("citation_required") and not claims:
-            reasons.append("citation policy requires evidence but ledger is empty")
+        if brief.get("source_policy", {}).get("citation_required"):
+            if not claims:
+                reasons.append("citation policy requires evidence but ledger is empty")
+            elif not any(
+                item.get("source_refs")
+                and item.get("support_status") in {"verified", "provisional"}
+                and item.get("use_policy") != "do_not_use"
+                for item in claims
+            ):
+                reasons.append(
+                    "citation policy requires at least one usable source-backed claim"
+                )
+        if brief.get("source_policy", {}).get("citation_required") and claims and not any(
+            item.get("use_policy") != "do_not_use"
+            and item.get("support_status") not in {"unsupported", "disputed"}
+            for item in claims
+        ):
+            reasons.append("citation policy requires at least one usable evidence claim")
         if any(item.get("support_status") in {"unsupported", "disputed"} and item.get("use_policy") != "do_not_use" for item in claims):
             reasons.append("unresolved unsupported or disputed claims")
     elif gate_id == "G3":
@@ -76,43 +133,118 @@ def evaluate_gate(workspace: Path, gate_id: str) -> GateResult:
             reasons.append("narrative blueprint is missing")
         else:
             narrative = read_json(path)
-            if not narrative.get("central_thesis") or not narrative.get("sections"):
+            if narrative.get("planning_lineage"):
+                graph = workspace_planning_graph(
+                    workspace,
+                    ("project_brief", "evidence_ledger", "narrative_blueprint"),
+                )
+                reasons.extend(
+                    narrative_gate_reasons(
+                        brief=graph["project_brief"]["data"],
+                        evidence=graph["evidence_ledger"]["data"],
+                        narrative=narrative,
+                        graph=graph,
+                    )
+                )
+            elif not narrative.get("central_thesis") or not narrative.get("sections"):
                 reasons.append("narrative is incomplete")
     elif gate_id == "G4":
         path = workspace / "outline/deck_outline.json"
         if not path.exists():
             reasons.append("deck outline is missing")
         else:
-            slides = [item for item in read_json(path).get("slides", []) if item.get("status") != "excluded"]
-            takeaways = [item.get("takeaway", "").strip() for item in slides]
-            if not slides:
-                reasons.append("outline has no active slides")
-            if len(set(takeaways)) != len(takeaways):
-                reasons.append("duplicate slide takeaways")
+            outline = read_json(path)
+            if outline.get("planning_lineage"):
+                graph = workspace_planning_graph(
+                    workspace,
+                    (
+                        "project_brief",
+                        "evidence_ledger",
+                        "narrative_blueprint",
+                        "deck_outline",
+                    ),
+                )
+                reasons.extend(
+                    outline_gate_reasons(
+                        brief=graph["project_brief"]["data"],
+                        evidence=graph["evidence_ledger"]["data"],
+                        narrative=graph["narrative_blueprint"]["data"],
+                        outline=outline,
+                        graph=graph,
+                    )
+                )
+            else:
+                slides = [
+                    item
+                    for item in outline.get("slides", [])
+                    if item.get("status") != "excluded"
+                ]
+                takeaways = [item.get("takeaway", "").strip() for item in slides]
+                if not slides:
+                    reasons.append("outline has no active slides")
+                if len(set(takeaways)) != len(takeaways):
+                    reasons.append("duplicate slide takeaways")
     elif gate_id == "G5A":
-        if not (workspace / "slides/slide_specs.json").exists():
-            reasons.append("slide specs are missing")
+        g2 = evaluate_gate(workspace, "G2")
+        if not g2.passed:
+            reasons.append("G2 does not pass for the current Evidence lineage")
         evidence = read_json(workspace / "evidence/evidence_ledger.json")
+        outline = read_json(workspace / "outline/deck_outline.json")
+        specs_path = workspace / "slides/slide_specs.json"
+        slide_specs = read_json(specs_path) if specs_path.exists() else None
+        if slide_specs is not None and slide_specs.get("planning_lineage"):
+            graph = workspace_planning_graph(
+                workspace,
+                ("project_brief", "evidence_ledger", "deck_outline", "slide_specs"),
+            )
+            reasons.extend(
+                slide_specs_gate_reasons(
+                    brief=graph["project_brief"]["data"],
+                    evidence=graph["evidence_ledger"]["data"],
+                    outline=graph["deck_outline"]["data"],
+                    slide_specs=slide_specs,
+                    graph=graph,
+                )
+            )
         state = read_json(workspace / "project_state.json")
-        outline_entry = next(
-            (item for item in state.get("artifacts", []) if item.get("artifact_type") == "deck_outline"),
-            {},
+        artifacts_by_type = {
+            str(item.get("artifact_type")): item for item in state.get("artifacts", [])
+        }
+        outline_entry = artifacts_by_type.get("deck_outline", {})
+        reasons.extend(
+            binding_gate_reasons(
+                evidence=evidence,
+                outline=outline,
+                slide_specs=slide_specs,
+                outline_version=outline_entry.get("version"),
+            )
         )
-        outline_version = outline_entry.get("version")
-        targeted_complete = any(
-            cycle.get("kind") == "targeted"
-            and cycle.get("status") in {"complete", "waived"}
-            and cycle.get("outline_version") == outline_version
-            for cycle in evidence.get("research_cycles", [])
-        )
-        if not targeted_complete:
-            reasons.append(f"targeted research is incomplete for outline version {outline_version}")
     elif gate_id == "G5B":
-        if not (workspace / "layout/layout_plans.json").exists():
+        path = workspace / "layout/layout_plans.json"
+        if not path.exists():
             reasons.append("layout plans are missing")
+        else:
+            layout_plans = read_json(path)
+            if layout_plans.get("planning_lineage"):
+                graph = workspace_planning_graph(
+                    workspace,
+                    ("project_brief", "deck_outline", "slide_specs", "layout_plans"),
+                )
+                reasons.extend(
+                    layout_gate_reasons(
+                        workspace,
+                        brief=graph["project_brief"]["data"],
+                        outline=graph["deck_outline"]["data"],
+                        slide_specs=graph["slide_specs"]["data"],
+                        layout_plans=layout_plans,
+                        graph=graph,
+                    )
+                )
     elif gate_id == "G6":
-        if not (workspace / "design/visual_system.json").exists():
-            reasons.append("visual system is missing")
+        state = read_json(workspace / "project_state.json")
+        path = workspace / "design/visual_system.json"
+        visual = read_json(path) if path.exists() else None
+        reasons.extend(visual_system_gate_reasons(state=state, visual_system=visual))
     elif gate_id == "G7":
         path = workspace / "renders/render_manifest.json"
         if not path.exists():
@@ -128,7 +260,9 @@ def evaluate_gate(workspace: Path, gate_id: str) -> GateResult:
                 target = render.get("target_editability_level")
                 if actual in EDITABILITY_ORDER and target in EDITABILITY_ORDER and EDITABILITY_ORDER[actual] < EDITABILITY_ORDER[target]:
                     reasons.append(f"actual editability {actual} is below target {target}")
-            if render.get("pipeline_mode") == "complete_mvp":
+            if render.get("pipeline_mode") == "production_multi_backend":
+                reasons.extend(production_render_gate_reasons(workspace, render))
+            elif render.get("pipeline_mode") == "complete_mvp":
                 required_stages = {
                     "planning",
                     "diagnostics",

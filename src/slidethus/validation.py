@@ -5,11 +5,29 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from slidethus.brief_completion import (
+    brief_completion_result_hash,
+    field_value,
+    is_unresolved,
+)
 from slidethus.errors import WorkspaceError
+from slidethus.evidence_gaps import evidence_gap_workspace_errors
+from slidethus.evidence_identity import candidate_id_for, claim_key, conflict_group_id
 from slidethus.gate_contracts import GATE_REQUIRED_PATHS
 from slidethus.io_utils import ensure_within, read_json, sha256_file, sha256_json
+from slidethus.m2_application_reports import m2_application_workspace_errors
+from slidethus.m3_application_reports import m3_application_workspace_errors
+from slidethus.m4_application_reports import m4_application_workspace_errors
+from slidethus.planning_changes import planning_change_workspace_errors
+from slidethus.planning_repairs import planning_repair_workspace_errors
+from slidethus.planning_reviews import planning_review_workspace_errors
+from slidethus.protocols import EvidenceCandidate
+from slidethus.render_ir import renderer_ir_workspace_errors
+from slidethus.render_manifest import production_render_manifest_reference_errors
+from slidethus.render_preflight import render_preflight_workspace_errors
 from slidethus.schema_registry import SchemaRegistry
-from slidethus.source_snapshots import source_snapshot_reference_errors
+from slidethus.services.research import research_workspace_errors
+from slidethus.source_snapshots import load_source_snapshot, source_snapshot_reference_errors
 
 
 @dataclass(frozen=True)
@@ -143,6 +161,26 @@ def validate_workspace(workspace: Path, registry: SchemaRegistry | None = None, 
             report.add("schema_error", error.message, path)
 
     _validate_cross_references(report, workspace, state, loaded, registry, check_hashes=check_hashes)
+    for path, message in research_workspace_errors(workspace):
+        report.add("invalid_research_runtime", message, path)
+    for path, message in evidence_gap_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_evidence_gap_report", message, path)
+    for path, message in m2_application_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_m2_application_report", message, path)
+    for path, message in m3_application_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_m3_application_report", message, path)
+    for path, message in m4_application_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_m4_application_report", message, path)
+    for path, message in planning_change_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_planning_change_report", message, path)
+    for path, message in planning_review_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_planning_review_report", message, path)
+    for path, message in planning_repair_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_planning_repair_report", message, path)
+    for path, message in renderer_ir_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_renderer_ir", message, path)
+    for path, message in render_preflight_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_render_preflight_report", message, path)
     return report
 
 
@@ -156,6 +194,10 @@ def _validate_cross_references(
     check_hashes: bool,
 ) -> None:
     project_id = state.get("project_id")
+    artifact_status = {
+        str(item.get("artifact_type")): str(item.get("status", ""))
+        for item in state.get("artifacts", [])
+    }
     open_blockers = [item for item in state.get("blockers", []) if item.get("status") == "open"]
     state_status = state.get("status")
     current_phase = state.get("current_phase")
@@ -201,6 +243,80 @@ def _validate_cross_references(
             "brief/project_brief.json",
         )
 
+    completion = brief.get("completion")
+    if completion:
+        if completion.get("result_hash") != brief_completion_result_hash(brief):
+            report.add(
+                "brief_completion_hash_mismatch",
+                "Project Brief completion result_hash does not match current Brief content",
+                "brief/project_brief.json",
+            )
+        question_ids = [
+            str(item.get("question_id", "")) for item in brief.get("open_questions", [])
+        ]
+        assumption_ids = [
+            str(item.get("assumption_id", "")) for item in brief.get("assumptions", [])
+        ]
+        if completion.get("question_ids") != question_ids:
+            report.add(
+                "brief_completion_question_mismatch",
+                "Project Brief completion question_ids disagree with open_questions",
+                "brief/project_brief.json",
+            )
+        if completion.get("assumption_ids") != assumption_ids:
+            report.add(
+                "brief_completion_assumption_mismatch",
+                "Project Brief completion assumption_ids disagree with assumptions",
+                "brief/project_brief.json",
+            )
+        blocking_questions = [
+            item
+            for item in brief.get("open_questions", [])
+            if item.get("blocking") and item.get("status") == "open"
+        ]
+        expected_completion_status = "needs_input" if blocking_questions else "resolved"
+        if completion.get("status") != expected_completion_status:
+            report.add(
+                "brief_completion_status_mismatch",
+                "Project Brief completion status disagrees with blocking questions",
+                "brief/project_brief.json",
+            )
+        for path in completion.get("resolved_fields", []):
+            try:
+                value = field_value(brief, str(path))
+            except (KeyError, IndexError, TypeError, ValueError):
+                report.add(
+                    "invalid_brief_completion_field",
+                    f"Completion references unknown resolved field: {path}",
+                    "brief/project_brief.json",
+                )
+                continue
+            if is_unresolved(value):
+                report.add(
+                    "unresolved_brief_completion_field",
+                    f"Completion marks unresolved field as resolved: {path}",
+                    "brief/project_brief.json",
+                )
+        for item in [*brief.get("open_questions", []), *brief.get("assumptions", [])]:
+            for path in item.get("field_paths", []):
+                try:
+                    field_value(brief, str(path))
+                except (KeyError, IndexError, TypeError, ValueError):
+                    report.add(
+                        "invalid_brief_field_path",
+                        f"Brief question/assumption references unknown field: {path}",
+                        "brief/project_brief.json",
+                    )
+        for question in brief.get("open_questions", []):
+            if question.get("status") == "answered" and not str(
+                question.get("answer") or ""
+            ).strip():
+                report.add(
+                    "answered_brief_question_missing_answer",
+                    f"Answered Brief question has no answer: {question.get('question_id')}",
+                    "brief/project_brief.json",
+                )
+
     completed_gates = state.get("completed_gates", [])
     gate_ids = [str(item.get("gate_id", "")) for item in completed_gates]
     _unique_ids(report, gate_ids, "project_state.json", "gate")
@@ -245,6 +361,9 @@ def _validate_cross_references(
         item.get("source_id"): (item.get("parse_status"), item.get("allowed_use"))
         for item in sources
     }
+    source_by_id = {str(item.get("source_id")): item for item in sources}
+    source_chunks_by_locator: dict[str, dict[str, dict[str, Any]]] = {}
+    high_risk_source_ids: set[str] = set()
     for source in sources:
         ingestion = source.get("ingestion")
         parse_status = source.get("parse_status")
@@ -255,25 +374,65 @@ def _validate_cross_references(
                 f"{source.get('source_id')}: ingestion snapshot requires parsed or partial status",
                 "sources/source_ledger.json",
             )
-        if content_hash.startswith("sha256:") and parse_status == "parsed" and not ingestion:
+        if (
+            content_hash.startswith("sha256:")
+            and parse_status in {"parsed", "partial"}
+            and not ingestion
+        ):
             report.add(
                 "missing_source_snapshot",
                 f"{source.get('source_id')}: production-parsed source has no ingestion snapshot",
                 "sources/source_ledger.json",
             )
-        for error in source_snapshot_reference_errors(
+        snapshot_errors = source_snapshot_reference_errors(
             workspace,
             str(project_id),
             source,
             registry.schema_dir,
-        ):
+        )
+        for error in snapshot_errors:
             report.add(
                 "invalid_source_snapshot",
                 f"{source.get('source_id')}: {error}",
                 "sources/source_ledger.json",
             )
+        if ingestion and not snapshot_errors:
+            try:
+                snapshot = load_source_snapshot(
+                    workspace,
+                    str(project_id),
+                    source,
+                    registry.schema_dir,
+                )
+                source_id = str(source.get("source_id"))
+                source_chunks_by_locator[source_id] = {
+                    str(item.get("locator")): dict(item)
+                    for item in snapshot.get("chunks", [])
+                }
+                if any(
+                    item.get("severity") == "high"
+                    for item in snapshot.get("risks", [])
+                ):
+                    high_risk_source_ids.add(source_id)
+            except Exception as exc:  # noqa: BLE001
+                report.add(
+                    "invalid_source_snapshot",
+                    f"{source.get('source_id')}: {exc}",
+                    "sources/source_ledger.json",
+                )
 
     evidence_ledger = loaded.get("evidence_ledger", {})
+    evidence_registry_entry = next(
+        (
+            item
+            for item in state.get("artifacts", [])
+            if item.get("artifact_type") == "evidence_ledger"
+        ),
+        {},
+    )
+    evidence_lineage_severity = (
+        "error" if evidence_registry_entry.get("status") == "approved" else "warning"
+    )
     research_cycles = evidence_ledger.get("research_cycles", [])
     cycle_ids = [item["cycle_id"] for item in research_cycles if "cycle_id" in item]
     _unique_ids(report, cycle_ids, "evidence/evidence_ledger.json", "research cycle")
@@ -285,12 +444,190 @@ def _validate_cross_references(
                     f"Research cycle {cycle.get('cycle_id')} references unknown source {source_id}",
                     "evidence/evidence_ledger.json",
                 )
+        for run_id in cycle.get("run_ids", []):
+            run_path = workspace / ".slidethus/research/runs" / f"{run_id}.json"
+            if not run_path.is_file():
+                report.add(
+                    "missing_research_run_ref",
+                    f"Research cycle {cycle.get('cycle_id')} references unknown run {run_id}",
+                    "evidence/evidence_ledger.json",
+                )
+                continue
+            try:
+                run = read_json(run_path)
+            except Exception as exc:  # noqa: BLE001
+                report.add(
+                    "invalid_research_run_ref",
+                    f"Research cycle {cycle.get('cycle_id')} cannot read {run_id}: {exc}",
+                    "evidence/evidence_ledger.json",
+                )
+                continue
+            if (
+                run.get("cycle_id") != cycle.get("cycle_id")
+                or run.get("cycle_kind") != cycle.get("kind")
+                or run.get("outline_version") != cycle.get("outline_version")
+            ):
+                report.add(
+                    "research_cycle_run_mismatch",
+                    f"Research cycle {cycle.get('cycle_id')} disagrees with run {run_id}",
+                    "evidence/evidence_ledger.json",
+                )
+            if cycle.get("status") == "complete" and run.get("status") != "complete":
+                report.add(
+                    "incomplete_research_run_ref",
+                    f"Completed research cycle {cycle.get('cycle_id')} references run {run_id} with status={run.get('status')}",
+                    "evidence/evidence_ledger.json",
+                )
 
     claims = evidence_ledger.get("claims", [])
     evidence_ids = [item["evidence_id"] for item in claims if "evidence_id" in item]
     _unique_ids(report, evidence_ids, "evidence/evidence_ledger.json", "evidence")
     evidence_set = set(evidence_ids)
     evidence_status = {item.get("evidence_id"): (item.get("support_status"), item.get("use_policy")) for item in claims}
+    derived_claim_keys: list[str] = []
+    for claim in claims:
+        try:
+            derived_key = claim_key(str(claim.get("claim", "")))
+        except Exception as exc:  # noqa: BLE001
+            report.add(
+                "invalid_claim_identity",
+                f"Evidence {claim.get('evidence_id')} has invalid claim identity: {exc}",
+                "evidence/evidence_ledger.json",
+            )
+            continue
+        derived_claim_keys.append(derived_key)
+        persisted_key = claim.get("claim_key")
+        if persisted_key is not None and persisted_key != derived_key:
+            report.add(
+                "claim_key_mismatch",
+                f"Evidence {claim.get('evidence_id')} claim_key does not match normalized claim",
+                "evidence/evidence_ledger.json",
+            )
+        adjudication = claim.get("adjudication", {})
+        if adjudication.get("engine") == "deterministic-evidence-engine":
+            required_fields = {
+                "claim_key",
+                "candidate_refs",
+                "candidate_bindings",
+                "authority_decision",
+                "freshness_decision",
+                "conflict_group",
+                "conflict_stances",
+                "adjudication",
+            }
+            missing_fields = sorted(required_fields - set(claim))
+            if missing_fields:
+                report.add(
+                    "incomplete_evidence_adjudication",
+                    f"Evidence {claim.get('evidence_id')} is missing production fields: {missing_fields}",
+                    "evidence/evidence_ledger.json",
+                )
+            bindings = list(claim.get("candidate_bindings", []))
+            binding_ids: list[str] = []
+            binding_groups: set[str] = set()
+            binding_stances: set[str] = set()
+            binding_refs: set[tuple[str, str, str, str | None, str | None]] = set()
+            for binding in bindings:
+                try:
+                    candidate = EvidenceCandidate(
+                        candidate_id=str(binding.get("candidate_id", "")),
+                        claim=str(claim.get("claim", "")),
+                        source_id=binding.get("source_id"),
+                        locator=binding.get("locator"),
+                        support_type=str(binding.get("support_type", "")),
+                        origin_kind=str(binding.get("origin_kind", "")),
+                        source_chunk_id=binding.get("source_chunk_id"),
+                        research_run_id=binding.get("research_run_id"),
+                        research_result_id=binding.get("research_result_id"),
+                        freshness_date=binding.get("freshness_date"),
+                        conflict_key=binding.get("conflict_key"),
+                        stance=binding.get("stance"),
+                    )
+                    if candidate.candidate_id != candidate_id_for(candidate):
+                        raise ValueError("candidate identity mismatch")
+                except Exception as exc:  # noqa: BLE001
+                    report.add(
+                        "invalid_evidence_candidate_binding",
+                        f"Evidence {claim.get('evidence_id')} has invalid candidate binding: {exc}",
+                        "evidence/evidence_ledger.json",
+                    )
+                    continue
+                binding_ids.append(candidate.candidate_id)
+                if candidate.source_id is None:
+                    if candidate.origin_kind not in {"inference", "assumption"}:
+                        report.add(
+                            "invalid_evidence_candidate_binding",
+                            f"Evidence {claim.get('evidence_id')} has a source-less non-inference candidate",
+                            "evidence/evidence_ledger.json",
+                        )
+                elif candidate.locator is None:
+                    report.add(
+                        "invalid_evidence_candidate_binding",
+                        f"Evidence {claim.get('evidence_id')} candidate {candidate.candidate_id} lacks locator",
+                        "evidence/evidence_ledger.json",
+                    )
+                else:
+                    binding_refs.add(
+                        (
+                            candidate.source_id,
+                            candidate.locator,
+                            candidate.support_type,
+                            binding.get("source_chunk_id"),
+                            binding.get("content_hash"),
+                        )
+                    )
+                if candidate.conflict_key:
+                    binding_groups.add(conflict_group_id(candidate.conflict_key))
+                if candidate.stance:
+                    binding_stances.add(candidate.stance)
+            if len(binding_ids) != len(set(binding_ids)):
+                report.add(
+                    "duplicate_evidence_candidate_binding",
+                    f"Evidence {claim.get('evidence_id')} repeats a candidate binding",
+                    "evidence/evidence_ledger.json",
+                )
+            if set(binding_ids) != set(claim.get("candidate_refs", [])):
+                report.add(
+                    "candidate_binding_reference_mismatch",
+                    f"Evidence {claim.get('evidence_id')} candidate_refs disagree with candidate_bindings",
+                    "evidence/evidence_ledger.json",
+                )
+            actual_refs = {
+                (
+                    str(ref.get("source_id", "")),
+                    str(ref.get("locator", "")),
+                    str(ref.get("support_type", "")),
+                    ref.get("chunk_id"),
+                    ref.get("content_hash"),
+                )
+                for ref in claim.get("source_refs", [])
+            }
+            if binding_refs != actual_refs:
+                report.add(
+                    "candidate_binding_source_reference_mismatch",
+                    f"Evidence {claim.get('evidence_id')} source_refs disagree with candidate_bindings",
+                    "evidence/evidence_ledger.json",
+                )
+            if len(binding_groups) > 1 or (
+                binding_groups and claim.get("conflict_group") not in binding_groups
+            ):
+                report.add(
+                    "candidate_binding_conflict_mismatch",
+                    f"Evidence {claim.get('evidence_id')} conflict group disagrees with candidate_bindings",
+                    "evidence/evidence_ledger.json",
+                )
+            if binding_stances != set(claim.get("conflict_stances", [])):
+                report.add(
+                    "candidate_binding_stance_mismatch",
+                    f"Evidence {claim.get('evidence_id')} conflict stances disagree with candidate_bindings",
+                    "evidence/evidence_ledger.json",
+                )
+    _unique_ids(
+        report,
+        derived_claim_keys,
+        "evidence/evidence_ledger.json",
+        "normalized evidence claim",
+    )
 
     assets = loaded.get("asset_manifest", {}).get("assets", [])
     asset_ids = [item["asset_id"] for item in assets if "asset_id" in item]
@@ -303,19 +640,132 @@ def _validate_cross_references(
     _unique_ids(report, [str(item.get("decision_id", "")) for item in decision_log], "decisions/decision_log.json", "decision log")
     _unique_ids(report, [str(item.get("assumption_id", "")) for item in assumption_log], "decisions/assumption_log.json", "assumption log")
 
+    conflict_stances_by_group: dict[str, set[str]] = {}
     for claim in claims:
+        group_id = claim.get("conflict_group")
+        if group_id:
+            conflict_stances_by_group.setdefault(str(group_id), set()).update(
+                str(stance) for stance in claim.get("conflict_stances", [])
+            )
+        production_claim = claim.get("adjudication", {}).get("engine") == "deterministic-evidence-engine"
+        direct_parsed_support = False
+        high_risk_support = False
         for ref in claim.get("source_refs", []):
             source_id = ref.get("source_id")
             if source_id not in source_set:
                 report.add("missing_source_ref", f"Evidence {claim.get('evidence_id')} references unknown source {source_id}", "evidence/evidence_ledger.json")
-            else:
-                _parse_status, allowed_use = source_status.get(source_id, (None, None))
-                if allowed_use == "do_not_use":
+                continue
+            parse_status, allowed_use = source_status.get(source_id, (None, None))
+            source = source_by_id.get(str(source_id), {})
+            if str(source_id) in high_risk_source_ids:
+                high_risk_support = True
+            if allowed_use in {"do_not_use", "metadata_only"} and claim.get("use_policy") != "do_not_use":
+                report.add(
+                    "unusable_source",
+                    f"Evidence {claim.get('evidence_id')} uses source {source_id} with allowed_use={allowed_use} without do_not_use policy",
+                    "evidence/evidence_ledger.json",
+                    evidence_lineage_severity,
+                )
+            if ref.get("support_type") == "direct" and parse_status == "parsed" and source.get("kind") != "web":
+                direct_parsed_support = True
+            if source.get("ingestion"):
+                chunk = source_chunks_by_locator.get(str(source_id), {}).get(str(ref.get("locator")))
+                if chunk is None:
                     report.add(
-                        "unusable_source",
-                        f"Evidence {claim.get('evidence_id')} references source {source_id} marked do_not_use",
+                        "invalid_evidence_locator",
+                        f"Evidence {claim.get('evidence_id')} locator is absent from current Source Snapshot: {source_id} {ref.get('locator')}",
                         "evidence/evidence_ledger.json",
+                        evidence_lineage_severity,
                     )
+                elif production_claim:
+                    bound_chunk_id = ref.get("chunk_id")
+                    bound_content_hash = ref.get("content_hash")
+                    if not bound_chunk_id or not bound_content_hash:
+                        report.add(
+                            "incomplete_evidence_source_binding",
+                            f"Evidence {claim.get('evidence_id')} lacks chunk_id/content_hash for Production source ref {source_id} {ref.get('locator')}",
+                            "evidence/evidence_ledger.json",
+                        )
+                    elif (
+                        bound_chunk_id != chunk.get("chunk_id")
+                        or bound_content_hash != chunk.get("content_hash")
+                    ):
+                        report.add(
+                            "stale_evidence_source_binding",
+                            f"Evidence {claim.get('evidence_id')} source binding no longer matches current Source Chunk at {source_id} {ref.get('locator')}",
+                            "evidence/evidence_ledger.json",
+                            evidence_lineage_severity,
+                        )
+                    elif ref.get("support_type") in {"direct", "indirect"} and claim.get("claim_key"):
+                        try:
+                            current_key = claim_key(str(chunk.get("text", "")))
+                        except Exception as exc:  # noqa: BLE001
+                            report.add(
+                                "invalid_evidence_source_content",
+                                f"Evidence {claim.get('evidence_id')} cannot derive current source claim key: {exc}",
+                                "evidence/evidence_ledger.json",
+                            )
+                        else:
+                            if current_key != claim.get("claim_key"):
+                                report.add(
+                                    "stale_evidence_source_content",
+                                    f"Evidence {claim.get('evidence_id')} no longer matches current source content at {source_id} {ref.get('locator')}",
+                                    "evidence/evidence_ledger.json",
+                                    evidence_lineage_severity,
+                                )
+        if production_claim:
+            status = claim.get("support_status")
+            policy = claim.get("use_policy")
+            if status == "verified" and not direct_parsed_support:
+                report.add(
+                    "invalid_verified_evidence",
+                    f"Evidence {claim.get('evidence_id')} is verified without direct parsed non-Web support",
+                    "evidence/evidence_ledger.json",
+                    evidence_lineage_severity,
+                )
+            if status in {"unsupported", "disputed"} and policy != "do_not_use":
+                report.add(
+                    "unsafe_evidence_policy",
+                    f"Evidence {claim.get('evidence_id')} status={status} requires do_not_use",
+                    "evidence/evidence_ledger.json",
+                )
+            if status == "provisional" and policy == "allowed_with_citation":
+                report.add(
+                    "unsafe_evidence_policy",
+                    f"Evidence {claim.get('evidence_id')} provisional support requires qualification or stricter policy",
+                    "evidence/evidence_ledger.json",
+                )
+            if high_risk_support:
+                reason_codes = set(
+                    claim.get("adjudication", {}).get("reason_codes", [])
+                )
+                if status == "verified":
+                    report.add(
+                        "invalid_high_risk_evidence",
+                        f"Evidence {claim.get('evidence_id')} cannot be verified while backed by a high-risk Source",
+                        "evidence/evidence_ledger.json",
+                        evidence_lineage_severity,
+                    )
+                if "high_risk_source_requires_qualification" not in reason_codes:
+                    report.add(
+                        "incomplete_high_risk_evidence_adjudication",
+                        f"Evidence {claim.get('evidence_id')} lacks the high-risk qualification reason",
+                        "evidence/evidence_ledger.json",
+                        evidence_lineage_severity,
+                    )
+
+    for group_id, stances in conflict_stances_by_group.items():
+        if not {"supports", "opposes"}.issubset(stances):
+            continue
+        for claim in claims:
+            if claim.get("conflict_group") != group_id:
+                continue
+            if claim.get("support_status") != "disputed" or claim.get("use_policy") != "do_not_use":
+                report.add(
+                    "unresolved_evidence_conflict",
+                    f"Conflict group {group_id} contains opposing stances but {claim.get('evidence_id')} is not disputed/do_not_use",
+                    "evidence/evidence_ledger.json",
+                )
 
     narrative = loaded.get("narrative_blueprint", {})
     narrative_sections = narrative.get("sections", [])
@@ -424,8 +874,16 @@ def _validate_cross_references(
     layout = loaded.get("layout_plans", {})
     plans = layout.get("plans", [])
     plan_ids = [plan["slide_id"] for plan in plans if "slide_id" in plan]
+    layout_reference_severity = (
+        "warning" if artifact_status.get("layout_plans") == "draft" else "error"
+    )
     if "layout_plans" in loaded and slide_ids and set(plan_ids) != set(slide_ids):
-        report.add("layout_coverage_mismatch", f"Layout IDs {sorted(plan_ids)} do not match Outline IDs {sorted(slide_ids)}", "layout/layout_plans.json")
+        report.add(
+            "layout_coverage_mismatch",
+            f"Layout IDs {sorted(plan_ids)} do not match Outline IDs {sorted(slide_ids)}",
+            "layout/layout_plans.json",
+            layout_reference_severity,
+        )
     _unique_ids(report, plan_ids, "layout/layout_plans.json", "layout plan")
     canvas = layout.get("canvas", {})
     width, height = canvas.get("width", 0), canvas.get("height", 0)
@@ -465,12 +923,18 @@ def _validate_cross_references(
                 "block_coverage_mismatch",
                 f"{slide_id} layout must place every content block exactly once",
                 "layout/layout_plans.json",
+                layout_reference_severity,
             )
         for region in regions:
             slide_id = plan.get("slide_id", "")
             block_id = region.get("block_id")
             if block_id not in block_map.get(slide_id, set()):
-                report.add("missing_block_ref", f"Region {region.get('region_id')} references unknown block {block_id} for {slide_id}", "layout/layout_plans.json")
+                report.add(
+                    "missing_block_ref",
+                    f"Region {region.get('region_id')} references unknown block {block_id} for {slide_id}",
+                    "layout/layout_plans.json",
+                    layout_reference_severity,
+                )
             if region.get("x", 0) + region.get("w", 0) > width or region.get("y", 0) + region.get("h", 0) > height:
                 report.add("region_out_of_canvas", f"Region {region.get('region_id')} exceeds {width}x{height} canvas", "layout/layout_plans.json")
             if plan.get("layout_family") != "full-bleed":
@@ -628,6 +1092,17 @@ def _validate_cross_references(
             report.add("missing_render_output", f"Render output does not exist: {output.get('path')}", "renders/render_manifest.json")
         elif output.get("sha256") != sha256_file(output_path):
             report.add("render_output_hash_mismatch", f"Render output hash mismatch: {output.get('path')}", "renders/render_manifest.json")
+    if render.get("pipeline_mode") == "production_multi_backend":
+        for message in production_render_manifest_reference_errors(
+            workspace,
+            render,
+            registry.schema_dir,
+        ):
+            report.add(
+                "invalid_production_render_manifest",
+                message,
+                "renders/render_manifest.json",
+            )
 
     delivery = loaded.get("delivery_manifest", {})
     for artifact_version in delivery.get("artifact_versions", []):

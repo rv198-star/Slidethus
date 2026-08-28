@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from slidethus.artifact_runtime import ArtifactRuntime
-from slidethus.errors import SourceIngestionError, UnsupportedSourceError
+from slidethus.errors import ArtifactConflictError, SourceIngestionError, UnsupportedSourceError
 from slidethus.ingestion import (
     ParserRegistry,
     TextSourceParser,
@@ -87,7 +87,7 @@ def test_text_parser_enforces_limits_and_rejects_binary(tmp_path: Path) -> None:
         )
 
 
-def test_text_detection_handles_utf16_and_defers_csv_to_m2_2(tmp_path: Path) -> None:
+def test_text_detection_handles_utf16_and_csv_uses_its_own_adapter(tmp_path: Path) -> None:
     utf16 = tmp_path / "source.txt"
     utf16.write_text("UTF-16 来源", encoding="utf-16")
 
@@ -102,9 +102,14 @@ def test_text_detection_handles_utf16_and_defers_csv_to_m2_2(tmp_path: Path) -> 
     csv_source = tmp_path / "table.csv"
     csv_source.write_text("name,value\na,1\n", encoding="utf-8")
     assert detect_source_format(csv_source).family == "csv"
+    csv_result = default_parser_registry().parse(
+        SourceParseRequest(path=csv_source, source_id="SRC-002")
+    )
+    assert csv_result.parser_name == "csv-source-parser"
     with pytest.raises(UnsupportedSourceError):
-        default_parser_registry().parse(
-            SourceParseRequest(path=csv_source, source_id="SRC-002")
+        parse_source(
+            TextSourceParser(),
+            SourceParseRequest(path=csv_source, source_id="SRC-002"),
         )
 
 
@@ -231,6 +236,90 @@ def test_immutable_json_create_never_replaces_existing_content(tmp_path: Path) -
     assert read_json(path) == {"winner": 1}
 
 
+def test_source_format_change_after_registry_selection_is_rejected(
+    tmp_path: Path,
+) -> None:
+    class FormatMutatingParser(TextSourceParser):
+        name = "format-mutating-text-parser"
+
+        def parse(self, request, detected_format):
+            request.path.write_bytes(b"%PDF-1.4\n%%EOF\n")
+            return super().parse(request, detected_format)
+
+    workspace = init_workspace(tmp_path / "workspace", title="Format mutation guard")
+    source = tmp_path / "source.txt"
+    source.write_text("plain text", encoding="utf-8")
+    service = SourceIngestionService(
+        workspace,
+        parser_registry=ParserRegistry([FormatMutatingParser()]),
+    )
+
+    with pytest.raises(SourceIngestionError, match="format changed"):
+        service.ingest(source)
+
+    assert ArtifactRuntime(workspace).show_artifact("source_ledger")["sources"] == []
+    assert not list((workspace / ".slidethus/cache/ingestion").glob("*.json"))
+
+
+def test_source_change_during_parse_never_publishes_a_snapshot_or_ledger_version(
+    tmp_path: Path,
+) -> None:
+    class MutatingParser(TextSourceParser):
+        name = "mutating-text-parser"
+
+        def parse(self, request, detected_format):
+            result = super().parse(request, detected_format)
+            request.path.write_text("changed after parse", encoding="utf-8")
+            return result
+
+    workspace = init_workspace(tmp_path / "workspace", title="Mutation guard")
+    source = tmp_path / "source.txt"
+    source.write_text("original", encoding="utf-8")
+    service = SourceIngestionService(
+        workspace,
+        parser_registry=ParserRegistry([MutatingParser()]),
+    )
+
+    with pytest.raises(SourceIngestionError, match="changed during parsing"):
+        service.ingest(source)
+
+    assert ArtifactRuntime(workspace).show_artifact("source_ledger")["sources"] == []
+    assert not list((workspace / ".slidethus/cache/ingestion").glob("*.json"))
+
+
+def test_partial_production_source_without_snapshot_is_invalid(tmp_path: Path) -> None:
+    workspace = init_workspace(tmp_path / "workspace", title="Partial snapshot contract")
+    ledger_path = workspace / "sources/source_ledger.json"
+    ledger = read_json(ledger_path)
+    ledger["sources"].append(
+        {
+            "source_id": "SRC-001",
+            "kind": "user_file",
+            "title": "Partial source",
+            "path_or_url": "/tmp/partial.png",
+            "ownership": "user_owned",
+            "confidentiality": "internal",
+            "authority_tier": "user",
+            "freshness_date": None,
+            "retrieved_at": None,
+            "content_hash": "sha256:" + "0" * 64,
+            "media_type": "image/png",
+            "size_bytes": 1,
+            "parse_status": "partial",
+            "allowed_use": "internal_only",
+            "notes": [],
+        }
+    )
+    ledger_path.write_text(
+        json.dumps(ledger, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    report = validate_workspace(workspace)
+
+    assert any(issue.code == "missing_source_snapshot" for issue in report.issues)
+
+
 def test_snapshot_tampering_is_detected_by_workspace_validation(tmp_path: Path) -> None:
     workspace = init_workspace(tmp_path / "workspace", title="Snapshot validation")
     source = _markdown(tmp_path / "source.md")
@@ -271,4 +360,35 @@ def test_orphan_snapshot_after_failed_ledger_commit_is_safe_and_reusable(
     recovered = SourceIngestionService(workspace).ingest(source)
     assert recovered.changed
     assert recovered.snapshot_path == orphaned[0]
+    assert validate_workspace(workspace, check_hashes=True).ok
+
+
+def test_source_ingestion_rejects_stale_ledger_snapshot_on_concurrent_writer(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    workspace = init_workspace(tmp_path / "workspace", title="Concurrent source ingestion")
+    first_source = _markdown(tmp_path / "first.md")
+    second_source = tmp_path / "second.md"
+    second_source.write_text("# Second\n\nConcurrent fact.\n", encoding="utf-8")
+    runtime = ArtifactRuntime(workspace)
+    service = SourceIngestionService(workspace, runtime=runtime)
+    original_write = runtime.write_artifact
+    raced = False
+
+    def racing_write(artifact_type, data, **kwargs):
+        nonlocal raced
+        if artifact_type == "source_ledger" and not raced:
+            raced = True
+            SourceIngestionService(workspace).ingest(second_source)
+        return original_write(artifact_type, data, **kwargs)
+
+    monkeypatch.setattr(runtime, "write_artifact", racing_write)
+
+    with pytest.raises(ArtifactConflictError, match="Version conflict for source_ledger"):
+        service.ingest(first_source)
+
+    ledger = ArtifactRuntime(workspace).show_artifact("source_ledger")
+    assert len(ledger["sources"]) == 1
+    assert ledger["sources"][0]["path_or_url"] == str(second_source.resolve())
     assert validate_workspace(workspace, check_hashes=True).ok

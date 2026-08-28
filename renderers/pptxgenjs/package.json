@@ -1,0 +1,17 @@
+{
+  "name": "@slidethus/pptxgenjs-renderer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "2.6.2",
+    "pdf-lib": "1.17.1",
+    "pptxgenjs": "4.0.1"
+  }
+}

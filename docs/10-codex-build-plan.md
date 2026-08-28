@@ -27,7 +27,7 @@ init project
   → recover and read same state
 ```
 
-M2.1 已完成该切片的来源侧：用户文件进入版本化 Source Ledger，并持久化可校验、可中断恢复的 locator/Chunk 快照。后续 M2.2–M2.5 继续补齐多格式适配、带 locator 的 Evidence、research lineage 与 Evidence Gate；在生产 Evidence Gate 完成前，MVP 的 Minimal Evidence 不能被描述为完整 M2。
+M2.1–M2.7、M3.1–M3.7 与 M4.1–M4.7 已完成并分别通过 M2/M3/M4 Exit Gate。M2 链为多格式 Source Snapshot → resumable two-pass Research → Result 物化/裁决 → block binding/Gap Report → targeted handoff/P2 rework；M3 链为 minimum-question Brief → provider-neutral Narrative → stable digital-sticky Outline → Evidence-qualified Slide Specs → targeted G5A → Layout/immutable wireframes → Planning Review/bounded Repair；M4 链为 Production Visual System → immutable Renderer IR → Final SVG/PptxGenJS Native/Hybrid → Asset/Font/Geometry Preflight → PNG/PDF export → measured editability → Production Render Manifest/G7。接手者应从 M5 Review and Repair Loop 开始，不要重做或绕过 M2/M3/M4，也不要把 Review 逻辑塞进 renderer 私有状态。
 
 ## 3. 工作拆分
 

@@ -15,9 +15,19 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ingestion = [
+  "pypdf>=5,<7",
+  "python-docx>=1.1,<2",
+  "openpyxl>=3.1,<4",
+  "Pillow>=10,<13",
+]
 dev = [
   "pytest>=8,<10",
   "ruff>=0.6,<1",
+  "pypdf>=5,<7",
+  "python-docx>=1.1,<2",
+  "openpyxl>=3.1,<4",
+  "Pillow>=10,<13",
 ]
 
 [project.scripts]

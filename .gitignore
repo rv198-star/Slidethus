@@ -6,6 +6,7 @@ __pycache__/
 build/
 dist/
 *.egg-info/
+**/node_modules/
 .env
 .codex-log/
 **/.slidethus/runtime.lock

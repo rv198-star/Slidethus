@@ -1,4 +1,4 @@
-# Slidethus v0.4.0 — Complete Action-Chain MVP
+# Slidethus v0.4.0 — Complete Action-Chain MVP + M2/M3 Production Boundaries
 
 > 面向通用 Agentic Host 的 **Agentic Presentation Engineering Skill**：从本地文本依次产出策划稿、布局诊断、调试稿、设计稿和最终可编辑 PPTX。
 
@@ -21,7 +21,19 @@ Slidethus 不是“输入标题后套模板”的 PPT 生成器，而是一套�
 - `SourceParser` / `ReasoningProvider` / `RenderBackend` / `DocumentRenderer` 可替换接口；
 - M2.1 Parser Registry、格式识别、稳定 Chunk/locator/hash、source risk 与资源限额；
 - Markdown/TXT Production 摄取、create-if-absent 不可变快照、Source Ledger lineage、幂等复用与故障恢复；
-- 用户来源限定的行号 evidence，以及规则式 Narrative/Outline/Slide Specs/Layout/Visual System MinimalImpl；
+- M2.2 HTML、PDF、DOCX、PPTX、CSV/TSV、XLSX 与常见图片元数据适配器；
+- OOXML ZIP preflight、格式原生 locator、公式/链接隔离、EXIF 隐私风险和 `parsed/partial` 能力状态；
+- M2.3 orientation/targeted Research Plan、provider/version lineage、可恢复 Research Run、不可变 query cache、TTL/generation invalidation 与 offline fail-closed；
+- M2.4 deterministic Evidence Engine：Research Result → partial Web Source、stable Candidate/Evidence IDs、exact dedupe、Chunk/hash binding、conflict/freshness/authority/use policy 与 semantic cycle completion；
+- M2.5 current-version Outline/Block Evidence binding、content-addressed Gap Report、targeted plan handoff 与正式 P2 rework；
+- M2.6 单一 application orchestrator、显式 disclosure/degradation、高风险 Source 隔离、应用级 budgets、M2 Report 与 `m2` CLI；
+- M2.7 repository-wide deterministic Exit validator、跨模块对抗审计、双 Python 基线与持久 Package Gate；
+- M3.1 Project Brief 智能补全、最少提问、显式 assumptions/questions 和 `m3 answer` 恢复；
+- M3.2–M3.5 provider-neutral Production Narrative、stable digital sticky-note Outline、Evidence-qualified Slide Specs、Layout Plans 与 immutable wireframes；
+- M3.6 Planning Review：密度、重复、节奏、过渡、容量、Bento 过度使用和 current-lineage 审计；
+- M3.6 bounded local Repair、Planning Change/Review/Repair Reports、最小依赖传播和失败检查点；
+- M3.7 单一 `M3ApplicationService`、`m3 run/list/show/gate`、repository Exit validator 与 M4 handoff；
+- 用户来源限定的行号 evidence，以及规则式 Narrative/Outline/Slide Specs/Layout/Visual System MinimalImpl 回归链；
 - 独立的策划灰模、布局诊断和带 Region/Block 映射的调试性 PPTX；
 - 消费 Layout Plans 与 Visual System 的 Minimal DesignImpl 和设计预览；
 - 基于 `python-pptx` 的最终原生文本/简单形状 PPTX，实测编辑等级 E3；
@@ -29,22 +41,20 @@ Slidethus 不是“输入标题后套模板”的 PPT 生成器，而是一套�
 - `Render Manifest.pipeline_stages` 记录七个动作及其独立输出；
 - `slidethus mvp` 从单个用户文件贯通 G0–G9，缺少任一步骤不能冒充完整 MVP；
 - 一个完整的最小示例项目；
-- 五轮独立审计记录、自动审计脚本和 SHA-256 清单；
+- 各里程碑两轮审计、repository-wide M2/M3 Exit 审计、自动审计脚本和 SHA-256 清单；
 - 用户提供的 PPT Agent 素材、原始提示词和来源边界说明。
 
 ## 这不是什么
 
-当前包已经完成 **M0 Foundation Contract**、**M1 Artifact Runtime**、**MVP0 Planning Proof**、跨 M2–M5 的 **MVP1 完整动作链**，以及 M2 的首个子模块 **M2.1 Ingestion Core**，但不是生产级端到端 PPT 产品。以下能力仍未完成：
+当前包已经完成 **M0 Foundation Contract**、**M1 Artifact Runtime**、**MVP0 Planning Proof**、跨 M2–M5 的 **MVP1 完整动作链**、**M2 Production Source/Research/Evidence Boundary**、**M3 Narrative/Planning Production Boundary** 和 **M4 Production Rendering Boundary**。**M2 Exit Gate：PASS（2026-08-27）。M3 Exit Gate：PASS（2026-08-27）。M4 Exit Gate：PASS（2026-08-28）。** 但 Slidethus 仍不是生产级端到端 PPT 产品。以下能力仍未完成：
 
-- LLM/搜索/图片生成服务的真实适配；
-- PDF/DOCX/PPTX/图片/表格等多格式摄取；
-- LLM 驱动的受众化叙事与页面策划；
-- 最终视觉 SVG 生成和复杂视觉资产；
-- PptxGenJS 原生/混合 PPTX 渲染；
-- 视觉模型驱动的自动审计与局部修复；
+- 内置搜索供应商、LLM/图片生成服务的真实适配；
+- OCR、图片语义理解、音视频解释、公式计算和旧版 OLE/宏文件解析；
+- 真实 LLM PlanningProvider 适配及其独立模型评测；
+- M5 独立视觉/语义审计、局部修复和 golden-deck 质量收敛；
 - GUI、云端服务、多租户和商业化能力。
 
-MVP1 的规则式 MinimalImpl 只使用用户提供的 Markdown/TXT，并明确声明 D3、E3 和所有限制。它证明每个基本动作都有独立产物与验收，不代表 M2–M5 的完整 Exit Gate 或生产级设计质量已完成。
+MVP1 的 MinimalImpl 仍只是跨里程碑回归切片。M2.2 的 `partial` 来源只提供已记录文本/元数据，Research Result 仍不是事实；M3 的确定性 PlanningProvider 是真实 Production contract baseline，但不声称具备通用 LLM 叙事智能。M4 已提供 Final SVG、PptxGenJS Native、Hybrid、PNG/PDF export、资产/字体/几何 preflight 和实测 editability，但 M4 Exit PASS 不代表 M5 独立视觉质量审计、自动修复或完整端到端产品已经完成。
 
 ## 核心设计
 
@@ -99,9 +109,18 @@ py -3.11 -m venv .venv
 python -m pip install -e ".[dev]"
 ```
 
+只安装运行时多格式摄取能力时可使用：
+
+```bash
+python -m pip install -e '.[ingestion]'
+```
+
+基础安装仍只包含确定性核心、JSON Schema 与 `python-pptx`；PDF、DOCX、XLSX 和图片适配器缺少可选依赖时会返回明确的 `SourceCapabilityError`，不会伪装成解析成功。
+
 ### 3. 验证基础包
 
 ```bash
+slidethus doctor
 python -m pytest
 python scripts/validate_all.py
 python scripts/audit_package.py
@@ -145,9 +164,103 @@ slidethus validate /tmp/slidethus-source --check-hashes
 
 生产摄取会把解析正文写入 `.slidethus/cache/ingestion/` 的不可变快照，并在 Source Ledger 中记录 parser、格式、限额、快照哈希与风险计数。重复执行不会增加 artifact 版本；修改来源权限策略会版本化 Ledger；修改来源字节、parser 版本或解析限额会生成新快照。
 
-当前 admitted adapter 仅支持 Markdown/TXT。CSV、HTML、PDF、DOCX、PPTX、XLSX 和图片会在 M2.2 适配器完成前显式返回 unsupported。
+当前 Production adapters：
 
-### 6. 从 Markdown/TXT 生成真实 PPTX
+| 格式 | 主要 locator / 结果 | 能力边界 |
+|---|---|---|
+| Markdown/TXT | 标题、段落、行号/字符范围 | 完整文本解析 |
+| HTML | title、语义元素、表格行、图片 alt | script/style/template 不执行；链接只保留不打开 |
+| CSV/TSV | 逻辑行与物理行范围 | 公式样式文本只记录风险，不计算 |
+| PDF | 页码 | 只提取文本；无文本页、表单/批注触发 `partial`，不 OCR |
+| DOCX | 段落、表格、页眉页脚、文本框、图片 alt | 图片、评论、脚注/尾注、公式等遗漏触发 `partial` |
+| PPTX | 幻灯片、形状、表格、图表、备注、图片元数据 | 图片/SmartArt/音视频等不解释并触发 `partial` |
+| XLSX | 工作表、行、单元格坐标 | 不计算公式；评论、图表、媒体触发 `partial` |
+| PNG/JPEG/GIF/WebP/BMP/TIFF/ICO | 尺寸、格式、帧、有限 EXIF 文本 | 始终为元数据级 `partial`，不 OCR/视觉理解 |
+
+宏启用 OOXML、加密 PDF、旧版 OLE Office、SVG 和其他没有 admitted adapter 的格式继续 fail closed。OOXML 在库打开前验证 ZIP 条目、单成员/总展开大小、重名、路径穿越、symlink、加密、VBA、外部关系和嵌入对象。
+
+### 5.1 规划和检查 Research Runtime
+
+```bash
+slidethus research plan <workspace> orientation
+slidethus research plan <workspace> targeted --slide-id S-003
+slidethus research list <workspace>
+slidethus research show <workspace> RRN-XXXXXXXXXXXXXXXX
+slidethus research invalidate <workspace> RRN-XXXXXXXXXXXXXXXX \
+  --query-id RQ-001 --reason "source or freshness changed"
+```
+
+这些命令负责 deterministic plan 和运行时 lineage 检查/失效，不内置具体 Web 搜索供应商。Research Result 只有在来源物化和 Evidence 裁决后才可进入事实链。
+
+### 5.2 物化并裁决 Production Evidence
+
+```bash
+# 把一个已摄取 Source 的 Chunks 转为保守 Evidence Candidates 并裁决
+slidethus evidence source <workspace> SRC-001 \
+  --freshness-cutoff 2026-08-01
+
+# 修复 Source 更新后失效的 Production Evidence，不添加新 Candidate
+slidethus evidence reconcile <workspace> \
+  --freshness-cutoff 2026-08-01
+
+# 把 complete Research Run 先物化为 partial Web Sources，再裁决并完成 semantic cycle
+slidethus evidence research <workspace> RRN-XXXXXXXXXXXXXXXX \
+  --freshness-cutoff 2026-08-01
+
+slidethus evidence show <workspace>
+slidethus evidence show <workspace> EVD-001
+slidethus gate <workspace> G2
+```
+
+Production Evidence 绑定 `source_id + locator + chunk_id + content_hash`，并记录 Candidate/Research/conflict/freshness/authority lineage。Provider summary 未抓取远程正文时只能得到 provisional/qualified Evidence；本地 Source 与 Research summary 都执行 Source-risk 扫描。high-risk promotion 需要 `--allow-high-risk-source-evidence`，即使显式允许也保持 qualified。Source 更新会使旧 Evidence draft 并阻断 G2，直到 reconcile 或重新裁决。
+
+### 5.3 检查页面/Block Evidence gap 并返工
+
+```bash
+slidethus evidence gaps <workspace>
+slidethus evidence targeted-plan <workspace>
+slidethus evidence complete-user-targeted <workspace>
+slidethus evidence rework <workspace> --reason "required block proof is missing"
+slidethus gate <workspace> G5A
+```
+
+Gap Report 绑定当前 Brief、Source、Evidence、Outline 和 Slide Specs 版本；required factual block 必须使用已知、可用 Evidence，qualified support 必须有显式 qualification。外部研究关闭且用户材料已覆盖全部缺口时，可用 `complete-user-targeted` 完成 query_count=0 的 targeted review；Web/Research Run lineage 仍必须走 M2.4 Evidence Engine。
+
+### 5.4 使用集成 M2 Application 边界
+
+```bash
+# 本地用户材料：从 resolved Brief + Sources 推进到 G2，并重验证已有 planning artifacts
+slidethus m2 run <workspace> --source <file> [--source <file> ...]
+
+# Brief 要求外部研究但当前 CLI 无 provider 时，只有显式接受且无 freshness 要求才允许 D3
+slidethus m2 run <workspace> --source <file> --allow-research-degraded
+
+slidethus m2 list <workspace>
+slidethus m2 show <workspace> M2R-XXXXXXXXXXXXXXXX
+slidethus m2 gate <workspace>
+```
+
+CLI 故意不内置在线 ResearchProvider。Python 调用方可注入 provider，但实际执行还需要独立 external-disclosure approval。high-severity Source 默认只进入 inventory，不自动提升为 Evidence；应用同时检查 requested/current/final Source 与 Research budgets。每次运行生成 `.slidethus/m2/runs/` 下的不可变 M2 Application Report，并在 `.slidethus/m2/research-runs/` 固化所引用的 Research Run/cache lineage；这些都是工作区操作事实，不是 Delivery Manifest，也不能单独作为 M4/M5 完成证据。
+
+### 5.5 使用集成 M3 Planning 边界
+
+```bash
+# 从一句话需求和本地 Sources 推进到经审计的 P5B Layout/wireframes
+slidethus m3 run <workspace> \
+  --source <file> \
+  --request "给管理层做一份 10 页方案汇报，推动立项决策"
+
+# Brief 返回 needs_input 时，回答材料性问题并恢复
+slidethus m3 answer <workspace> Q-903 "企业管理层"
+
+slidethus m3 list <workspace>
+slidethus m3 show <workspace> M3R-XXXXXXXXXXXXXXXX
+slidethus m3 gate <workspace>
+```
+
+M3 CLI 使用内置 DeterministicPlanningProvider，提供离线、provider-neutral 的 Production contract baseline；它不内置 LLM SDK，也不声称等价于通用模型的受众洞察。运行链会生成 current Narrative、stable `S-*` Outline、Evidence-qualified `BLK-*` Slide Specs、stable `REG-*` Layout、content-addressed wireframes、`PRV-*` Planning Review，并在准入时生成 `PCH-*` Change / `PRP-*` Repair facts。`M3 Application Report` 记录最终 P0/P2/P3/P4/P5A/P5B 层级，不能把部分失败或灰模冒充最终设计。
+
+### 6. 从已支持来源格式生成真实 PPTX
 
 ```bash
 slidethus mvp /tmp/slidethus-demo \
@@ -213,7 +326,7 @@ audit/                      本包审计记录与完整性清单
 ## 版本定位
 
 - 包版本：`0.4.0`
-- 成熟度：MVP1 Complete Action Chain + M2.1 Ingestion Core（M2.2–M2.7 与 M3–M5 仍未完整）
+- 成熟度：MVP1 Complete Action Chain + M2 Source/Research/Evidence + M3 Narrative/Planning + M4 Production Rendering Boundaries（M2/M3/M4 Exit PASS；M5 仍未完成）
 - 默认语言：中文
 - 逻辑画布：`1280 × 720`
 - 推荐最终渲染：Hybrid（原生文本/形状 + SVG/图片复杂视觉）
@@ -221,4 +334,4 @@ audit/                      本包审计记录与完整性清单
 
 ## 下一步
 
-下一步是 **M2.2 Multi-format Adapters**：在同一 Parser Registry、快照和失败语义下实现 HTML、PDF、DOCX、PPTX、CSV/XLSX 与图片元数据适配器。后续能力继续逐个用 ProductionImpl 替换当前 MinimalImpl，不改变 Artifact Runtime、语义 Schema 或 Gate 标准。
+下一步是 **M5 Review and Repair Loop**：在冻结的 M2/M3/M4 边界上实现独立确定性/语义/视觉审计、开放问题发现、维度评分、局部 Repair Plan、跨页一致性回归和 golden-deck 质量基线。不要重做 M2/M3/M4，也不要把 Review 结论反向藏进 renderer 私有状态。

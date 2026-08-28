@@ -165,6 +165,34 @@ def test_g2_requires_completed_orientation_cycle(tmp_path) -> None:
     assert "orientation research cycle is not complete or waived" in result.reasons
 
 
+def test_g2_citation_policy_rejects_inference_only_ledger(tmp_path) -> None:
+    import json
+    import shutil
+
+    root = find_repository_root()
+    workspace = tmp_path / "project"
+    shutil.copytree(root / "examples/minimal_project", workspace)
+    evidence_path = workspace / "evidence/evidence_ledger.json"
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    for claim in evidence["claims"]:
+        claim["support_status"] = "inference"
+        claim["source_refs"] = []
+        claim["use_policy"] = "allowed_with_qualification"
+    evidence_path.write_text(
+        json.dumps(evidence, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    _sync_runtime_metadata(workspace, "evidence_ledger")
+
+    result = evaluate_gate(workspace, "G2")
+
+    assert result.status == "fail"
+    assert (
+        "citation policy requires at least one usable source-backed claim"
+        in result.reasons
+    )
+
+
 def test_g5a_requires_targeted_cycle_for_current_outline_version(tmp_path) -> None:
     import json
     import shutil

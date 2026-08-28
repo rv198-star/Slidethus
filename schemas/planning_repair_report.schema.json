@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/planning-repair-report.schema.json",
+  "title": "Planning Repair Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "project_id", "repair_id", "generated_at", "status",
+    "reason", "planning_limits", "planning_provider", "source_review", "result_review", "issue_ids", "target_phase", "actions",
+    "downstream_invalidated", "remaining_issue_ids", "result_summary"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "pattern": "^0\\.1\\.[0-9]+$"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "repair_id": {"type": "string", "pattern": "^PRP-[A-F0-9]{16}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "status": {"enum": ["applied", "blocked", "noop"]},
+    "reason": {"type": "string", "minLength": 1, "maxLength": 4000},
+    "planning_limits": {"$ref": "#/$defs/planningLimits"},
+    "planning_provider": {"$ref": "#/$defs/providerIdentity"},
+    "source_review": {"$ref": "#/$defs/reviewRef"},
+    "result_review": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/reviewRef"}
+      ]
+    },
+    "issue_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^PRI-[A-F0-9]{16}$"}
+    },
+    "target_phase": {
+      "enum": ["BRIEF_READY", "EVIDENCE_READY", "NARRATIVE_READY", "OUTLINE_READY", "SLIDE_SPECS_READY", "LAYOUT_READY"]
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action_id", "operation", "artifact_type", "slide_id", "before_ref",
+          "after_ref", "change_report_id", "detail"
+        ],
+        "properties": {
+          "action_id": {"type": "string", "pattern": "^PRA-[0-9]{3}$"},
+          "operation": {
+            "enum": [
+              "outline_update", "spec_layout_family", "regenerate_slide_specs",
+              "complete_targeted_cycle", "regenerate_layout", "record_gate",
+              "planning_review", "route_manual"
+            ]
+          },
+          "artifact_type": {
+            "enum": [
+              "deck_outline", "evidence_ledger", "slide_specs", "layout_plans",
+              "gate_results", "planning_review_report"
+            ]
+          },
+          "slide_id": {"type": ["string", "null"], "pattern": "^S-[0-9]{3}$"},
+          "before_ref": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/artifactRef"}]},
+          "after_ref": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/artifactRef"}]},
+          "change_report_id": {"type": ["string", "null"], "pattern": "^PCH-[A-F0-9]{16}$"},
+          "detail": {"type": "string", "minLength": 1, "maxLength": 4000}
+        }
+      }
+    },
+    "downstream_invalidated": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": ["slide_specs", "layout_plans", "visual_system", "render_manifest", "quality_report", "delivery_manifest"]
+      }
+    },
+    "remaining_issue_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^PRI-[A-F0-9]{16}$"}
+    },
+    "result_summary": {"type": "string", "minLength": 1, "maxLength": 4000}
+  },
+  "$defs": {
+    "planningLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_blocking_questions", "max_assumptions", "max_sections", "max_slides",
+        "max_blocks_per_slide", "max_words_per_slide", "max_provider_payload_bytes",
+        "max_change_targets"
+      ],
+      "properties": {
+        "max_blocking_questions": {"type": "integer", "minimum": 1, "maximum": 12},
+        "max_assumptions": {"type": "integer", "minimum": 1, "maximum": 999},
+        "max_sections": {"type": "integer", "minimum": 1, "maximum": 99},
+        "max_slides": {"type": "integer", "minimum": 1, "maximum": 999},
+        "max_blocks_per_slide": {"type": "integer", "minimum": 1, "maximum": 99},
+        "max_words_per_slide": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "max_provider_payload_bytes": {"type": "integer", "minimum": 1, "maximum": 10485760},
+        "max_change_targets": {"type": "integer", "minimum": 1, "maximum": 999}
+      }
+    },
+    "providerIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 128},
+        "version": {"type": "string", "minLength": 1, "maxLength": 128}
+      }
+    },
+    "reviewRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["report_id", "path", "sha256"],
+      "properties": {
+        "report_id": {"type": "string", "pattern": "^PRV-[A-F0-9]{16}$"},
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_type", "version", "content_hash"],
+      "properties": {
+        "artifact_type": {
+          "enum": ["deck_outline", "evidence_ledger", "slide_specs", "layout_plans", "gate_results"]
+        },
+        "version": {"type": "integer", "minimum": 1},
+        "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      }
+    }
+  }
+}

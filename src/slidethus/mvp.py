@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from slidethus.artifact_runtime import ArtifactRuntime
-from slidethus.ingestion import ParserRegistry, TextSourceParser
+from slidethus.ingestion import ParserRegistry, default_parser_registry
 from slidethus.io_utils import sha256_file
 from slidethus.minimal_providers import RuleBasedReasoningProvider
 from slidethus.pptx_backend import (
@@ -258,7 +258,11 @@ def build_minimal_mvp(
     source_path = config.source.resolve()
     if not source_path.is_file():
         raise FileNotFoundError(source_path)
-    parser = source_parser or TextSourceParser()
+    parser_registry = (
+        ParserRegistry([source_parser])
+        if source_parser is not None
+        else default_parser_registry()
+    )
 
     workspace = init_workspace(
         config.workspace,
@@ -269,7 +273,7 @@ def build_minimal_mvp(
     runtime = ArtifactRuntime(workspace)
     ingestion = SourceIngestionService(
         workspace,
-        parser_registry=ParserRegistry([parser]),
+        parser_registry=parser_registry,
         runtime=runtime,
     ).ingest(
         source_path,

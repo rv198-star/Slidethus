@@ -43,6 +43,12 @@
       "type": "string",
       "format": "date-time"
     },
+    "parse_status": {
+      "enum": [
+        "parsed",
+        "partial"
+      ]
+    },
     "detected_format": {
       "type": "object",
       "additionalProperties": false,
@@ -111,9 +117,51 @@
         },
         "max_chunks": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 9999
         },
         "max_chunk_chars": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_risks": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 99999
+        },
+        "max_pages": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_slides": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_sheets": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_rows": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_cells": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_archive_entries": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_archive_member_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_uncompressed_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_image_pixels": {
           "type": "integer",
           "minimum": 1
         }
@@ -187,13 +235,17 @@
         "properties": {
           "risk_id": {
             "type": "string",
-            "pattern": "^RSK-SRC-[0-9]{3}-[0-9]{3}$"
+            "pattern": "^RSK-SRC-[0-9]{3}-[0-9]{3,5}$"
           },
           "category": {
             "enum": [
               "prompt_injection",
               "active_content",
               "external_link",
+              "external_relationship",
+              "formula_injection",
+              "embedded_object",
+              "sensitive_metadata",
               "encoding",
               "oversized",
               "other"

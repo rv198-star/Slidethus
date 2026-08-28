@@ -141,7 +141,9 @@ External adapters implement protocols
 ├── .slidethus/
 │   ├── transactions/
 │   ├── history/
-│   └── cache/ingestion/
+│   ├── research/runs/
+│   ├── cache/ingestion/
+│   └── cache/research/
 ├── cache/
 └── outputs/
 ```
@@ -190,7 +192,7 @@ flowchart LR
 
 协议输入输出必须使用领域 DTO 或 artifact refs，不能以任意长文本为唯一合同。
 
-### 7.1 M2.1 来源摄取边界
+### 7.1 M2.1–M2.2 来源摄取边界
 
 ```text
 local file
@@ -201,18 +203,141 @@ local file
   → versioned Source Ledger reference
 ```
 
-M2.1 将来源解析从 MVP 的内存函数升级为可恢复 ProductionImpl：
+M2.1 将来源解析从 MVP 的内存函数升级为可恢复 ProductionImpl，M2.2 在同一边界内加入安全的格式适配器：
 
 - `SourceParseRequest` 明确 source ID 与资源限额；
-- `SourceParseResult` 返回 parser lineage、来源字节哈希、稳定 Chunk IDs、locator、warning 和 source risks；
+- `SourceParseResult` 返回 parser lineage、来源字节哈希、稳定 Chunk IDs、locator、`parsed/partial`、warning 和 source risks；
 - Registry 对 unsupported 与同优先级歧义 fail closed；
 - `.slidethus/cache/ingestion/` 快照先以 create-if-absent 方式发布，Source Ledger 再由 Artifact Runtime 事务提交引用；
 - Source Ledger 的 parser、格式、限额、快照哈希和计数必须与快照相互校验；
 - 同一 source ID 不能重绑到另一文件，同一路径不能再创建别名 ID；
 - 来源不变时可复用解析快照，权限和使用策略修改仍产生新的 Source Ledger 版本；
-- 当前 Production adapter 只接纳 Markdown/TXT，其他已识别格式等待 M2.2 的独立适配器。
+- admitted adapters 覆盖 Markdown/TXT、HTML、PDF、DOCX、PPTX、CSV/TSV、XLSX 和常见图片元数据；
+- HTML/CSV 使用标准库，PDF/DOCX/XLSX/图片能力通过 `slidethus[ingestion]` 可选依赖接入，缺依赖返回 capability failure；
+- OOXML 在库打开前验证 ZIP 条目、单成员/总展开、重名、路径、symlink、加密、VBA、外部关系和嵌入对象；
+- 页、段落、表格、幻灯片/形状、工作表/单元格和图片元数据使用格式原生 locator；
+- 公式、宏、脚本、链接、嵌入文件和媒体永不执行；未解释的图片、评论、公式结构、SmartArt、音视频等把结果标为 `partial`；
+- SVG、旧版 OLE、宏启用 OOXML、加密 PDF 和未知格式继续 fail closed。
 
-`source_snapshot.schema.json` 属于运行时辅助事实，不是顶层可独立推进阶段的 artifact；它通过 Source Ledger 引用进入完整性图。详细决策见 ADR-0009。
+`source_snapshot.schema.json` 属于运行时辅助事实，不是顶层可独立推进阶段的 artifact；它通过 Source Ledger 引用进入完整性图。详细决策见 ADR-0009 与 ADR-0010。
+
+### 7.2 M2.3 Research Runtime 边界
+
+```text
+Project Brief / current Outline
+  → deterministic Research Plan
+  → provider-neutral ResearchProvider
+  → resumable Research Run
+  → immutable query-result cache
+  → M2.4 source/evidence materialization
+```
+
+M2.3 把“主动研究”实现为独立运行时层，而不是把搜索结果直接写进 Evidence Ledger：
+
+- orientation plan 绑定 Brief 的主题、目的、受众、freshness 与允许的外部来源等级；
+- targeted plan 绑定当前 `deck_outline` 版本和具体 factual slides；
+- `ResearchProvider` 必须声明 name/version，Run 与 Cache lineage 都绑定 provider identity；
+- `.slidethus/research/runs/` 逐 task 记录 pending/running/complete/failed/blocked、attempts、cache 引用和错误，可在中断后 resume；
+- `.slidethus/cache/research/` 使用不可变 content-addressed snapshots，并通过 generation marker 显式失效，旧快照不被覆盖；
+- query、provider、freshness/source tiers、结果相关限额和 TTL 共同决定 cache input identity；
+- offline capability 显式 blocked，不产生伪造结果；
+- workspace validation 只读检查 Run/Cache 完整性，显式 inspect/resume 才允许执行恢复写入；
+- `ResearchResult` 只是待评估研究候选，不等于 Source，也不等于 Evidence；M2.4 才负责来源物化、去重、冲突、时效、权威与支持关系判断。
+
+`research_run.schema.json` 与 `research_cache_snapshot.schema.json` 是打包的运行时 Schema，但不是 Artifact Runtime 的阶段性 catalog artifacts。详细决策见 ADR-0011。
+
+### 7.3 M2.4 Evidence Engine 边界
+
+```text
+Production Source Chunk / Research Result
+  → EvidenceCandidate
+  → exact claim identity + candidate bindings
+  → support / conflict / authority / freshness / use-policy adjudication
+  → versioned Evidence Ledger
+```
+
+M2.4 保持确定性核心的能力诚实：
+
+- 本地已摄取来源按 Chunk 形成保守 Candidate；不把一般语义抽取伪装成确定性能力；
+- Research Result 先物化为 `partial` Web Source Snapshot，明确 `remote_body_fetched=false`，再形成 indirect Candidate；
+- `claim_key` 只合并保守的 exact-normalized duplicates，并保留百分比、单位、除法、十进制和正负号等语义符号；
+- Production claim 持久化 `candidate_bindings`，绑定 Source/locator/Chunk/hash、Research Run/Result、conflict stance 与 freshness；
+- `EVD-*` 只按新 claim key 递增分配，来源变化不会复用旧 ID 表示新事实；
+- Source 更新允许提交，但旧 Evidence 变为 draft，G2 因 stale binding 阻断，Engine 再降级或重建事实；
+- explicit conflict group 的 opposing stances 会传播到所有当前成员；无当前 opposing support 时重新裁决；
+- Web Source URL 只接纳无凭据 HTTP(S)，同 URL 的不同 Research Results 合并保留，其他 ingestion owner 不被覆盖；
+- semantic research cycle 只有在所有 Run complete、结果完成来源物化并获得可用 Evidence 后才 complete；重复完成是幂等的。
+
+Source/Evidence 写入仍由 Artifact Runtime 事务和同一 body/version snapshot 的 optimistic lock 管理。详细决策见 ADR-0012。
+
+### 7.4 M2.5 Block Evidence / Gap / Rework 边界
+
+```text
+current Outline + optional Slide Specs + current Evidence
+  → explicit/conservative evidence requirements
+  → block/slide binding analysis
+  → immutable Evidence Gap Report
+  → targeted Research Plan handoff or formal EVIDENCE_READY rework
+```
+
+- `evidence_requirement` 允许 Outline slide 和 content block 显式声明 required/optional/none；legacy artifacts 使用保守、可解释默认值；
+- required block 必须绑定已知、可用 Evidence；provisional/inference/assumption 必须有 `evidence_qualification`；
+- required slide 的 Evidence 必须落实到负责表达该事实的 block；
+- Gap Report 绑定 Brief/Source/Evidence/Outline/Specs 的版本与 content hash，使用稳定 issue/query identity；
+- query suggestion 只形成 M2.3 Research Plan，不等于执行研究或获得 Evidence；
+- gap-free user-material路径可以幂等完成 query_count=0 的 targeted cycle；
+- blocking gap 通过 Artifact Runtime 记录 Decision Log，并从 admitted planning phase 正式回到 `EVIDENCE_READY`。
+
+详细决策见 ADR-0013。
+
+### 7.5 M2.6 Application / Capability / Security 边界
+
+```text
+M2ApplicationService
+  → SourceIngestionService
+  → EvidenceEngine
+  → injected ResearchProvider / explicit degradation
+  → EvidenceBindingService
+  → current G1/G2/G5A or auditable rework/block
+  → immutable M2 Application Report
+```
+
+- CLI 不内置在线搜索供应商；在线 provider 只通过 protocol 注入；
+- 实际 provider 调用还要求单独的 external-disclosure approval；
+- external research 缺失默认 D5，只有显式批准且无 freshness 约束时才允许 D3 user-material degradation；
+- high-severity Source risks 默认只进入 Source inventory，不自动提升为 Evidence；Evidence Engine 的直接 Source/Research CLI 也执行同一约束，显式 override 仍保持 provisional/qualified；
+- 应用级 budget 同时覆盖 requested、current/final workspace Sources，以及 archived Research Run 的 query/result/metadata 限额；
+- Research 物化新增 Web Source 后必须重新通过 G1，再进入 G2；
+- M2 只重验证已有 Narrative/Outline/Specs，不生成或静默修改 M3 artifacts；
+- `.slidethus/m2/runs/` 中的 content-addressed Report 绑定 Project State revision、artifact history、完整 config/security decisions、actions、Gate 与 gap output；Research Run 另以 `.slidethus/m2/research-runs/` 不可变快照绑定其 immutable cache lineage；所有运行时路径限制在工作区 admitted roots；它不是 Delivery Manifest。
+
+详细决策见 ADR-0014。
+
+### 7.6 M3 Narrative / Planning Production 边界
+
+```text
+M3ApplicationService
+  → BriefCompletionService
+  → M2 orientation / G2
+  → NarrativePlanningService / G3
+  → OutlinePlanningService + OutlineChangeService / G4
+  → SlideSpecPlanningService
+  → M2 targeted Evidence / G5A
+  → LayoutPlanningService + immutable wireframes / G5B
+  → PlanningReviewService / PlanningRepairService
+  → immutable M3 Application Report
+```
+
+- `PlanningProvider` 只提议 bounded `PlanningProposal`；稳定 ID、Evidence admission、lineage、Gate、Artifact Runtime 写入由 deterministic services 接管；
+- Production Narrative/Outline/Specs/Layout 统一携带 `PLN-*` lineage，绑定 current upstream artifacts、provider、proposal 与 policy；
+- Outline 的 `S-*` 与 ordinal 分离，显式 insert/exclude/reorder/split/merge/freeze/update 产生 `PCH-*`，并保留 excluded history/mappings；
+- Slide Specs 只允许 Outline 已声明、policy-usable 的 Evidence，qualified support 必须可见；
+- Layout Plans 将 stable Blocks 一一映射到 stable Regions，执行 safe-area、collision、capacity、reading-order 和 minimum-font checks；wireframe SVG content-addressed，不是最终视觉；
+- `PRV-*` Planning Review 把问题定位到 P0/P2/P3/P4/P5A/P5B；`PRP-*` Repair 只自动处理已准入问题，并重跑相关 Gate 与全 deck regression；
+- `M3R-*` 报告绑定 Brief hints、limits/providers、M2 Reports、最终 planning artifacts、Review/Repair、wireframes 和 Project State；P0/P2/P3/P4/P5A/P5B 由最终状态重算；
+- M3 CLI 不内置模型 SDK 或在线 ResearchProvider。内置 deterministic provider 是真实 contract baseline，不声称通用 LLM 叙事能力。
+
+详细决策见 ADR-0015、ADR-0016、ADR-0017、ADR-0018。
 
 ## 8. 渲染策略
 

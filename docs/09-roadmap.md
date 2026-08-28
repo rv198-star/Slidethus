@@ -43,16 +43,31 @@
 
 目标：从素材到经审计的页面策划稿。
 
-当前进展（2026-08-27）：M2.1 Ingestion Core 已完成 Markdown/TXT Production adapter、Parser Registry、格式识别、稳定 Chunk/locator/hash、不可变快照、Source Ledger lineage、风险记录、幂等复用和故障恢复；多格式、研究与 Evidence Engine 仍未完成。
+当前进展（2026-08-27）：M2.1–M2.7 与 M3.1–M3.7 已完成。M2 提供 multi-format Source、two-pass Research、policy-bearing Evidence、block binding/gap/rework 和 application boundary；M3 提供 minimum-question Brief、provider-neutral Production Narrative/Outline/Specs/Layout、stable digital sticky notes、immutable wireframes、Planning Review、bounded local Repair 和 M3 Application Report。
 
-关键产出：
+M2 Production boundary：
 
-- multi-format ingestion；
-- evidence engine；
-- narrative and outline；
-- slide spec/layout generation；
-- interactive checkpoints；
-- wireframe review。
+- [x] multi-format ingestion 与 source inventory；
+- [x] stable Chunk/locator/hash 与 immutable Source Snapshot；
+- [x] resumable two-pass Research Runtime；
+- [x] query/task/cache/invalidation/offline lineage；
+- [x] deterministic Evidence Engine 与 conflict/freshness/authority/use policy；
+- [x] block-level Evidence binding、Gap Report 与 P2 rework；
+- [x] application capability/degradation/security integration；
+- [x] repository-wide audit and M2 Exit Gate。
+
+M3 Production planning boundary：
+
+- [x] Project Brief 智能补全、最少提问和 answer/resume；
+- [x] current Brief/Evidence-bound Narrative Blueprint；
+- [x] stable `S-*` digital sticky-note insert/exclude/reorder/split/merge/freeze/update；
+- [x] Evidence-qualified Slide Specs 与 stable Blocks；
+- [x] relationship-driven Layout Plans、geometry/capacity checks 与 immutable wireframes；
+- [x] density/duplicate/rhythm/transition Planning Review；
+- [x] bounded local Repair、dependency propagation 和 failure checkpoint；
+- [x] repository-wide audit and M3 Exit Gate。
+
+**M2 Exit Gate 与 M3 Exit Gate：PASS（2026-08-27）。** 证据见 `audit/M2-BUILD_REPORT.md`、`audit/M3-round-2-scorecard.md` 与 `audit/M3-BUILD_REPORT.md`。v0.5 完成不代表 M4 Production rendering 或 M5 independent visual repair 已完成。
 
 ## v0.6 Rendering
 
@@ -60,12 +75,15 @@
 
 关键产出：
 
-- final SVG；
-- PptxGenJS hybrid；
-- asset and chart pipeline；
-- preview renderer；
-- overflow/collision tests；
-- editability report。
+- [x] Final SVG；
+- [x] PptxGenJS Native 与 Hybrid；
+- [x] asset/chart/table/image pipeline；
+- [x] SVG → PNG/PDF preview/export；
+- [x] overflow/collision/safe-area preflight；
+- [x] measured editability + Production Render Manifest；
+- [x] M4 Application/CLI 与 repository-wide Exit Gate。
+
+**M4 Exit Gate：PASS（2026-08-28）。** 同一 Renderer IR 已由三个 Production backend 消费，M2/M3 semantic/planning Schemas 不因 backend 切换而改变。证据见 `audit/M4-round-2-scorecard.md` 与 `audit/M4-BUILD_REPORT.md`。Office/Poppler preview 仍是 host capability，不把缺失环境能力等同于 M5 视觉审计失败。
 
 ## v0.7 Review and Repair
 

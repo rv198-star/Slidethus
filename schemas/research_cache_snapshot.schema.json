@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/research-cache-snapshot.schema.json",
+  "title": "Research Cache Snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "project_id", "input_key", "query", "provider", "result_limits", "generation", "created_at", "expires_at", "results"],
+  "properties": {
+    "schema_version": {"type": "string", "pattern": "^0\\.1\\.[0-9]+$"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "input_key": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "query": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["query_id", "query", "cycle_id", "cycle_kind", "outline_version", "freshness_requirement", "preferred_source_tiers", "purpose", "slide_id"],
+      "properties": {
+        "query_id": {"type": "string", "pattern": "^RQ-[0-9]{3}$"},
+        "query": {"type": "string", "minLength": 1, "maxLength": 10000},
+        "cycle_id": {"type": "string", "pattern": "^RSC-[0-9]{3}$"},
+        "cycle_kind": {"enum": ["orientation", "targeted"]},
+        "outline_version": {"type": ["integer", "null"], "minimum": 1},
+        "freshness_requirement": {"type": ["string", "null"], "maxLength": 500},
+        "preferred_source_tiers": {"type": "array", "uniqueItems": true, "items": {"enum": ["primary", "secondary", "community", "unknown"]}},
+        "purpose": {"type": "string", "maxLength": 2000},
+        "slide_id": {"type": ["string", "null"], "pattern": "^S-[0-9]{3}$"}
+      },
+      "allOf": [
+        {"if": {"properties": {"cycle_kind": {"const": "orientation"}}, "required": ["cycle_kind"]}, "then": {"properties": {"outline_version": {"const": null}}}},
+        {"if": {"properties": {"cycle_kind": {"const": "targeted"}}, "required": ["cycle_kind"]}, "then": {"properties": {"outline_version": {"type": "integer", "minimum": 1}}}}
+      ]
+    },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 128},
+        "version": {"type": "string", "minLength": 1, "maxLength": 128}
+      }
+    },
+    "result_limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_results_per_query", "max_title_chars", "max_summary_chars", "max_metadata_bytes", "cache_ttl_seconds"],
+      "properties": {
+        "max_results_per_query": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "max_title_chars": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "max_summary_chars": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "max_metadata_bytes": {"type": "integer", "minimum": 1, "maximum": 10485760},
+        "cache_ttl_seconds": {"type": "integer", "minimum": 0, "maximum": 31536000}
+      }
+    },
+    "generation": {"type": "integer", "minimum": 0},
+    "created_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": ["string", "null"], "format": "date-time"},
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["result_id", "ordinal", "title", "locator", "url", "summary", "source_tier", "retrieved_at", "published_at", "metadata"],
+        "properties": {
+          "result_id": {"type": "string", "pattern": "^RSLT-[A-F0-9]{16}$"},
+          "ordinal": {"type": "integer", "minimum": 1},
+          "title": {"type": "string", "minLength": 1, "maxLength": 10000},
+          "locator": {"type": "string", "minLength": 1, "maxLength": 4000},
+          "url": {"type": ["string", "null"], "maxLength": 4000},
+          "summary": {"type": "string", "minLength": 1, "maxLength": 1000000},
+          "source_tier": {"enum": ["primary", "secondary", "community", "unknown"]},
+          "retrieved_at": {"type": "string", "format": "date-time"},
+          "published_at": {"type": ["string", "null"], "maxLength": 100},
+          "metadata": {"type": "object"}
+        }
+      }
+    }
+  }
+}

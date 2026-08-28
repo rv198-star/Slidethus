@@ -326,6 +326,32 @@
         "type": "string",
         "pattern": "^AST-[0-9]{3}$"
       }
+    },
+    "render_lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "engine_version", "generated_at", "inputs"],
+      "properties": {
+        "engine": {"type": "string", "minLength": 1},
+        "engine_version": {"type": "string", "minLength": 1},
+        "generated_at": {"type": "string", "format": "date-time"},
+        "inputs": {
+          "type": "array",
+          "minItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["artifact_type", "version", "content_hash"],
+            "properties": {
+              "artifact_type": {
+                "enum": ["project_brief", "deck_outline", "slide_specs", "layout_plans", "asset_manifest"]
+              },
+              "version": {"type": "integer", "minimum": 1},
+              "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+            }
+          }
+        }
+      }
     }
   }
 }

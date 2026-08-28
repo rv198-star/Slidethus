@@ -290,7 +290,60 @@
               "accepted",
               "rejected"
             ]
-          }
+          },
+          "field_paths": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          },
+          "basis": {"type": "string"},
+          "risk": {"enum": ["low", "medium", "high"]}
+        }
+      }
+    },
+    "completion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "engine",
+        "engine_version",
+        "completed_at",
+        "input_hash",
+        "context_hash",
+        "result_hash",
+        "resolved_fields",
+        "inferred_fields",
+        "question_ids",
+        "assumption_ids"
+      ],
+      "properties": {
+        "status": {"enum": ["resolved", "needs_input"]},
+        "engine": {"type": "string", "minLength": 1},
+        "engine_version": {"type": "string", "minLength": 1},
+        "completed_at": {"type": "string", "format": "date-time"},
+        "input_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "context_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "result_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "resolved_fields": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "inferred_fields": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "question_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^Q-[0-9]{3}$"}
+        },
+        "assumption_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^ASM-[0-9]{3}$"}
         }
       }
     },
@@ -328,7 +381,15 @@
               "string",
               "null"
             ]
-          }
+          },
+          "field_paths": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          },
+          "priority": {"enum": ["critical", "high", "medium", "low"]},
+          "reason": {"type": "string"}
         }
       }
     }

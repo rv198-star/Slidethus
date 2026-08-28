@@ -1,0 +1,338 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/m3-application-report.schema.json",
+  "title": "M3 Application Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "project_id", "report_id", "generated_at", "status",
+    "planning_level", "inputs", "capabilities", "actions", "blockers",
+    "warnings", "outputs"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "pattern": "^0\\.1\\.[0-9]+$"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "report_id": {"type": "string", "pattern": "^M3R-[A-F0-9]{16}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "status": {"enum": ["ready", "needs_input", "rework_required", "blocked", "failed"]},
+    "planning_level": {"enum": ["P0", "P2", "P3", "P4", "P5A", "P5B"]},
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_brief", "requested_sources", "config", "config_hash"],
+      "properties": {
+        "project_brief": {"$ref": "#/$defs/artifactRef"},
+        "requested_sources": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "size_bytes", "sha256"],
+            "properties": {
+              "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+              "size_bytes": {"type": "integer", "minimum": 0},
+              "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+            }
+          }
+        },
+        "config": {"$ref": "#/$defs/applicationConfig"},
+        "config_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["capability", "status", "detail"],
+        "properties": {
+          "capability": {"type": "string", "minLength": 1, "maxLength": 128},
+          "status": {"enum": ["available", "degraded", "missing"]},
+          "detail": {"type": "string", "minLength": 1, "maxLength": 4000}
+        }
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action_id", "stage", "status", "detail", "refs"],
+        "properties": {
+          "action_id": {"type": "string", "pattern": "^M3A-[0-9]{3}$"},
+          "stage": {
+            "enum": [
+              "brief", "m2_orientation", "narrative", "outline", "slide_specs",
+              "m2_targeted", "layout", "planning_review", "planning_repair",
+              "rework", "report"
+            ]
+          },
+          "status": {"enum": ["complete", "skipped", "blocked", "failed"]},
+          "detail": {"type": "string", "minLength": 1, "maxLength": 4000},
+          "refs": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1, "maxLength": 4096}
+          }
+        }
+      }
+    },
+    "blockers": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
+    "warnings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_refs", "m2_reports", "planning_review", "planning_repairs",
+        "wireframes", "final_phase", "gates"
+      ],
+      "properties": {
+        "artifact_refs": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/artifactRef"}
+        },
+        "m2_reports": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/m2ReportRef"}
+        },
+        "planning_review": {
+          "oneOf": [{"type": "null"}, {"$ref": "#/$defs/reviewRef"}]
+        },
+        "planning_repairs": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/repairRef"}
+        },
+        "wireframes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slide_id", "path", "sha256"],
+            "properties": {
+              "slide_id": {"type": "string", "pattern": "^S-[0-9]{3}$"},
+              "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+              "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+            }
+          }
+        },
+        "final_phase": {
+          "enum": [
+            "CREATED", "BRIEF_READY", "SOURCES_READY", "EVIDENCE_READY",
+            "NARRATIVE_READY", "OUTLINE_READY", "SLIDE_SPECS_READY", "LAYOUT_READY",
+            "VISUAL_SYSTEM_READY", "DRAFT_RENDERED", "REVIEWED", "DELIVERY_READY", "COMPLETED"
+          ]
+        },
+        "gates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["gate_id", "status", "reasons"],
+            "properties": {
+              "gate_id": {"enum": ["G0", "G2", "G3", "G4", "G5A", "G5B"]},
+              "status": {"enum": ["pass", "fail", "blocked", "waived", "not_applicable"]},
+              "reasons": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 4000}}
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "providerIdentity": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version"],
+          "properties": {
+            "name": {"type": "string", "minLength": 1, "maxLength": 128},
+            "version": {"type": "string", "minLength": 1, "maxLength": 128}
+          }
+        }
+      ]
+    },
+    "briefHints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_text", "purpose", "desired_outcome", "call_to_action",
+        "delivery_context", "presentation_mode", "audience_role", "audience_needs",
+        "audience_objections", "decision_power", "knowledge_level", "page_target",
+        "duration_minutes", "output_formats", "editability_target", "approval_mode",
+        "quality_profile"
+      ],
+      "properties": {
+        "request_text": {"type": "string", "maxLength": 20000},
+        "purpose": {"type": ["string", "null"], "maxLength": 4000},
+        "desired_outcome": {"type": ["string", "null"], "maxLength": 4000},
+        "call_to_action": {"type": ["string", "null"], "maxLength": 4000},
+        "delivery_context": {"type": ["string", "null"], "maxLength": 1000},
+        "presentation_mode": {"type": ["string", "null"], "maxLength": 64},
+        "audience_role": {"type": ["string", "null"], "maxLength": 1000},
+        "audience_needs": {"type": "array", "maxItems": 24, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 1000}},
+        "audience_objections": {"type": "array", "maxItems": 24, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 1000}},
+        "decision_power": {"type": ["string", "null"], "maxLength": 64},
+        "knowledge_level": {"type": ["string", "null"], "maxLength": 64},
+        "page_target": {"type": ["integer", "null"], "minimum": 1},
+        "duration_minutes": {"type": ["number", "null"], "minimum": 0, "maximum": 1440},
+        "output_formats": {"type": "array", "maxItems": 6, "uniqueItems": true, "items": {"type": "string", "maxLength": 64}},
+        "editability_target": {"type": ["string", "null"], "maxLength": 16},
+        "approval_mode": {"type": ["string", "null"], "maxLength": 64},
+        "quality_profile": {"type": ["string", "null"], "maxLength": 64}
+      }
+    },
+    "planningLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_blocking_questions", "max_assumptions", "max_sections", "max_slides",
+        "max_blocks_per_slide", "max_words_per_slide", "max_provider_payload_bytes",
+        "max_change_targets"
+      ],
+      "properties": {
+        "max_blocking_questions": {"type": "integer", "minimum": 1, "maximum": 12},
+        "max_assumptions": {"type": "integer", "minimum": 1, "maximum": 999},
+        "max_sections": {"type": "integer", "minimum": 1, "maximum": 99},
+        "max_slides": {"type": "integer", "minimum": 1, "maximum": 999},
+        "max_blocks_per_slide": {"type": "integer", "minimum": 1, "maximum": 99},
+        "max_words_per_slide": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "max_provider_payload_bytes": {"type": "integer", "minimum": 1, "maximum": 10485760},
+        "max_change_targets": {"type": "integer", "minimum": 1, "maximum": 999}
+      }
+    },
+    "m2ApplicationLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_sources", "max_total_source_bytes", "source", "research"],
+      "properties": {
+        "max_sources": {"type": "integer", "minimum": 1},
+        "max_total_source_bytes": {"type": "integer", "minimum": 1},
+        "source": {"$ref": "#/$defs/sourceLimits"},
+        "research": {"$ref": "#/$defs/researchLimits"}
+      }
+    },
+    "sourceLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_source_bytes", "max_chunks", "max_chunk_chars", "max_risks",
+        "max_pages", "max_slides", "max_sheets", "max_rows", "max_cells",
+        "max_archive_entries", "max_archive_member_bytes", "max_uncompressed_bytes",
+        "max_image_pixels"
+      ],
+      "properties": {
+        "max_source_bytes": {"type": "integer", "minimum": 1},
+        "max_chunks": {"type": "integer", "minimum": 1},
+        "max_chunk_chars": {"type": "integer", "minimum": 1},
+        "max_risks": {"type": "integer", "minimum": 1},
+        "max_pages": {"type": "integer", "minimum": 1},
+        "max_slides": {"type": "integer", "minimum": 1},
+        "max_sheets": {"type": "integer", "minimum": 1},
+        "max_rows": {"type": "integer", "minimum": 1},
+        "max_cells": {"type": "integer", "minimum": 1},
+        "max_archive_entries": {"type": "integer", "minimum": 1},
+        "max_archive_member_bytes": {"type": "integer", "minimum": 1},
+        "max_uncompressed_bytes": {"type": "integer", "minimum": 1},
+        "max_image_pixels": {"type": "integer", "minimum": 1}
+      }
+    },
+    "researchLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_queries", "max_query_chars", "max_results_per_query", "max_total_results",
+        "max_title_chars", "max_summary_chars", "max_metadata_bytes", "cache_ttl_seconds"
+      ],
+      "properties": {
+        "max_queries": {"type": "integer", "minimum": 1},
+        "max_query_chars": {"type": "integer", "minimum": 1},
+        "max_results_per_query": {"type": "integer", "minimum": 1},
+        "max_total_results": {"type": "integer", "minimum": 1},
+        "max_title_chars": {"type": "integer", "minimum": 1},
+        "max_summary_chars": {"type": "integer", "minimum": 1},
+        "max_metadata_bytes": {"type": "integer", "minimum": 1},
+        "cache_ttl_seconds": {"type": "integer", "minimum": 0}
+      }
+    },
+    "applicationConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "brief_hints", "planning_limits", "m2_limits", "allow_research_degraded",
+        "approve_external_disclosure", "allow_high_risk_source_evidence",
+        "auto_repair", "max_repair_passes", "planning_provider", "research_provider"
+      ],
+      "properties": {
+        "brief_hints": {"$ref": "#/$defs/briefHints"},
+        "planning_limits": {"$ref": "#/$defs/planningLimits"},
+        "m2_limits": {"$ref": "#/$defs/m2ApplicationLimits"},
+        "allow_research_degraded": {"type": "boolean"},
+        "approve_external_disclosure": {"type": "boolean"},
+        "allow_high_risk_source_evidence": {"type": "boolean"},
+        "auto_repair": {"type": "boolean"},
+        "max_repair_passes": {"type": "integer", "minimum": 0, "maximum": 10},
+        "planning_provider": {"$ref": "#/$defs/providerIdentity"},
+        "research_provider": {"$ref": "#/$defs/providerIdentity"}
+      }
+    },
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_type", "version", "content_hash"],
+      "properties": {
+        "artifact_type": {"type": "string", "minLength": 1, "maxLength": 128},
+        "version": {"type": "integer", "minimum": 1},
+        "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      }
+    },
+    "m2ReportRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["report_id", "path", "sha256", "status"],
+      "properties": {
+        "report_id": {"type": "string", "pattern": "^M2R-[A-F0-9]{16}$"},
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "status": {"enum": ["ready", "degraded", "blocked", "rework_required", "failed"]}
+      }
+    },
+    "reviewRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["report_id", "path", "sha256", "critical_count", "major_count", "minor_count"],
+      "properties": {
+        "report_id": {"type": "string", "pattern": "^PRV-[A-F0-9]{16}$"},
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "critical_count": {"type": "integer", "minimum": 0},
+        "major_count": {"type": "integer", "minimum": 0},
+        "minor_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "repairRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repair_id", "path", "sha256", "status"],
+      "properties": {
+        "repair_id": {"type": "string", "pattern": "^PRP-[A-F0-9]{16}$"},
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "status": {"enum": ["applied", "blocked", "noop"]}
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["finding_id", "code", "message"],
+      "properties": {
+        "finding_id": {"type": "string", "pattern": "^M3[BRW]-[A-F0-9]{16}$"},
+        "code": {"type": "string", "minLength": 1, "maxLength": 128},
+        "message": {"type": "string", "minLength": 1, "maxLength": 4000}
+      }
+    }
+  }
+}

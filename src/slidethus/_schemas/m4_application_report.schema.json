@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/m4-application-report.schema.json",
+  "title": "M4 Application Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "project_id", "report_id", "generated_at", "status",
+    "config", "config_hash", "capabilities", "actions", "blockers", "warnings",
+    "preflight", "render_manifest", "outputs", "final_phase", "g7", "project_state"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "pattern": "^0\\.1\\.[0-9]+$"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "report_id": {"type": "string", "pattern": "^M4R-[A-F0-9]{16}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "status": {"enum": ["ready", "blocked", "failed"]},
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backends", "include_exports", "require_office_preview", "target_editability_level"],
+      "properties": {
+        "backends": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["final-svg", "pptxgenjs-native", "pptxgenjs-hybrid"]}
+        },
+        "include_exports": {"type": "boolean"},
+        "require_office_preview": {"type": "boolean"},
+        "target_editability_level": {"enum": ["E2"]}
+      }
+    },
+    "config_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "capabilities": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/capability"}
+    },
+    "actions": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/action"}
+    },
+    "blockers": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/finding"}
+    },
+    "warnings": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/finding"}
+    },
+    "preflight": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/preflightRef"}
+      ]
+    },
+    "render_manifest": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/artifactRef"}
+      ]
+    },
+    "outputs": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/outputRef"}
+    },
+    "final_phase": {
+      "enum": [
+        "CREATED", "BRIEF_READY", "SOURCES_READY", "EVIDENCE_READY", "NARRATIVE_READY",
+        "OUTLINE_READY", "SLIDE_SPECS_READY", "LAYOUT_READY", "VISUAL_SYSTEM_READY",
+        "DRAFT_RENDERED", "REVIEWED", "DELIVERY_READY", "COMPLETED"
+      ]
+    },
+    "g7": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reasons"],
+      "properties": {
+        "status": {"enum": ["pass", "fail", "blocked"]},
+        "reasons": {"type": "array", "items": {"type": "string", "maxLength": 4000}}
+      }
+    },
+    "project_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "content_hash"],
+      "properties": {
+        "revision": {"type": "integer", "minimum": 1},
+        "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      }
+    }
+  },
+  "$defs": {
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability", "status", "detail"],
+      "properties": {
+        "capability": {"type": "string", "minLength": 1, "maxLength": 128},
+        "status": {"enum": ["available", "degraded", "missing"]},
+        "detail": {"type": "string", "minLength": 1, "maxLength": 4000}
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_id", "stage", "status", "detail", "refs"],
+      "properties": {
+        "action_id": {"type": "string", "pattern": "^M4A-[0-9]{3}$"},
+        "stage": {
+          "enum": [
+            "visual_system", "preflight", "final_svg", "native_pptx", "hybrid_pptx",
+            "export", "office_preview", "manifest", "g7", "report"
+          ]
+        },
+        "status": {"enum": ["complete", "blocked", "failed", "skipped"]},
+        "detail": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "maxLength": 4096}}
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["finding_id", "code", "message"],
+      "properties": {
+        "finding_id": {"type": "string", "pattern": "^M4[BW]-[A-F0-9]{16}$"},
+        "code": {"type": "string", "minLength": 1, "maxLength": 128},
+        "message": {"type": "string", "minLength": 1, "maxLength": 4000}
+      }
+    },
+    "preflightRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preflight_id", "path", "sha256", "status"],
+      "properties": {
+        "preflight_id": {"type": "string", "pattern": "^RPF-[A-F0-9]{16}$"},
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "status": {"enum": ["pass", "blocked"]}
+      }
+    },
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_type", "version", "content_hash", "path"],
+      "properties": {
+        "artifact_type": {"enum": ["render_manifest"]},
+        "version": {"type": "integer", "minimum": 1},
+        "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "path": {"const": "renders/render_manifest.json"}
+      }
+    },
+    "outputRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "role", "backend"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "role": {"type": "string", "minLength": 1, "maxLength": 128},
+        "backend": {"type": ["string", "null"], "maxLength": 128}
+      }
+    }
+  }
+}

@@ -12,6 +12,7 @@ from slidethus.ingestion import (
     ParserRegistry,
     default_parser_registry,
     detect_source_format,
+    validate_source_parse_limits,
 )
 from slidethus.io_utils import atomic_create_json, sha256_bytes, sha256_file
 from slidethus.protocols import (
@@ -60,13 +61,6 @@ def fingerprint_source(path: Path) -> dict[str, str | int]:
     }
 
 
-def _artifact_version(runtime: ArtifactRuntime, artifact_type: str) -> int:
-    entry = next(
-        item for item in runtime.list_artifacts() if item["artifact_type"] == artifact_type
-    )
-    return int(entry["version"])
-
-
 def _source_sort_key(source: dict[str, Any]) -> int:
     return int(str(source["source_id"]).split("-")[-1])
 
@@ -106,7 +100,8 @@ class SourceIngestionService:
         if not source_path.is_file():
             raise FileNotFoundError(source_path)
         parse_limits = limits or SourceParseLimits()
-        ledger = self.runtime.show_artifact("source_ledger")
+        validate_source_parse_limits(parse_limits)
+        ledger, ledger_version = self.runtime.read_artifact_snapshot("source_ledger")
         project_id = str(self.runtime.show_artifact("project_state")["project_id"])
         sources = list(ledger.get("sources", []))
         resolved_source_id = self._resolve_source_id(sources, source_path, source_id)
@@ -161,7 +156,13 @@ class SourceIngestionService:
             )
             changed = source_record != existing
             if changed:
-                self._commit_source_record(ledger, sources, existing, source_record)
+                self._commit_source_record(
+                    ledger,
+                    sources,
+                    existing,
+                    source_record,
+                    expected_version=ledger_version,
+                )
             return SourceIngestionResult(
                 source_id=resolved_source_id,
                 changed=changed,
@@ -178,6 +179,14 @@ class SourceIngestionService:
             limits=parse_limits,
         )
         result = parser.parse(request, detected)
+        post_parse_fingerprint = fingerprint_source(source_path)
+        if (
+            post_parse_fingerprint["sha256"] != result.source_sha256
+            or post_parse_fingerprint["size_bytes"] != result.size_bytes
+        ):
+            raise SourceIngestionError(
+                "Source changed during parsing; no snapshot or Source Ledger version was published"
+            )
         snapshot = build_source_snapshot(project_id, result, parse_limits)
         snapshot_errors = validate_snapshot_data(snapshot, self.schemas.schema_dir)
         if snapshot_errors:
@@ -215,7 +224,13 @@ class SourceIngestionService:
             limits=parse_limits,
             metadata=metadata,
         )
-        self._commit_source_record(ledger, sources, existing, source_record)
+        self._commit_source_record(
+            ledger,
+            sources,
+            existing,
+            source_record,
+            expected_version=ledger_version,
+        )
         return SourceIngestionResult(
             source_id=resolved_source_id,
             changed=True,
@@ -386,7 +401,7 @@ class SourceIngestionService:
                 "limits": asdict(limits),
                 "ingested_at": snapshot["created_at"],
             },
-            "parse_status": "parsed",
+            "parse_status": result.parse_status,
             "allowed_use": metadata["allowed_use"],
             "notes": self._merge_notes(existing, snapshot),
         }
@@ -397,6 +412,8 @@ class SourceIngestionService:
         sources: list[dict[str, Any]],
         existing: dict[str, Any] | None,
         source_record: dict[str, Any],
+        *,
+        expected_version: int,
     ) -> None:
         candidate = copy.deepcopy(ledger)
         candidate["sources"] = [
@@ -411,7 +428,7 @@ class SourceIngestionService:
         self.runtime.write_artifact(
             "source_ledger",
             candidate,
-            expected_version=_artifact_version(self.runtime, "source_ledger"),
+            expected_version=expected_version,
             status="approved",
             created_by="source-ingestion-service",
         )
@@ -486,6 +503,10 @@ class SourceIngestionService:
             "Parsed by the M2 ProductionImpl ingestion path.",
             "Source content was treated as untrusted data; embedded instructions were not executed.",
         ]
+        if snapshot.get("parse_status") == "partial":
+            notes.append(
+                "Parser completed with partial coverage; downstream evidence must honor the recorded warnings."
+            )
         if snapshot["warnings"]:
             notes.append(f"Parser recorded {len(snapshot['warnings'])} warning(s).")
         high_risks = [item for item in snapshot["risks"] if item.get("severity") == "high"]
@@ -525,6 +546,7 @@ class SourceIngestionService:
         return {
             "source_id": source_id,
             "content_hash": f"sha256:{result.source_sha256}",
+            "parse_status": result.parse_status,
             "size_bytes": result.size_bytes,
             "ingestion": {
                 "parser_name": result.parser_name,

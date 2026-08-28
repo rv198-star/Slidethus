@@ -30,38 +30,37 @@
 | Step | 产出 | 依赖 | 验证 | 状态 |
 |---|---|---|---|---|
 | M2.1 | Ingestion Core：格式识别、parser registry、稳定 chunk/locator/hash、source inventory、风险记录、可恢复持久化、Markdown/TXT Production adapter | M1 runtime | 单元、集成、故障注入、旧 MVP 回归 | complete |
-| M2.2 | Multi-format adapters：HTML、PDF、DOCX、PPTX、CSV/XLSX、图片元数据/能力降级 | M2.1 | 每格式 golden fixture、损坏/加密/空文件/超限测试 | pending |
-| M2.3 | Research planning/runtime：orientation + targeted query plan、task lineage、cache、resume、invalidation、offline provider | M2.1 | 网络无关 contract tests、缓存/中断/过期测试 | pending |
-| M2.4 | Evidence engine：claim normalization、稳定 ID、dedupe、support、conflict、freshness、authority、use policy | M2.2–M2.3 | 对抗数据集、跨来源冲突、不可用声明阻断 | pending |
-| M2.5 | Block-level evidence binding 与 outline-driven gap analysis / rework route | M2.4 | G2/G5A、`OUTLINE_READY → EVIDENCE_READY` 回归 | pending |
-| M2.6 | CLI/application integration、capability degradation、source-instruction isolation、安全限额 | M2.1–M2.5 | 端到端 CLI、离线/缺依赖/风险输入测试 | pending |
-| M2.7 | 文档、ADR、完整基线、开放问题审计、修复、维度评分和 M2 Exit Gate | 全部 | required checks + audit evidence | pending |
+| M2.2 | Multi-format adapters：HTML、PDF、DOCX、PPTX、CSV/TSV、XLSX、图片元数据/能力降级 | M2.1 | 每格式 golden fixture、损坏/加密/空文件/超限/partial 测试 | complete |
+| M2.3 | Research planning/runtime：orientation + targeted query plan、task lineage、cache、resume、invalidation、offline provider | M2.1 | 网络无关 contract tests、缓存/中断/过期测试 | complete |
+| M2.4 | Evidence engine：claim normalization、稳定 ID、dedupe、support、conflict、freshness、authority、use policy | M2.2–M2.3 | 对抗数据集、跨来源冲突、不可用声明阻断 | complete |
+| M2.5 | Block-level evidence binding 与 outline-driven gap analysis / rework route | M2.4 | G2/G5A、`OUTLINE_READY → EVIDENCE_READY` 回归 | complete |
+| M2.6 | CLI/application integration、capability degradation、source-instruction isolation、安全限额 | M2.1–M2.5 | 端到端 CLI、离线/缺依赖/风险输入测试 | complete |
+| M2.7 | 文档、ADR、完整基线、开放问题审计、修复、维度评分和 M2 Exit Gate | 全部 | required checks + audit evidence | complete |
 
 ## 5. Quality and risk controls
 
 - 受影响 Schema：Source Ledger、Evidence Ledger；必要时新增解析/研究辅助 Schema，并提供兼容策略。
 - 受影响 Gate：G1 Sources、G2 Evidence、G5A targeted-evidence completion；不得降低既有标准。
 - 回归范围：workspace init、Artifact Runtime、跨引用、状态机、Minimal MVP、CLI、package audit。
-- 降级路径：缺少格式适配器依赖时 `partial/unreadable`；无联网时使用 D3；要求最新事实而无来源时 D5 blocked。
+- 降级路径：缺少格式适配器或可选依赖时返回 explicit unsupported/capability failure；存在可用子集但遗漏图片、评论、媒体等时 `partial`；无联网时使用 D3；要求最新事实而无来源时 D5 blocked。
 - 安全/来源/版权风险：路径穿越、压缩炸弹、宏/脚本/外链、prompt injection、敏感信息外发、错误 MIME、重复/冲突来源、来源许可不明。
 
 ## 6. Verification
 
 ```bash
 docker run --rm -v "$PWD":/work -w /work python:3.11-slim \
-  sh -lc 'python -m pip install --disable-pip-version-check --no-cache-dir \
-  "jsonschema>=4.22,<5" "python-pptx>=1,<2" "pytest>=8,<10" "ruff>=0.6,<1" && \
+  sh -lc 'python -m pip install --disable-pip-version-check --no-cache-dir -q -e ".[dev]" && \
+  python -m compileall -q src tests scripts && ruff check src tests scripts && \
   python -m pytest && python scripts/validate_all.py'
 
 docker run --rm -v "$PWD":/work -w /work python:3.11-slim \
   sh -lc 'apt-get update -qq && apt-get install -y -qq git && \
-  python -m pip install --disable-pip-version-check --no-cache-dir \
-  "jsonschema>=4.22,<5" "python-pptx>=1,<2" && \
+  python -m pip install --disable-pip-version-check --no-cache-dir -q -e ".[ingestion]" && \
   git config --global --add safe.directory /work && python scripts/audit_package.py'
 ```
 
 - 期望结果：全部测试与校验通过，M2 新增失败路径可重复，旧 MVP 输出链不回退。
-- 实际结果：M2.1 在 Python 3.11 容器中 `70 passed`；compileall、Ruff、`validate_all.py`、`audit_package.py` 18/18 与 `git diff --check` 全部 PASS。M2.2–M2.7 尚未执行，不能由 M2.1 的结果推导为 M2 Exit Gate。
+- 实际结果：M2.1 为 `70 passed`，M2.2 为 `92 passed`，M2.3 为 `111 passed`；M2.4–M2.6 逐步扩展到 Source/Research/Evidence/Binding/Application Production 边界。最终 M2.7 在 Python 3.11 与 3.12 下均 `190 passed`，`validate_all.py` PASS，M2 Exit validator `12/12` PASS，Package Audit `20/20` PASS、286 files hashed，`git diff --check` PASS。
 
 ## 7. Review
 
@@ -94,9 +93,38 @@ docker run --rm -v "$PWD":/work -w /work python:3.11-slim \
 
 详细证据：`audit/M2.1-round-2-scorecard.md`。
 
+### M2.2 独立审计
+
+- Round A：0 Critical、9 Major、3 Minor；全部根修，无 waiver。
+- 重点修复：完整 MVP 默认 Registry 分叉、格式资源放大、OOXML 重名/路径/symlink/宏/外部关系、解析中途源变化、`parsed/partial` 能力失真、CSV/XLSX/PPTX locator/value 语义、公式与嵌入对象风险口径、遗漏 Office/PDF 内容类。
+- Round B：M2.2 Submodule Gate PASS；正确性、架构、安全/资源、能力诚实、可测试性、恢复兼容均通过，可维护性 4/5。
+- 详细证据：`audit/M2.2-round-1-open-issues.md`、`audit/M2.2-round-2-scorecard.md`、`audit/M2.2-BUILD_REPORT.md`。
+
+### M2.3 独立审计
+
+- Round A：0 Critical、9 Major、3 Minor；全部根修，无 waiver。
+- 重点修复：Research Result/Evidence 边界、TTL/provider/cache identity、自校验 cache lineage、失败 checkpoint、无限结果/metadata 资源边界、cycle ID 重绑、只读 validation、副作用恢复、占位 Brief 查询和 M2.2 Protocol 回归。
+- Round B：M2.3 Submodule Gate PASS；正确性、架构、缓存 lineage、恢复、安全、能力诚实、可测试性 5/5，可维护性 4/5。
+- 详细证据：`audit/M2.3-round-1-open-issues.md`、`audit/M2.3-round-2-scorecard.md`、`audit/M2.3-BUILD_REPORT.md`。
+
+### M2.4–M2.6 独立审计
+
+- M2.4 Evidence Engine：Round A `0 Critical / 9 Major / 3 Minor`；完成 stable claim/candidate identity、Research Result → partial Web Source、conflict/freshness/authority/use policy、Source lineage invalidation 与 semantic cycle completion；Round B PASS。
+- M2.5 Binding/Gap/Rework：Round A `0 Critical / 9 Major / 3 Minor`；完成 required slide/block Evidence、qualification、content-addressed Gap Report、targeted handoff 与 optimistic P2 rework；Round B PASS。
+- M2.6 Application/Capability/Security：Round A `0 Critical / 11 Major / 3 Minor`；完成单一编排、provider/disclosure 分离、D3/D4/D5、high-risk isolation、requested/current budgets、G1/G2/G5A revalidation 与 M2 Application Report；Round B PASS。
+- 详细证据：对应 `audit/M2.4-*`、`audit/M2.5-*`、`audit/M2.6-*` 文件。
+
+### M2.7 Repository-wide audit
+
+- Round A 从直接 CLI/service 旁路、旧 runtime facts、high-risk Source/Research summary、G2、Report history、provider/disclosure、resource limits、current-version Gate 和文档状态进行跨模块审计。
+- 所有 Critical/Major 均在最早责任层根修；无 waiver。
+- Round B 与 deterministic `validate_m2_exit.py` 共同给出 M2-wide PASS；详细证据见 `audit/M2.7-round-1-open-issues.md`、`audit/M2.7-round-2-scorecard.md` 和 `audit/M2-BUILD_REPORT.md`。
+
 ## 8. Final outcome
 
-- 已完成：M2 计划、基线和 M2.1 Ingestion Core；M2.1 Submodule Gate PASS，无 waiver。
-- 未完成：M2.2–M2.7；`TASKS.md` 的 M2 保持未完成。
-- 后续任务：进入 M2.2 Multi-format Adapters，复用同一 Registry、快照、限额、身份与失败合同，不建立旁路解析链。
-- 相关 ADR：ADR-0005、ADR-0007、ADR-0008、ADR-0009。
+- 已完成：M2.1 Ingestion Core、M2.2 Multi-format Adapters、M2.3 Research Planning/Runtime、M2.4 Evidence Engine、M2.5 Block-level Binding/Gap/Rework、M2.6 Application/Capability/Security，以及 M2.7 repository-wide audit。
+- 六个 Submodule Gate 与 M2.7 repository-wide Gate 均 PASS，Critical/Major open 为 0，waiver 为 0。
+- **M2 Exit Gate：PASS（2026-08-27）。** Source → Research → Evidence → Block Binding → Application 边界已经形成可追溯、可恢复、provider-neutral、显式降级且 fail-closed 的 ProductionImpl。
+- 能力边界：M2 完成不代表 M3 Narrative/Planning、M4 Rendering、M5 Review/Repair 或生产级端到端 PPT 产品完成；下一里程碑是 M3。
+- 相关 ADR：ADR-0005、ADR-0007、ADR-0008、ADR-0009、ADR-0010、ADR-0011、ADR-0012、ADR-0013、ADR-0014。
+- 最终证据：`audit/M2.7-round-2-scorecard.md`、`audit/M2-BUILD_REPORT.md`。

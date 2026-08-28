@@ -6,30 +6,59 @@
 
 你现在接手 Slidethus。它是一套 Agentic Presentation Engineering Skill，不是简单 PPT 模板生成器。
 
-先执行以下动作，不要直接开始扩展渲染功能：
+## 当前事实
 
-1. 读取根目录 `AGENTS.md`，并按其中顺序读取核心文档、`TASKS.md`、适用 ADR 和 `.agents/skills/slidethus/SKILL.md`。
-2. 运行当前基线检查：
+- M0 Foundation Contract：PASS。
+- M1 Artifact Runtime：PASS。
+- MVP0 Planning Proof 与 MVP1 Complete Action Chain：PASS，但仍是跨里程碑 MinimalImpl 回归切片。
+- **M2 Exit Gate: PASS（2026-08-27）**。
+- **M3 Exit Gate: PASS（2026-08-27）**。
+- **M4 Exit Gate: PASS（2026-08-28）**。
+- M2 Source/Research/Evidence、M3 Narrative/Planning 与 M4 Production Rendering boundaries 均通过 Round A 根修、Round B Gate、双 Python/Node 基线和 Package Audit，无 waiver。
+- 下一里程碑是 **M5 Review and Repair Loop**。
+
+## 接手动作
+
+1. 先读取根目录 `AGENTS.md`，并按其中顺序读取核心文档、`TASKS.md`、适用 ADR 和 `.agents/skills/slidethus/SKILL.md`。
+2. 运行当前基线：
+   - `python -m compileall -q src tests scripts`
+   - `ruff check src tests scripts`
    - `python -m pytest`
    - `python scripts/validate_all.py`
+   - `python scripts/validate_m2_exit.py`
+   - `python scripts/validate_m3_exit.py`
+   - `python scripts/validate_m4_exit.py`
    - `python scripts/audit_package.py`
-3. 先验证 M1 Artifact Runtime 的 Gate 和 `audit/M1-round-2-scorecard.md`，然后用新的执行计划文件规划 `TASKS.md` 的 M2；不要重做已经通过的 M1。
-4. M2 目标是完成可靠的 Ingestion, Research, Evidence：
-   - provider-neutral 输入解析与 source inventory；
-   - 方向性扫描和 outline-driven 定向研究；
-   - query/task lineage、缓存、失效和恢复；
-   - 证据去重、冲突、时效和可信等级；
-   - 不可信来源指令隔离与无联网降级；
-   - CLI、适配器合同和测试。
-5. 保持单一主编排器。除独立的只读审计、测试分析或代码探索外，不要使用多代理并行写代码。
-6. 不要把模型、搜索、图片生成或 PptxGenJS 写死进领域层；适配器通过协议接入。
-7. 不要从内容直接跳到最终设计；`slide_specs` 与 `layout_plans` 是正式事实资产。
-8. 发现架构问题时做根因修复，并更新 ADR；不要用补丁堆叠绕过现有合同。
-9. 每完成一个子阶段，运行相关测试；M2 全部完成后，再运行完整基线检查并做两轮独立 review：
-   - 第一轮只找具体问题，不评分；
-   - 修复后第二轮按维度评分与 Gate 验收。
-10. 只在 M2 Gate 通过后更新 `TASKS.md`。不要提前实现最终 PPT 视觉生成，除非它是验证 evidence contract 所必需的最小测试夹具。
+3. 阅读最终证据：
+   - `audit/M2-BUILD_REPORT.md`
+   - `audit/M3-round-1-open-issues.md`
+   - `audit/M3-round-2-scorecard.md`
+   - `audit/M3-BUILD_REPORT.md`
+   - `audit/M4-round-1-open-issues.md`
+   - `audit/M4-round-2-scorecard.md`
+   - `audit/M4-BUILD_REPORT.md`
+4. **不要重做 M2、M3 或 M4**，不要绕过已经冻结的 Production 合同：
+   - immutable Source Snapshot 与 stable Source/Chunk/locator/hash；
+   - provider-neutral Research Plan/Run/Cache 与 Result ≠ Source ≠ Evidence；
+   - deterministic Evidence identity、conflict/freshness/authority/use policy；
+   - high-risk Source 隔离、external-disclosure approval 与显式降级；
+   - current Outline/Block Evidence Gap、G2/G5A 与正式 P2 rework；
+   - minimum-question Brief completion 与回答恢复；
+   - provider-neutral PlanningProposal admission 与 `PLN-*` lineage；
+   - stable `S-*` sticky notes、`PCH-*` Change Reports 和依赖传播；
+   - Evidence-qualified `BLK-*` Slide Specs；
+   - relationship-driven Layout Plans、stable `REG-*` 与 immutable wireframes；
+   - `PRV-*` Planning Review、`PRP-*` bounded Repair；
+   - content-addressed M2/M3 Application Reports；
+   - Production Visual System → immutable Renderer IR → Final SVG / PptxGenJS Native / Hybrid；
+   - Asset/Font/Geometry Preflight、PNG/PDF export、measured editability、Production Render Manifest、M4 Application Report 与 G6/G7。
+5. 从 **M5 Review and Repair Loop** 开始：独立确定性/语义/视觉审计、开放问题发现、维度评分、最早责任阶段定位、局部 Repair Plan、跨页回归与 golden-deck 质量基线。
+6. M5 不得把 Review 逻辑塞进 renderer，也不得把 renderer 输出反向当作 Evidence、Narrative 或 Planning source of truth。
+7. M5 必须区分“渲染结构有效”与“视觉质量合格”；M4 的 preflight/preview 不能冒充独立视觉审计。
+8. 保持单一主编排器。只对独立只读审计、测试分析或代码探索使用子代理；重叠代码由一个 writer 修改。
+9. 做根因修复，直接替换错误逻辑；架构变化同步 ADR、Schema、示例、文档和测试。
+10. 每个 M5 子模块先做无评分 Round A，再根修，再做 Round B Gate；Critical/Major 不得用评分掩盖。
 
-最终汇报：变更清单、关键设计决策、测试结果、仍存风险、下一里程碑建议，并引用具体文件路径。
+最终汇报必须包含：变更清单、关键设计决策、测试结果、审计结果、仍存风险、下一稳定点，并引用具体文件路径。
 
 ---

@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/evidence-gap-report.schema.json",
+  "title": "Evidence Gap Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "report_id",
+    "generated_at",
+    "inputs",
+    "status",
+    "requires_rework",
+    "target_phase",
+    "summary",
+    "issues",
+    "query_suggestions",
+    "slides"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "pattern": "^0\\.1\\.[0-9]+$"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "report_id": {"type": "string", "pattern": "^EGR-[A-F0-9]{16}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_brief", "source_ledger", "evidence_ledger", "deck_outline", "slide_specs"],
+      "properties": {
+        "project_brief": {"$ref": "#/$defs/artifactRef"},
+        "source_ledger": {"$ref": "#/$defs/artifactRef"},
+        "evidence_ledger": {"$ref": "#/$defs/artifactRef"},
+        "deck_outline": {"$ref": "#/$defs/artifactRef"},
+        "slide_specs": {
+          "oneOf": [
+            {"$ref": "#/$defs/artifactRef"},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "status": {"enum": ["pass", "gaps"]},
+    "requires_rework": {"type": "boolean"},
+    "target_phase": {"enum": ["EVIDENCE_READY", null]},
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slide_count",
+        "analyzed_block_count",
+        "factual_block_count",
+        "bound_block_count",
+        "blocking_issue_count",
+        "warning_count",
+        "query_suggestion_count"
+      ],
+      "properties": {
+        "slide_count": {"type": "integer", "minimum": 0},
+        "analyzed_block_count": {"type": "integer", "minimum": 0},
+        "factual_block_count": {"type": "integer", "minimum": 0},
+        "bound_block_count": {"type": "integer", "minimum": 0},
+        "blocking_issue_count": {"type": "integer", "minimum": 0},
+        "warning_count": {"type": "integer", "minimum": 0},
+        "query_suggestion_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/issue"}
+    },
+    "query_suggestions": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/querySuggestion"}
+    },
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "slide_id",
+          "status",
+          "evidence_requirement",
+          "outline_evidence_ids",
+          "block_ids",
+          "issue_ids",
+          "query_suggestion_ids"
+        ],
+        "properties": {
+          "slide_id": {"type": "string", "pattern": "^S-[0-9]{3}$"},
+          "status": {"enum": ["pass", "gap", "warning", "not_analyzed"]},
+          "evidence_requirement": {"enum": ["required", "optional", "none"]},
+          "outline_evidence_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^EVD-[0-9]{3}$"}
+          },
+          "block_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^BLK-S[0-9]{3}-[0-9]{2}$"}
+          },
+          "issue_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^EGI-[A-F0-9]{16}$"}
+          },
+          "query_suggestion_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^EGQ-[A-F0-9]{16}$"}
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_type", "version", "content_hash"],
+      "properties": {
+        "artifact_type": {"enum": ["project_brief", "source_ledger", "evidence_ledger", "deck_outline", "slide_specs"]},
+        "version": {"type": "integer", "minimum": 1},
+        "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issue_id",
+        "code",
+        "severity",
+        "message",
+        "slide_id",
+        "block_id",
+        "evidence_ids",
+        "earliest_phase",
+        "suggested_action",
+        "status"
+      ],
+      "properties": {
+        "issue_id": {"type": "string", "pattern": "^EGI-[A-F0-9]{16}$"},
+        "code": {"type": "string", "pattern": "^[a-z][a-z0-9_]{2,95}$"},
+        "severity": {"enum": ["critical", "major", "minor", "info"]},
+        "message": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "slide_id": {"type": ["string", "null"], "pattern": "^S-[0-9]{3}$"},
+        "block_id": {"type": ["string", "null"], "pattern": "^BLK-S[0-9]{3}-[0-9]{2}$"},
+        "evidence_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^EVD-[0-9]{3}$"}
+        },
+        "earliest_phase": {"enum": ["P2", "P4", "P5A"]},
+        "suggested_action": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "status": {"const": "open"}
+      }
+    },
+    "querySuggestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "query_id",
+        "slide_id",
+        "block_id",
+        "query",
+        "purpose",
+        "reason_code",
+        "outline_version",
+        "preferred_source_tiers",
+        "freshness_requirement"
+      ],
+      "properties": {
+        "query_id": {"type": "string", "pattern": "^EGQ-[A-F0-9]{16}$"},
+        "slide_id": {"type": "string", "pattern": "^S-[0-9]{3}$"},
+        "block_id": {"type": ["string", "null"], "pattern": "^BLK-S[0-9]{3}-[0-9]{2}$"},
+        "query": {"type": "string", "minLength": 1, "maxLength": 600},
+        "purpose": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "reason_code": {"type": "string", "pattern": "^[a-z][a-z0-9_]{2,95}$"},
+        "outline_version": {"type": "integer", "minimum": 1},
+        "preferred_source_tiers": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["primary", "secondary", "community", "unknown"]}
+        },
+        "freshness_requirement": {"type": ["string", "null"], "maxLength": 500}
+      }
+    }
+  }
+}

@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/planning-change-report.schema.json",
+  "title": "Planning Change Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "change_id",
+    "generated_at",
+    "operation",
+    "status",
+    "reason",
+    "planning_limits",
+    "request_payload",
+    "idempotency_key",
+    "request_hash",
+    "input_outline",
+    "output_outline",
+    "target_slide_ids",
+    "created_slide_ids",
+    "excluded_slide_ids",
+    "preserved_slide_ids",
+    "mappings",
+    "changed_fields",
+    "downstream_invalidated",
+    "result_summary"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "pattern": "^0\\.1\\.[0-9]+$"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "change_id": {"type": "string", "pattern": "^PCH-[A-F0-9]{16}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "operation": {
+      "enum": ["insert", "exclude", "reorder", "split", "merge", "freeze", "unfreeze", "update"]
+    },
+    "status": {"enum": ["applied", "noop"]},
+    "reason": {"type": "string", "minLength": 1, "maxLength": 4000},
+    "planning_limits": {"$ref": "#/$defs/planningLimits"},
+    "request_payload": {"type": "object"},
+    "idempotency_key": {"type": ["string", "null"], "maxLength": 512},
+    "request_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "input_outline": {"$ref": "#/$defs/artifactRef"},
+    "output_outline": {"$ref": "#/$defs/artifactRef"},
+    "target_slide_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^S-[0-9]{3}$"}
+    },
+    "created_slide_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^S-[0-9]{3}$"}
+    },
+    "excluded_slide_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^S-[0-9]{3}$"}
+    },
+    "preserved_slide_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^S-[0-9]{3}$"}
+    },
+    "mappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from_slide_ids", "to_slide_ids"],
+        "properties": {
+          "from_slide_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^S-[0-9]{3}$"}
+          },
+          "to_slide_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^S-[0-9]{3}$"}
+          }
+        }
+      }
+    },
+    "changed_fields": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 256}
+    },
+    "downstream_invalidated": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "slide_specs",
+          "layout_plans",
+          "visual_system",
+          "render_manifest",
+          "quality_report",
+          "delivery_manifest"
+        ]
+      }
+    },
+    "result_summary": {"type": "string", "minLength": 1, "maxLength": 4000}
+  },
+  "$defs": {
+    "planningLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_blocking_questions", "max_assumptions", "max_sections", "max_slides",
+        "max_blocks_per_slide", "max_words_per_slide", "max_provider_payload_bytes",
+        "max_change_targets"
+      ],
+      "properties": {
+        "max_blocking_questions": {"type": "integer", "minimum": 1, "maximum": 12},
+        "max_assumptions": {"type": "integer", "minimum": 1, "maximum": 999},
+        "max_sections": {"type": "integer", "minimum": 1, "maximum": 99},
+        "max_slides": {"type": "integer", "minimum": 1, "maximum": 999},
+        "max_blocks_per_slide": {"type": "integer", "minimum": 1, "maximum": 99},
+        "max_words_per_slide": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "max_provider_payload_bytes": {"type": "integer", "minimum": 1, "maximum": 10485760},
+        "max_change_targets": {"type": "integer", "minimum": 1, "maximum": 999}
+      }
+    },
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_type", "version", "content_hash"],
+      "properties": {
+        "artifact_type": {"const": "deck_outline"},
+        "version": {"type": "integer", "minimum": 1},
+        "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      }
+    }
+  }
+}

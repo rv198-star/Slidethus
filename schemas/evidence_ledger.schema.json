@@ -36,6 +36,53 @@
             "type": "string",
             "pattern": "^EVD-[0-9]{3}$"
           },
+          "claim_key": {
+            "type": "string",
+            "pattern": "^CLK-[A-F0-9]{16}$"
+          },
+          "candidate_refs": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^CND-[A-F0-9]{16}$"
+            }
+          },
+          "candidate_bindings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "candidate_id",
+                "source_id",
+                "locator",
+                "support_type",
+                "origin_kind",
+                "source_chunk_id",
+                "content_hash",
+                "research_run_id",
+                "research_result_id",
+                "conflict_key",
+                "stance",
+                "freshness_date"
+              ],
+              "properties": {
+                "candidate_id": {"type": "string", "pattern": "^CND-[A-F0-9]{16}$"},
+                "source_id": {"type": ["string", "null"], "pattern": "^SRC-[0-9]{3}$"},
+                "locator": {"type": ["string", "null"], "minLength": 1},
+                "support_type": {"enum": ["direct", "indirect", "context"]},
+                "origin_kind": {"enum": ["source_chunk", "research_summary", "inference", "assumption"]},
+                "source_chunk_id": {"type": ["string", "null"], "pattern": "^CHK-SRC-[0-9]{3}-[0-9]{4}-[A-F0-9]{8}$"},
+                "content_hash": {"type": ["string", "null"], "pattern": "^sha256:[a-f0-9]{64}$"},
+                "research_run_id": {"type": ["string", "null"], "pattern": "^RRN-[A-F0-9]{16}$"},
+                "research_result_id": {"type": ["string", "null"], "pattern": "^RSLT-[A-F0-9]{16}$"},
+                "conflict_key": {"type": ["string", "null"], "minLength": 1, "maxLength": 500},
+                "stance": {"type": ["string", "null"], "enum": ["supports", "opposes", "neutral", null]},
+                "freshness_date": {"type": ["string", "null"]}
+              }
+            }
+          },
           "claim": {
             "type": "string",
             "minLength": 1
@@ -76,6 +123,14 @@
                     "context"
                   ]
                 },
+                "chunk_id": {
+                  "type": "string",
+                  "pattern": "^CHK-SRC-[0-9]{3}-[0-9]{4}-[A-F0-9]{8}$"
+                },
+                "content_hash": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                },
                 "note": {
                   "type": "string"
                 }
@@ -87,6 +142,51 @@
               "string",
               "null"
             ]
+          },
+          "authority_decision": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["strongest_tier", "weakest_tier", "source_tiers", "reason_codes"],
+            "properties": {
+              "strongest_tier": {"enum": ["primary", "user", "secondary", "community", "unknown"]},
+              "weakest_tier": {"enum": ["primary", "user", "secondary", "community", "unknown"]},
+              "source_tiers": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {"enum": ["primary", "user", "secondary", "community", "unknown"]}
+              },
+              "reason_codes": {"type": "array", "items": {"type": "string", "minLength": 1}}
+            }
+          },
+          "freshness_decision": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "cutoff_date", "evaluated_date", "reason_codes"],
+            "properties": {
+              "status": {"enum": ["current", "stale", "unknown", "not_required"]},
+              "cutoff_date": {"type": ["string", "null"]},
+              "evaluated_date": {"type": ["string", "null"]},
+              "reason_codes": {"type": "array", "items": {"type": "string", "minLength": 1}}
+            }
+          },
+          "conflict_group": {
+            "type": ["string", "null"],
+            "pattern": "^CFG-[A-F0-9]{16}$"
+          },
+          "conflict_stances": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"enum": ["supports", "opposes", "neutral"]}
+          },
+          "adjudication": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["engine", "version", "reason_codes"],
+            "properties": {
+              "engine": {"type": "string", "minLength": 1},
+              "version": {"type": "string", "minLength": 1},
+              "reason_codes": {"type": "array", "items": {"type": "string", "minLength": 1}}
+            }
           },
           "conflict_notes": {
             "type": "array",
@@ -171,6 +271,14 @@
             "items": {
               "type": "string",
               "pattern": "^SRC-[0-9]{3}$"
+            }
+          },
+          "run_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^RRN-[A-F0-9]{16}$"
             }
           },
           "query_count": {

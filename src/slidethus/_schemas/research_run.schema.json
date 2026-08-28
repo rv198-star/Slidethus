@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/research-run.schema.json",
+  "title": "Research Run",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "plan_id",
+    "run_id",
+    "cycle_id",
+    "cycle_kind",
+    "outline_version",
+    "plan_hash",
+    "provider",
+    "limits",
+    "status",
+    "created_at",
+    "updated_at",
+    "tasks"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "pattern": "^0\\.1\\.[0-9]+$"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "plan_id": {"type": "string", "pattern": "^RPL-[A-F0-9]{16}$"},
+    "run_id": {"type": "string", "pattern": "^RRN-[A-F0-9]{16}$"},
+    "cycle_id": {"type": "string", "pattern": "^RSC-[0-9]{3}$"},
+    "cycle_kind": {"enum": ["orientation", "targeted"]},
+    "outline_version": {"type": ["integer", "null"], "minimum": 1},
+    "plan_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 128},
+        "version": {"type": "string", "minLength": 1, "maxLength": 128}
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_queries",
+        "max_query_chars",
+        "max_results_per_query",
+        "max_total_results",
+        "max_title_chars",
+        "max_summary_chars",
+        "max_metadata_bytes",
+        "cache_ttl_seconds"
+      ],
+      "properties": {
+        "max_queries": {"type": "integer", "minimum": 1, "maximum": 999},
+        "max_query_chars": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "max_results_per_query": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "max_total_results": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "max_title_chars": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "max_summary_chars": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "max_metadata_bytes": {"type": "integer", "minimum": 1, "maximum": 10485760},
+        "cache_ttl_seconds": {"type": "integer", "minimum": 0, "maximum": 31536000}
+      }
+    },
+    "status": {"enum": ["planned", "running", "complete", "partial", "blocked", "failed"]},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id",
+          "query_id",
+          "query",
+          "purpose",
+          "slide_id",
+          "freshness_requirement",
+          "preferred_source_tiers",
+          "input_key",
+          "status",
+          "attempts",
+          "cache_status",
+          "cache_snapshot_path",
+          "cache_snapshot_sha256",
+          "result_count",
+          "result_ids",
+          "error",
+          "started_at",
+          "completed_at",
+          "invalidated_at"
+        ],
+        "properties": {
+          "task_id": {"type": "string", "pattern": "^RT-[0-9]{3}$"},
+          "query_id": {"type": "string", "pattern": "^RQ-[0-9]{3}$"},
+          "query": {"type": "string", "minLength": 1, "maxLength": 10000},
+          "purpose": {"type": "string", "maxLength": 2000},
+          "slide_id": {"type": ["string", "null"], "pattern": "^S-[0-9]{3}$"},
+          "freshness_requirement": {"type": ["string", "null"], "maxLength": 500},
+          "preferred_source_tiers": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"enum": ["primary", "secondary", "community", "unknown"]}
+          },
+          "input_key": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "status": {"enum": ["pending", "running", "complete", "blocked", "failed", "invalidated"]},
+          "attempts": {"type": "integer", "minimum": 0},
+          "cache_status": {"enum": ["not_checked", "miss", "hit", "stale", "invalidated"]},
+          "cache_snapshot_path": {"type": ["string", "null"], "pattern": "^\\.slidethus/cache/research/[a-f0-9]{64}/[a-f0-9]{64}\\.json$"},
+          "cache_snapshot_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+          "result_count": {"type": "integer", "minimum": 0},
+          "result_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^RSLT-[A-F0-9]{16}$"}},
+          "error": {"type": ["string", "null"], "maxLength": 4000},
+          "started_at": {"type": ["string", "null"], "format": "date-time"},
+          "completed_at": {"type": ["string", "null"], "format": "date-time"},
+          "invalidated_at": {"type": ["string", "null"], "format": "date-time"}
+        }
+      }
+    }
+  },
+  "allOf": [
+    {"if": {"properties": {"cycle_kind": {"const": "orientation"}}, "required": ["cycle_kind"]}, "then": {"properties": {"outline_version": {"const": null}}}},
+    {"if": {"properties": {"cycle_kind": {"const": "targeted"}}, "required": ["cycle_kind"]}, "then": {"properties": {"outline_version": {"type": "integer", "minimum": 1}}}}
+  ]
+}
