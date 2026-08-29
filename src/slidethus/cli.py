@@ -27,6 +27,10 @@ from slidethus.m4_application_reports import (
     inspect_m4_application_report,
     list_m4_application_reports,
 )
+from slidethus.m5_application_reports import (
+    inspect_m5_application_report,
+    list_m5_application_reports,
+)
 from slidethus.mvp import MvpBuildConfig, build_minimal_mvp
 from slidethus.protocols import (
     BriefCompletionHints,
@@ -50,6 +54,10 @@ from slidethus.services.m3_application import (
 from slidethus.services.m4_application import (
     M4ApplicationService,
     evaluate_m4_workspace_gate,
+)
+from slidethus.services.m5_application import (
+    M5ApplicationService,
+    evaluate_m5_workspace_gate,
 )
 from slidethus.services.research import (
     inspect_research_run,
@@ -396,6 +404,32 @@ def _parser() -> argparse.ArgumentParser:
 
     m4_gate = m4_sub.add_parser("gate", help="evaluate current Production M4 readiness")
     m4_gate.add_argument("workspace", type=Path)
+
+    m5 = sub.add_parser(
+        "m5",
+        help="run and inspect Production review/repair orchestration",
+    )
+    m5_sub = m5.add_subparsers(dest="m5_command", required=True)
+
+    m5_run = m5_sub.add_parser(
+        "run",
+        help="run deterministic review and continue until an external review capability is required",
+    )
+    m5_run.add_argument("workspace", type=Path)
+    m5_run.add_argument("--renderer-root", type=Path)
+    m5_run.add_argument("--node")
+    m5_run.add_argument("--font-match")
+    m5_run.add_argument("--no-auto-repair", action="store_true")
+
+    m5_list = m5_sub.add_parser("list", help="list verified M5 Application Reports")
+    m5_list.add_argument("workspace", type=Path)
+
+    m5_show = m5_sub.add_parser("show", help="show one verified M5 Application Report")
+    m5_show.add_argument("workspace", type=Path)
+    m5_show.add_argument("report_id")
+
+    m5_gate = m5_sub.add_parser("gate", help="evaluate current Production M5/G8 readiness")
+    m5_gate.add_argument("workspace", type=Path)
     return parser
 
 
@@ -923,6 +957,49 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
             if args.m4_command == "gate":
                 result = evaluate_m4_workspace_gate(args.workspace)
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+                return 0 if result["status"] == "pass" else 1
+        if args.command == "m5":
+            if args.m5_command == "run":
+                result = M5ApplicationService(
+                    args.workspace,
+                    renderer_root=args.renderer_root,
+                    node=args.node,
+                    font_match=args.font_match,
+                ).run(auto_repair=not args.no_auto_repair)
+                print(
+                    json.dumps(
+                        {
+                            "report_id": result.report["report_id"],
+                            "path": str(result.path),
+                            "changed": result.changed,
+                            "report": result.report,
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
+                return 0 if result.report["status"] == "ready" else 1
+            if args.m5_command == "list":
+                print(
+                    json.dumps(
+                        list(list_m5_application_reports(args.workspace)),
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
+                return 0
+            if args.m5_command == "show":
+                print(
+                    json.dumps(
+                        inspect_m5_application_report(args.workspace, args.report_id),
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
+                return 0
+            if args.m5_command == "gate":
+                result = evaluate_m5_workspace_gate(args.workspace)
                 print(json.dumps(result, ensure_ascii=False, indent=2))
                 return 0 if result["status"] == "pass" else 1
         if args.command == "artifact":

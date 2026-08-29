@@ -13,11 +13,58 @@ from slidethus.planning_rules import (
     outline_gate_reasons,
     slide_specs_gate_reasons,
 )
+from slidethus.quality_reviews import production_quality_gate_reasons
 from slidethus.rendering_rules import (
     production_render_gate_reasons,
     visual_system_gate_reasons,
 )
-from slidethus.validation import EDITABILITY_ORDER, validate_workspace
+from slidethus.schema_registry import SchemaRegistry
+from slidethus.validation import EDITABILITY_ORDER, ValidationIssue, validate_workspace
+
+_GATE_STAGE = {
+    "G0": 0,
+    "G1": 1,
+    "G2": 2,
+    "G3": 3,
+    "G4": 4,
+    "G5A": 5,
+    "G5B": 6,
+    "G6": 7,
+    "G7": 8,
+    "G8": 9,
+    "G9": 10,
+}
+_VALIDATION_PATH_STAGE = (
+    ("brief/", 0),
+    ("sources/", 1),
+    ("evidence/", 2),
+    ("narrative/", 3),
+    ("outline/", 4),
+    ("slides/", 5),
+    ("layout/", 6),
+    ("design/", 7),
+    ("assets/", 7),
+    ("renders/", 8),
+    ("outputs/", 8),
+    (".slidethus/render/", 8),
+    ("review/", 9),
+    (".slidethus/review/", 9),
+    ("delivery/", 10),
+)
+
+
+def _validation_issue_stage(issue: ValidationIssue) -> int:
+    path = issue.path.replace("\\", "/")
+    for prefix, stage in _VALIDATION_PATH_STAGE:
+        if path.startswith(prefix):
+            return stage
+    if issue.code.startswith(("render_", "invalid_m4", "invalid_renderer", "invalid_render_")):
+        return 8
+    if issue.code.startswith(("invalid_deterministic_review", "invalid_semantic_review", "invalid_visual_review")):
+        return 9
+    if issue.code.startswith("delivery_"):
+        return 10
+    return 0
 
 
 @dataclass(frozen=True)
@@ -40,8 +87,17 @@ def evaluate_gate(workspace: Path, gate_id: str) -> GateResult:
         return GateResult(gate_id, "blocked", ("unknown gate",))
 
     validation = validate_workspace(workspace, check_hashes=True)
-    if not validation.ok:
-        return GateResult(gate_id, "fail", tuple(f"validation:{issue.code}" for issue in validation.issues if issue.severity == "error"))
+    blocking_validation = [
+        issue
+        for issue in validation.issues
+        if issue.severity == "error" and _validation_issue_stage(issue) <= _GATE_STAGE[gate_id]
+    ]
+    if blocking_validation:
+        return GateResult(
+            gate_id,
+            "fail",
+            tuple(f"validation:{issue.code}" for issue in blocking_validation),
+        )
 
     reasons = [
         f"required artifact is missing: {relative}"
@@ -335,6 +391,14 @@ def evaluate_gate(workspace: Path, gate_id: str) -> GateResult:
                 reasons.append("debug PPTX has no independent preview")
             if "final_preview" not in roles:
                 reasons.append("final PPTX has no independent preview")
+        elif render.get("pipeline_mode") == "production_multi_backend":
+            reasons.extend(
+                production_quality_gate_reasons(
+                    workspace,
+                    report,
+                    SchemaRegistry().schema_dir,
+                )
+            )
     elif gate_id == "G9":
         render = read_json(workspace / "renders/render_manifest.json")
         quality = read_json(workspace / "review/quality_report.json")

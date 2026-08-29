@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/review-regression-report.schema.json",
+  "title": "Review Regression Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "project_id", "regression_id", "repair", "review_inputs",
+    "gate_results", "artifact_changes", "slide_results", "summary", "status"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "pattern": "^0\\.1\\.[0-9]+$"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "regression_id": {"type": "string", "pattern": "^REG-[A-F0-9]{16}$"},
+    "repair": {
+      "type": ["object", "null"], "additionalProperties": false,
+      "required": ["repair_id", "path", "sha256", "status"],
+      "properties": {
+        "repair_id": {"type": "string", "pattern": "^RRR-[A-F0-9]{16}$"},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "status": {"enum": ["applied", "blocked", "not_required", "failed"]}
+      }
+    },
+    "review_inputs": {
+      "type": "array", "minItems": 4, "maxItems": 4,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["review_type", "report_id", "path", "sha256", "status"],
+        "properties": {
+          "review_type": {"enum": ["deterministic", "semantic", "scorecard", "visual"]},
+          "report_id": {"type": "string", "minLength": 1},
+          "path": {"type": "string", "minLength": 1},
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "status": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "gate_results": {
+      "type": "array", "minItems": 9, "maxItems": 9,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["gate_id", "status", "reasons"],
+        "properties": {
+          "gate_id": {"enum": ["G0", "G1", "G2", "G3", "G4", "G5A", "G5B", "G6", "G7"]},
+          "status": {"enum": ["pass", "fail", "blocked", "waived"]},
+          "reasons": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "artifact_changes": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["artifact_type", "changed", "allowed"],
+        "properties": {
+          "artifact_type": {"type": "string", "minLength": 1},
+          "changed": {"type": "boolean"},
+          "allowed": {"type": "boolean"}
+        }
+      }
+    },
+    "slide_results": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["slide_id", "expected_change", "semantic_unchanged", "layout_unchanged", "render_present", "status"],
+        "properties": {
+          "slide_id": {"type": "string", "pattern": "^S-[0-9]{3}$"},
+          "expected_change": {"type": "boolean"},
+          "semantic_unchanged": {"type": "boolean"},
+          "layout_unchanged": {"type": "boolean"},
+          "render_present": {"type": "boolean"},
+          "status": {"enum": ["pass", "fail"]}
+        }
+      }
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["gate_failures", "unexpected_artifact_changes", "slide_failures", "changed_slide_count", "unchanged_slide_count"],
+      "properties": {
+        "gate_failures": {"type": "integer", "minimum": 0},
+        "unexpected_artifact_changes": {"type": "integer", "minimum": 0},
+        "slide_failures": {"type": "integer", "minimum": 0},
+        "changed_slide_count": {"type": "integer", "minimum": 0},
+        "unchanged_slide_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "status": {"enum": ["pass", "issues", "blocked"]}
+  }
+}

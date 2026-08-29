@@ -90,7 +90,22 @@ Round A 的 Critical/Major 问题修复后，再按维度评分。评分必须�
 
 M3 Planning Review 的 Critical/Major 必须为 0 才能通过 repository M3 Exit。Minor 可以保留为显式 warning，但不能被自动评分掩盖。该报告不是 P8 最终视觉 Quality Report。
 
-### 4.5 Layout/Render
+### 4.5 M5.1 Production Deterministic Review
+
+M5.1 在 M4 之外重新计算 deterministic facts，而不是读取 `M4 Application status=ready` 后直接放行：
+
+- current workspace Schema/cross-reference/hash integrity；
+- G0–G7 当前回归；
+- Production Render Manifest、Renderer IR、Preflight 和 output hash lineage；
+- Final SVG / PNG 全页覆盖、PDF 单 deck 覆盖；
+- Native/Hybrid PPTX 真实 reopen 与 Renderer IR slide count 一致性；
+- measured editability 与 backend 声明一致；
+- Final SVG 独立 preview 证据与 Office preview capability disclosure；
+- 所有 review input path 在读取前限制在 workspace admitted roots。
+
+确定性失败必须定位最早责任阶段。全局 workspace validation 导致前置 Gate 被连带阻断时，根因沿用真实 validation issue 的责任阶段，不能把 P7 输出损坏误判为 P0/G0 问题。
+
+### 4.6 Layout/Render
 
 - canvas/safe area；
 - overlap/collision；

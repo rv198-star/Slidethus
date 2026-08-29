@@ -18,7 +18,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "pattern": "^0\\.1\\.[0-9]+$"
+      "pattern": "^0\\.[12]\\.[0-9]+$"
     },
     "project_id": {
       "type": "string",
@@ -190,12 +190,64 @@
         }
       }
     },
+    "production_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deterministic_review",
+        "semantic_review",
+        "semantic_scorecard",
+        "visual_review",
+        "repair_report",
+        "regression_report",
+        "issue_sources"
+      ],
+      "properties": {
+        "deterministic_review": {"$ref": "#/$defs/reviewRef"},
+        "semantic_review": {"$ref": "#/$defs/reviewRef"},
+        "semantic_scorecard": {"$ref": "#/$defs/reviewRef"},
+        "visual_review": {"$ref": "#/$defs/reviewRef"},
+        "repair_report": {
+          "anyOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/reviewRef"}
+          ]
+        },
+        "regression_report": {"$ref": "#/$defs/reviewRef"},
+        "issue_sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["quality_issue_id", "source_issue_id", "source_type"],
+            "properties": {
+              "quality_issue_id": {"type": "string", "pattern": "^ISS-[0-9]{3}$"},
+              "source_issue_id": {"type": "string", "minLength": 1},
+              "source_type": {"enum": ["semantic", "visual"]}
+            }
+          }
+        }
+      }
+    },
     "status": {
       "enum": [
         "pass",
         "fail",
         "blocked"
       ]
+    }
+  },
+  "$defs": {
+    "reviewRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["report_id", "path", "sha256", "status"],
+      "properties": {
+        "report_id": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "status": {"type": "string", "minLength": 1}
+      }
     }
   }
 }

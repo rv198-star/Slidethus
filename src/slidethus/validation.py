@@ -10,6 +10,7 @@ from slidethus.brief_completion import (
     field_value,
     is_unresolved,
 )
+from slidethus.deterministic_reviews import deterministic_review_workspace_errors
 from slidethus.errors import WorkspaceError
 from slidethus.evidence_gaps import evidence_gap_workspace_errors
 from slidethus.evidence_identity import candidate_id_for, claim_key, conflict_group_id
@@ -18,16 +19,22 @@ from slidethus.io_utils import ensure_within, read_json, sha256_file, sha256_jso
 from slidethus.m2_application_reports import m2_application_workspace_errors
 from slidethus.m3_application_reports import m3_application_workspace_errors
 from slidethus.m4_application_reports import m4_application_workspace_errors
+from slidethus.m5_application_reports import m5_application_workspace_errors
 from slidethus.planning_changes import planning_change_workspace_errors
 from slidethus.planning_repairs import planning_repair_workspace_errors
 from slidethus.planning_reviews import planning_review_workspace_errors
 from slidethus.protocols import EvidenceCandidate
+from slidethus.quality_reviews import quality_review_workspace_errors
 from slidethus.render_ir import renderer_ir_workspace_errors
 from slidethus.render_manifest import production_render_manifest_reference_errors
 from slidethus.render_preflight import render_preflight_workspace_errors
+from slidethus.review_regressions import review_regression_workspace_errors
+from slidethus.review_repairs import review_repair_workspace_errors
 from slidethus.schema_registry import SchemaRegistry
+from slidethus.semantic_reviews import semantic_review_workspace_errors
 from slidethus.services.research import research_workspace_errors
 from slidethus.source_snapshots import load_source_snapshot, source_snapshot_reference_errors
+from slidethus.visual_reviews import visual_review_workspace_errors
 
 
 @dataclass(frozen=True)
@@ -171,6 +178,8 @@ def validate_workspace(workspace: Path, registry: SchemaRegistry | None = None, 
         report.add("invalid_m3_application_report", message, path)
     for path, message in m4_application_workspace_errors(workspace, registry.schema_dir):
         report.add("invalid_m4_application_report", message, path)
+    for path, message in m5_application_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_m5_application_report", message, path)
     for path, message in planning_change_workspace_errors(workspace, registry.schema_dir):
         report.add("invalid_planning_change_report", message, path)
     for path, message in planning_review_workspace_errors(workspace, registry.schema_dir):
@@ -181,6 +190,18 @@ def validate_workspace(workspace: Path, registry: SchemaRegistry | None = None, 
         report.add("invalid_renderer_ir", message, path)
     for path, message in render_preflight_workspace_errors(workspace, registry.schema_dir):
         report.add("invalid_render_preflight_report", message, path)
+    for path, message in deterministic_review_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_deterministic_review_report", message, path)
+    for path, message in semantic_review_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_semantic_review_report", message, path)
+    for path, message in visual_review_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_visual_review_report", message, path)
+    for path, message in review_repair_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_review_repair_report", message, path)
+    for path, message in review_regression_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_review_regression_report", message, path)
+    for path, message in quality_review_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_quality_review_report", message, path)
     return report
 
 

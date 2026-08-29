@@ -259,7 +259,25 @@ def evaluate_m4_exit(root: Path, *, run_runtime_checks: bool = True) -> tuple[Ch
     )
 
     kickoff = _read(root, "CODEX_KICKOFF.md")
-    kickoff_ok = "M4 Exit Gate: PASS" in kickoff and "M5 Review and Repair Loop" in kickoff and "不要重做 M2、M3 或 M4" in kickoff
+    kickoff_ok = (
+        "M4 Exit Gate: PASS" in kickoff
+        and any(
+            marker in kickoff
+            for marker in (
+                "M5 Review and Repair Loop",
+                "M5 Exit Gate: PASS",
+                "M6 Productization and Distribution",
+            )
+        )
+        and any(
+            marker in kickoff
+            for marker in (
+                "不要重做 M2、M3 或 M4",
+                "不要重做 M2、M3、M4 或 M5",
+                "不要重做 M2–M5",
+            )
+        )
+    )
     checks.append(
         Check(
             "kickoff_handoff",

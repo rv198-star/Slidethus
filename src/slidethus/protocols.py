@@ -281,5 +281,19 @@ class RenderBackend(Protocol):
     def render(self, request: RenderRequest) -> RenderResult: ...
 
 
+class SemanticReviewProvider(Protocol):
+    """Provider-neutral semantic review port for M5 open-issue and scorecard proposals."""
+
+    name: str
+    version: str
+
+    def review(self, context: dict[str, Any]) -> dict[str, Any]: ...
+
+
 class VisualReviewProvider(Protocol):
+    """Provider-neutral full-page visual review port for real rendered page images."""
+
+    name: str
+    version: str
+
     def review(self, image_paths: Sequence[Path], context: dict[str, Any]) -> dict[str, Any]: ...

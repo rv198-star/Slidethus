@@ -14,50 +14,49 @@
 - **M2 Exit Gate: PASS（2026-08-27）**。
 - **M3 Exit Gate: PASS（2026-08-27）**。
 - **M4 Exit Gate: PASS（2026-08-28）**。
-- M2 Source/Research/Evidence、M3 Narrative/Planning 与 M4 Production Rendering boundaries 均通过 Round A 根修、Round B Gate、双 Python/Node 基线和 Package Audit，无 waiver。
-- 下一里程碑是 **M5 Review and Repair Loop**。
+- **M5 Exit Gate: PASS（2026-08-29）**。
+- M2 Source/Research/Evidence、M3 Narrative/Planning、M4 Production Rendering 与 M5 Production Review/Repair boundaries 均已冻结，无 waiver。
+- M5 使用 independent DVR/SVR/SCR/VVR review facts、phase-correct Repair Plan/Report、cross-deck Regression、Production Quality Report/G8、Golden baseline 与 M5 Application/CLI。
+- 下一里程碑是 **M6 Productization and Distribution**。
 
 ## 接手动作
 
 1. 先读取根目录 `AGENTS.md`，并按其中顺序读取核心文档、`TASKS.md`、适用 ADR 和 `.agents/skills/slidethus/SKILL.md`。
-2. 运行当前基线：
+2. 运行当前冻结基线：
    - `python -m compileall -q src tests scripts`
    - `ruff check src tests scripts`
-   - `python -m pytest`
    - `python scripts/validate_all.py`
    - `python scripts/validate_m2_exit.py`
    - `python scripts/validate_m3_exit.py`
    - `python scripts/validate_m4_exit.py`
+   - `python scripts/validate_m5_exit.py`
+   - `npm test --prefix renderers/pptxgenjs`
    - `python scripts/audit_package.py`
 3. 阅读最终证据：
    - `audit/M2-BUILD_REPORT.md`
-   - `audit/M3-round-1-open-issues.md`
-   - `audit/M3-round-2-scorecard.md`
    - `audit/M3-BUILD_REPORT.md`
-   - `audit/M4-round-1-open-issues.md`
-   - `audit/M4-round-2-scorecard.md`
    - `audit/M4-BUILD_REPORT.md`
-4. **不要重做 M2、M3 或 M4**，不要绕过已经冻结的 Production 合同：
+   - `audit/M5-round-1-open-issues.md`
+   - `audit/M5-round-2-scorecard.md`
+   - `audit/M5-BUILD_REPORT.md`
+4. **不要重做 M2、M3、M4 或 M5**，不要绕过已经冻结的 Production 合同：
    - immutable Source Snapshot 与 stable Source/Chunk/locator/hash；
    - provider-neutral Research Plan/Run/Cache 与 Result ≠ Source ≠ Evidence；
    - deterministic Evidence identity、conflict/freshness/authority/use policy；
-   - high-risk Source 隔离、external-disclosure approval 与显式降级；
    - current Outline/Block Evidence Gap、G2/G5A 与正式 P2 rework；
-   - minimum-question Brief completion 与回答恢复；
-   - provider-neutral PlanningProposal admission 与 `PLN-*` lineage；
-   - stable `S-*` sticky notes、`PCH-*` Change Reports 和依赖传播；
-   - Evidence-qualified `BLK-*` Slide Specs；
-   - relationship-driven Layout Plans、stable `REG-*` 与 immutable wireframes；
-   - `PRV-*` Planning Review、`PRP-*` bounded Repair；
-   - content-addressed M2/M3 Application Reports；
+   - minimum-question Brief completion 与 provider-neutral PlanningProposal admission；
+   - stable `S-*` sticky notes、Evidence-qualified `BLK-*` Slide Specs、stable `REG-*` Layout 与 immutable wireframes；
    - Production Visual System → immutable Renderer IR → Final SVG / PptxGenJS Native / Hybrid；
-   - Asset/Font/Geometry Preflight、PNG/PDF export、measured editability、Production Render Manifest、M4 Application Report 与 G6/G7。
-5. 从 **M5 Review and Repair Loop** 开始：独立确定性/语义/视觉审计、开放问题发现、维度评分、最早责任阶段定位、局部 Repair Plan、跨页回归与 golden-deck 质量基线。
-6. M5 不得把 Review 逻辑塞进 renderer，也不得把 renderer 输出反向当作 Evidence、Narrative 或 Planning source of truth。
-7. M5 必须区分“渲染结构有效”与“视觉质量合格”；M4 的 preflight/preview 不能冒充独立视觉审计。
-8. 保持单一主编排器。只对独立只读审计、测试分析或代码探索使用子代理；重叠代码由一个 writer 修改。
-9. 做根因修复，直接替换错误逻辑；架构变化同步 ADR、Schema、示例、文档和测试。
-10. 每个 M5 子模块先做无评分 Round A，再根修，再做 Round B Gate；Critical/Major 不得用评分掩盖。
+   - Asset/Font/Geometry Preflight、PNG/PDF export、measured editability、Production Render Manifest、M4 Application 与 G6/G7；
+   - independent deterministic/semantic/scorecard/visual review facts；
+   - severity-first issue handling、earliest-phase routing、Repair Plan/Report、cross-deck regression；
+   - Production Quality Report lineage、G8、Golden baseline 与 M5 Application Report。
+5. 从 **M6 Productization and Distribution** 开始：稳定 Create/Rebuild/Improve/Audit/Revise/Extract Style 多工作流、可观测性、缓存、成本预算、并发控制、Plugin 打包、示例/评测集、许可证/第三方素材策略和发布文档。
+6. M6 不得把产品化需求反向塞入 Evidence、Planning、Renderer 或 Review 的私有状态；Production boundaries 继续通过已有 artifacts/protocols 交互。
+7. 保持单一主编排器。只对独立只读审计、测试分析或代码探索使用子代理；重叠代码由一个 writer 修改。
+8. 做根因修复，直接替换错误逻辑；架构变化同步 ADR、Schema、示例、文档和测试。
+9. 不需要为每个子模块重复跑多个 Python minor 版本。选择一个正式支持环境做完整冻结回归，并保留必要的兼容/发布级矩阵即可。
+10. 每个 M6 子模块继续采用 Open Issue Mining → 根修 → Scorecard/Gate，不允许评分掩盖 Critical/Major。
 
 最终汇报必须包含：变更清单、关键设计决策、测试结果、审计结果、仍存风险、下一稳定点，并引用具体文件路径。
 

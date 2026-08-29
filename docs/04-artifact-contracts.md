@@ -260,6 +260,15 @@ M3 Production Layout 还绑定 current Slide Specs semantic hashes、stable `REG
 - open issue mining；
 - dimension scorecard。
 
+M5 Production Review 不让各 reviewer 直接竞争写 `quality_report.json`。各模式先形成 immutable runtime facts，最终再聚合为 catalog Quality Report。M5.1 新增 `deterministic_review_report.schema.json`（`DVR-*`），位于 `.slidethus/review/deterministic/`，记录 current M2–M4 artifact refs、G0–G7 regression、render/output checks、summary 和最早责任阶段。
+
+每个 M5.1 input ref 同时保留：
+
+- `content_hash`：Artifact Runtime registry 在 review 开始时的期望 hash；
+- `observed_content_hash`：reviewer 实际读取到的 artifact body hash。
+
+因此 deterministic review 可以把“artifact 已漂移/被篡改”作为有效 finding 持久化；报告自身仍能验证其实际观察内容，而不是要求失败输入假装与 registry 一致。所有 runtime input/output 路径必须先通过 workspace admission。
+
 ### 4.12 Delivery Manifest
 
 回答：最终交付包含什么、基于哪些版本、有哪些已知限制。它必须把目标编辑等级与实际交付编辑等级分开；草稿阶段实际等级可为 `not_measured`，`ready/delivered` 时必须由真实输出验证。

@@ -15,7 +15,7 @@
     {
       "name": "schemas",
       "ok": true,
-      "detail": "28 valid (16 catalog artifacts)"
+      "detail": "36 valid (16 catalog artifacts)"
     },
     {
       "name": "packaged_schema_mirror",
@@ -25,7 +25,7 @@
     {
       "name": "instruction_budget",
       "ok": true,
-      "detail": "18395 bytes across AGENTS.md and SKILL.md"
+      "detail": "19138 bytes across AGENTS.md and SKILL.md"
     },
     {
       "name": "raw_browser_html_omitted",
@@ -73,19 +73,9 @@
       "detail": "candidate/source/research lineage, policy adjudication, invalidation, and G2 align"
     },
     {
-      "name": "m2_exit_gate",
+      "name": "m5_exit_contract",
       "ok": true,
-      "detail": "repository-wide M2 Exit Gate passes"
-    },
-    {
-      "name": "m3_exit_gate",
-      "ok": true,
-      "detail": "repository-wide M3 Exit Gate passes"
-    },
-    {
-      "name": "m4_exit_gate",
-      "ok": true,
-      "detail": "repository-wide M4 Exit Gate passes"
+      "detail": "repository-wide M5 Exit persistent contract passes static validation"
     },
     {
       "name": "artifact_runtime_alignment",
@@ -111,6 +101,11 @@
       "name": "production_renderer_contract",
       "ok": true,
       "detail": "PptxGenJS/Hybrid and independent SVG export sidecar are pinned and tested"
+    },
+    {
+      "name": "deterministic_review_contract",
+      "ok": true,
+      "detail": "M5.1 immutable deterministic review, observed lineage and workspace validation are present"
     }
   ]
 }

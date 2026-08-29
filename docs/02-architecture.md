@@ -339,6 +339,26 @@ M3ApplicationService
 
 详细决策见 ADR-0015、ADR-0016、ADR-0017、ADR-0018。
 
+### 7.7 M5 Independent Review / Repair 边界
+
+```text
+current M2/M3 artifacts + Production Render Manifest + real outputs
+  → independent runtime reviews
+  → issue triage / scorecard / visual review
+  → bounded Repair Plan
+  → phase-correct regeneration
+  → cross-deck regression
+  → catalog Quality Report / G8
+```
+
+M5 Review 位于 renderer 之外。M4 的 Preflight、G7 与 preview 是审计输入，不能自证 G8 质量。各 review mode 先发布 `.slidethus/review/` 下的 immutable runtime facts，最终 `review/quality_report.json` 才是 G8 使用的聚合事实。
+
+M5.1 `DeterministicReviewService` 已建立第一层 Production Review：它独立重算 current workspace/hash/cross-reference、G0–G7、Production Render Manifest/Renderer IR/Preflight lineage、Final SVG/PNG/PDF 覆盖、Native/Hybrid PPTX reopen、跨后端 slide count、实际 editability 与 preview capability disclosure。`DVR-*` 报告同时记录 registry 期望 `content_hash` 与 reviewer 实际观察到的 `observed_content_hash`，因此可以合法记录上游 artifact drift，而不会因为发现篡改就让审计报告自身失效。
+
+所有 review 输入路径在读取前执行 workspace admission；reviewer 不允许通过被篡改 Manifest 读取工作区外文件。后续 M5.2–M5.6 继续沿用 ADR-0020 的“开放问题先于评分、最早责任阶段、Repair Plan 先于 mutation、修后全 deck regression”规则。
+
+详细决策见 ADR-0020。
+
 ## 8. 渲染策略
 
 渲染采用多后端：

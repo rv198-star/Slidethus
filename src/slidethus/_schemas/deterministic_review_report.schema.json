@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/deterministic-review-report.schema.json",
+  "title": "Deterministic Review Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "review_id",
+    "review_mode",
+    "inputs",
+    "checks",
+    "summary",
+    "status",
+    "target_phase"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "review_id": {"type": "string", "pattern": "^DVR-[A-F0-9]{16}$"},
+    "review_mode": {"const": "deterministic"},
+    "inputs": {
+      "type": "array",
+      "minItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artifact_type", "path", "version", "content_hash", "observed_content_hash"],
+        "properties": {
+          "artifact_type": {"type": "string"},
+          "path": {"type": "string", "minLength": 1},
+          "version": {"type": "integer", "minimum": 1},
+          "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+          "observed_content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "check_id",
+          "code",
+          "category",
+          "severity",
+          "earliest_phase",
+          "status",
+          "finding",
+          "evidence",
+          "verification",
+          "refs"
+        ],
+        "properties": {
+          "check_id": {"type": "string", "pattern": "^DRC-[A-F0-9]{16}$"},
+          "code": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+          "category": {
+            "enum": [
+              "workspace_integrity",
+              "gate_regression",
+              "render_lineage",
+              "output_integrity",
+              "cross_backend_consistency",
+              "editability_truthfulness",
+              "preview_coverage",
+              "capability_disclosure"
+            ]
+          },
+          "severity": {"enum": ["critical", "major", "minor"]},
+          "earliest_phase": {"enum": ["P0", "P1", "P2", "P3", "P4", "P5A", "P5B", "P6", "P7", "P8"]},
+          "status": {"enum": ["pass", "fail"]},
+          "finding": {"type": "string", "minLength": 1},
+          "evidence": {"type": "string", "minLength": 1},
+          "verification": {"type": "string", "minLength": 1},
+          "refs": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed_count", "failed_count", "critical_count", "major_count", "minor_count"],
+      "properties": {
+        "passed_count": {"type": "integer", "minimum": 0},
+        "failed_count": {"type": "integer", "minimum": 0},
+        "critical_count": {"type": "integer", "minimum": 0},
+        "major_count": {"type": "integer", "minimum": 0},
+        "minor_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "status": {"enum": ["pass", "issues"]},
+    "target_phase": {
+      "type": ["string", "null"],
+      "enum": [null, "CREATED", "BRIEF_READY", "SOURCES_READY", "EVIDENCE_READY", "NARRATIVE_READY", "OUTLINE_READY", "SLIDE_SPECS_READY", "LAYOUT_READY", "VISUAL_SYSTEM_READY", "DRAFT_RENDERED"]
+    }
+  }
+}

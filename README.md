@@ -46,15 +46,15 @@ Slidethus 不是“输入标题后套模板”的 PPT 生成器，而是一套�
 
 ## 这不是什么
 
-当前包已经完成 **M0 Foundation Contract**、**M1 Artifact Runtime**、**MVP0 Planning Proof**、跨 M2–M5 的 **MVP1 完整动作链**、**M2 Production Source/Research/Evidence Boundary**、**M3 Narrative/Planning Production Boundary** 和 **M4 Production Rendering Boundary**。**M2 Exit Gate：PASS（2026-08-27）。M3 Exit Gate：PASS（2026-08-27）。M4 Exit Gate：PASS（2026-08-28）。** 但 Slidethus 仍不是生产级端到端 PPT 产品。以下能力仍未完成：
+当前包已经完成 **M0 Foundation Contract**、**M1 Artifact Runtime**、**MVP0 Planning Proof**、跨 M2–M5 的 **MVP1 完整动作链**、**M2 Production Source/Research/Evidence Boundary**、**M3 Narrative/Planning Production Boundary**、**M4 Production Rendering Boundary** 和 **M5 Production Review and Repair Boundary**。**M2 Exit Gate：PASS（2026-08-27）。M3 Exit Gate：PASS（2026-08-27）。M4 Exit Gate：PASS（2026-08-28）。M5 Exit Gate：PASS（2026-08-29）。** 但 Slidethus 仍不是生产级端到端 PPT 产品。以下能力仍未完成：
 
 - 内置搜索供应商、LLM/图片生成服务的真实适配；
 - OCR、图片语义理解、音视频解释、公式计算和旧版 OLE/宏文件解析；
-- 真实 LLM PlanningProvider 适配及其独立模型评测；
-- M5 独立视觉/语义审计、局部修复和 golden-deck 质量收敛；
+- 真实 LLM PlanningProvider、SemanticReviewProvider、VisualReviewProvider 适配及其独立模型评测；
+- M6 多工作流产品化、可观测性/成本/缓存/并发、Plugin 分发与发布工程；
 - GUI、云端服务、多租户和商业化能力。
 
-MVP1 的 MinimalImpl 仍只是跨里程碑回归切片。M2.2 的 `partial` 来源只提供已记录文本/元数据，Research Result 仍不是事实；M3 的确定性 PlanningProvider 是真实 Production contract baseline，但不声称具备通用 LLM 叙事智能。M4 已提供 Final SVG、PptxGenJS Native、Hybrid、PNG/PDF export、资产/字体/几何 preflight 和实测 editability，但 M4 Exit PASS 不代表 M5 独立视觉质量审计、自动修复或完整端到端产品已经完成。
+MVP1 的 MinimalImpl 仍只是跨里程碑回归切片。M2.2 的 `partial` 来源只提供已记录文本/元数据，Research Result 仍不是事实；M3 的确定性 PlanningProvider 是真实 Production contract baseline，但不声称具备通用 LLM 叙事智能。M4 已提供真实多后端渲染与输出完整性，M5 已提供独立 deterministic/semantic/visual review、severity-first scorecard、Repair Plan、cross-deck regression、Production Quality/G8 和 Golden baseline；没有注入语义/视觉 reviewer provider 时仍会显式停在 capability boundary，不伪造质量判断。
 
 ## 核心设计
 
@@ -326,7 +326,7 @@ audit/                      本包审计记录与完整性清单
 ## 版本定位
 
 - 包版本：`0.4.0`
-- 成熟度：MVP1 Complete Action Chain + M2 Source/Research/Evidence + M3 Narrative/Planning + M4 Production Rendering Boundaries（M2/M3/M4 Exit PASS；M5 仍未完成）
+- 成熟度：MVP1 Complete Action Chain + M2 Source/Research/Evidence + M3 Narrative/Planning + M4 Production Rendering + M5 Production Review/Repair Boundaries（M2/M3/M4/M5 Exit PASS；M6 尚未完成）
 - 默认语言：中文
 - 逻辑画布：`1280 × 720`
 - 推荐最终渲染：Hybrid（原生文本/形状 + SVG/图片复杂视觉）
@@ -334,4 +334,4 @@ audit/                      本包审计记录与完整性清单
 
 ## 下一步
 
-下一步是 **M5 Review and Repair Loop**：在冻结的 M2/M3/M4 边界上实现独立确定性/语义/视觉审计、开放问题发现、维度评分、局部 Repair Plan、跨页一致性回归和 golden-deck 质量基线。不要重做 M2/M3/M4，也不要把 Review 结论反向藏进 renderer 私有状态。
+下一步是 **M6 Productization and Distribution**：在冻结的 M2–M5 Production 边界上稳定多工作流、可观测性/缓存/成本/并发、Plugin 打包、示例/评测集和发布文档。不要重做 M2–M5，也不要把产品化需求反向侵入 Evidence、Planning、Renderer 或 Review 的事实边界。

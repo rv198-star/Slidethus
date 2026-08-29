@@ -1,0 +1,44 @@
+{
+  "schema_version": "0.1.0",
+  "cases": [
+    {
+      "case_id": "GOLD-M5-001",
+      "name": "management-decision-clean",
+      "source": "golden/m5/cases/management-decision/source.md",
+      "expected": {
+        "m5_status": "ready",
+        "g8_status": "pass",
+        "critical_count": 0,
+        "major_count": 0,
+        "minimum_semantic_score": 5,
+        "minimum_rendered_pages": 3
+      }
+    }
+  ],
+  "negative_cases": [
+    {
+      "case_id": "NEG-M5-001",
+      "condition": "semantic_review_provider_missing",
+      "expected_status": "blocked",
+      "must_not_claim_g8": true
+    },
+    {
+      "case_id": "NEG-M5-002",
+      "condition": "existing_render_output_corrupted",
+      "expected_repairability": "assisted",
+      "automatic_overwrite_forbidden": true
+    },
+    {
+      "case_id": "NEG-M5-003",
+      "condition": "generated_render_output_missing",
+      "expected_root_phase": "P7",
+      "expected_operation": "rerender_missing_outputs"
+    },
+    {
+      "case_id": "NEG-M5-004",
+      "condition": "major_issue_with_scorecard_5",
+      "expected_g8_status": "fail",
+      "score_must_not_mask_blocker": true
+    }
+  ]
+}

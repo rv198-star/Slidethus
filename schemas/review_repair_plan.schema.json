@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/review-repair-plan.schema.json",
+  "title": "Review Repair Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "project_id", "plan_id", "inputs", "source_reports", "issues",
+    "target_phase", "actions", "expected_invalidations", "verification", "status"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "pattern": "^0\\.1\\.[0-9]+$"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "plan_id": {"type": "string", "pattern": "^RPL-[A-F0-9]{16}$"},
+    "inputs": {
+      "type": "array", "minItems": 1,
+      "items": {"$ref": "#/$defs/artifactRef"}
+    },
+    "source_reports": {
+      "type": "array", "minItems": 1,
+      "items": {"$ref": "#/$defs/reportRef"}
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": [
+          "source_type", "source_id", "code", "severity", "earliest_phase",
+          "repairability", "slide_ids", "refs", "finding"
+        ],
+        "properties": {
+          "source_type": {"enum": ["deterministic", "semantic", "visual"]},
+          "source_id": {"type": "string", "minLength": 1},
+          "code": {"type": "string", "minLength": 1},
+          "severity": {"enum": ["critical", "major", "minor"]},
+          "earliest_phase": {"enum": ["P0", "P1", "P2", "P3", "P4", "P5A", "P5B", "P6", "P7"]},
+          "repairability": {"enum": ["automatic", "assisted", "manual"]},
+          "slide_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^S-[0-9]{3}$"}},
+          "refs": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+          "finding": {"type": "string", "minLength": 1, "maxLength": 4000}
+        }
+      }
+    },
+    "target_phase": {
+      "type": ["string", "null"],
+      "enum": [null, "CREATED", "BRIEF_READY", "SOURCES_READY", "EVIDENCE_READY", "NARRATIVE_READY", "OUTLINE_READY", "SLIDE_SPECS_READY", "LAYOUT_READY", "VISUAL_SYSTEM_READY"]
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["action_id", "operation", "phase", "automatic", "source_ids", "slide_ids", "detail"],
+        "properties": {
+          "action_id": {"type": "string", "pattern": "^RPA-[A-F0-9]{16}$"},
+          "operation": {"enum": ["rerender_missing_outputs", "route_assisted", "route_manual"]},
+          "phase": {"enum": ["P0", "P1", "P2", "P3", "P4", "P5A", "P5B", "P6", "P7"]},
+          "automatic": {"type": "boolean"},
+          "source_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+          "slide_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^S-[0-9]{3}$"}},
+          "detail": {"type": "string", "minLength": 1, "maxLength": 4000}
+        }
+      }
+    },
+    "expected_invalidations": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+    "verification": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "status": {"enum": ["planned", "not_required"]}
+  },
+  "$defs": {
+    "artifactRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_type", "version", "content_hash"],
+      "properties": {
+        "artifact_type": {"type": "string", "minLength": 1},
+        "version": {"type": "integer", "minimum": 1},
+        "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      }
+    },
+    "reportRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_type", "report_id", "path", "sha256", "status"],
+      "properties": {
+        "source_type": {"enum": ["deterministic", "semantic", "visual"]},
+        "report_id": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "status": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

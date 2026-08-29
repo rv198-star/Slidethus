@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/m5-application-report.schema.json",
+  "title": "M5 Application Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "project_id", "report_id", "config", "config_hash", "status",
+    "final_phase", "capabilities", "actions", "blockers", "reviews", "g8", "project_state"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "pattern": "^0\\.1\\.[0-9]+$"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "report_id": {"type": "string", "pattern": "^M5R-[A-F0-9]{16}$"},
+    "config": {
+      "type": "object", "additionalProperties": false,
+      "required": ["auto_repair", "semantic_provider", "visual_provider"],
+      "properties": {
+        "auto_repair": {"type": "boolean"},
+        "semantic_provider": {"type": ["string", "null"]},
+        "visual_provider": {"type": ["string", "null"]}
+      }
+    },
+    "config_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "status": {"enum": ["ready", "blocked", "failed"]},
+    "final_phase": {"type": "string", "minLength": 1},
+    "capabilities": {
+      "type": "array", "uniqueItems": true,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["capability", "status", "detail"],
+        "properties": {
+          "capability": {"type": "string", "minLength": 1},
+          "status": {"enum": ["available", "missing"]},
+          "detail": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["action_id", "stage", "status", "detail", "refs"],
+        "properties": {
+          "action_id": {"type": "string", "pattern": "^M5A-[0-9]{3}$"},
+          "stage": {"type": "string", "minLength": 1},
+          "status": {"enum": ["complete", "blocked", "failed", "skipped"]},
+          "detail": {"type": "string", "minLength": 1},
+          "refs": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": {"type": "string", "minLength": 1},
+          "message": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "reviews": {
+      "type": "object", "additionalProperties": false,
+      "required": ["deterministic", "semantic", "scorecard", "visual", "repair_plan", "repair_report", "regression", "quality"],
+      "properties": {
+        "deterministic": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/ref"}]},
+        "semantic": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/ref"}]},
+        "scorecard": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/ref"}]},
+        "visual": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/ref"}]},
+        "repair_plan": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/ref"}]},
+        "repair_report": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/ref"}]},
+        "regression": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/ref"}]},
+        "quality": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/ref"}]}
+      }
+    },
+    "g8": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "reasons"],
+      "properties": {
+        "status": {"enum": ["pass", "fail", "blocked", "not_run"]},
+        "reasons": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "project_state": {
+      "type": "object", "additionalProperties": false,
+      "required": ["revision", "content_hash"],
+      "properties": {
+        "revision": {"type": "integer", "minimum": 1},
+        "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      }
+    }
+  },
+  "$defs": {
+    "ref": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "path", "sha256", "status"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "status": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

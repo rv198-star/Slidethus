@@ -102,15 +102,17 @@ M0 只代表基础合同成立，不代表端到端 PPT 生成完成。
 
 ## M5 — Review and Repair Loop
 
-- [ ] 确定性审计
-- [ ] 开放问题发现型语义审计
-- [ ] 维度评分型审计
-- [ ] 全页视觉审计
-- [ ] 局部修复计划与重生成
-- [ ] 跨页一致性回归
-- [ ] 质量基线与 golden deck
+- [x] **M5.1 Deterministic Review Core**：独立重算 workspace/G0–G7/render lineage、真实输出覆盖与跨后端结构一致性
+- [x] **M5.2 Open Issue Semantic Review**：无评分问题发现、stable issue identity、最早责任阶段定位
+- [x] **M5.3 Dimension Scorecard**：Round A 后评分，评分绑定问题证据且不能覆盖 Critical/Major
+- [x] **M5.4 Full-page Visual Review**：消费真实页面预览，执行跨页视觉审计与 capability-aware degradation
+- [x] **M5.5 Repair Plan & Regeneration**：生成最小影响 Repair Plan，回到正确责任阶段局部重生成
+- [x] **M5.6 Cross-deck Regression**：修复后局部/全 deck 回归、Quality Report 聚合与 G8
+- [x] **M5.7 Golden Deck & M5 Exit**：质量基线、negative corpus、M5 Application/CLI、Round A/B 与 repository Exit validator
 
-**Exit Gate：** Critical/Major 问题为零，修复可定位到最小受影响阶段，并通过回归验证。
+执行计划：`plans/M5-review-repair-loop.md`。架构边界：`docs/adr/ADR-0020-independent-review-repair-boundary.md`。
+
+**Exit Gate：PASS（2026-08-29）。** Critical/Major open issues 为零，无 waiver；Review/Repair 可定位到最小责任阶段，局部修复通过 cross-deck regression，Production Quality Report 驱动 G8；M2/M3/M4 Exit 保持单调 PASS。验收证据见 `audit/M5-round-2-scorecard.md` 与 `audit/M5-BUILD_REPORT.md`。
 
 ## M6 — Productization and Distribution
 

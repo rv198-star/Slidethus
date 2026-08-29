@@ -89,14 +89,19 @@ M3 Production planning boundary：
 
 目标：全 deck 可自动发现问题、定位阶段并局部修复。
 
-关键产出：
+M5 按七个稳定子模块推进：
 
-- semantic review；
-- visual review；
-- repair planner；
-- regression；
-- golden corpus；
-- quality dashboard artifacts。
+- [x] M5.1 Deterministic Review Core：独立 workspace/G0–G7/render lineage、真实输出覆盖、PPTX reopen、editability/capability 审计；
+- [x] M5.2 Open Issue Semantic Review：无评分问题发现与最早责任阶段定位；
+- [x] M5.3 Dimension Scorecard：Round A 后评分，不能覆盖 blocking severity；
+- [x] M5.4 Full-page Visual Review：真实页面 preview 与跨页视觉审计；
+- [x] M5.5 Repair Plan & Regeneration：最小影响 repair plan 与 phase-correct regeneration；
+- [x] M5.6 Cross-deck Regression：局部/全 deck 回归、Quality Report 聚合与 G8；
+- [x] M5.7 Golden Deck & M5 Exit：golden corpus、M5 Application/CLI、Round A/B 与 repository Exit。
+
+M5 Review runtime facts 位于 `.slidethus/review/`，Production Quality Report 聚合 current deterministic/semantic/scorecard/visual/repair/regression lineage 并驱动 G8。M5 Review 与 M4 renderer 保持独立；M4 Preflight/G7/preview 是 review 输入，不等于 G8 视觉质量结论。执行计划见 `plans/M5-review-repair-loop.md`，架构见 ADR-0020。
+
+**M5 Exit Gate：PASS（2026-08-29）。** Round A 的 Major/Blocking Minor 均已根修，无 waiver；M2/M3/M4 Exit 保持 PASS。下一里程碑为 M6 Productization and Distribution。
 
 ## v0.8 Multi-workflow
 

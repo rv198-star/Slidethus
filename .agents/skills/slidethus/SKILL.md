@@ -156,7 +156,9 @@ M3 uses a provider-neutral `PlanningProvider`: providers propose bounded structu
 
 **M3 Exit Gate: PASS（2026-08-27）.** Project Brief completion, Narrative, stable Outline operations, Evidence-qualified Slide Specs, Layout Plans, immutable wireframes, Planning Review/Repair and the M3 Application Report are frozen planning inputs.
 
-**M4 Exit Gate: PASS（2026-08-28）.** Production Visual System、immutable Renderer IR、Final SVG、PptxGenJS Native、Hybrid、asset/font/geometry preflight、PNG/PDF export、measured editability、Production Render Manifest、M4 Application/CLI and G6/G7 are the frozen rendering boundary for M5. M5 independent semantic/visual review and automatic repair remain incomplete.
+**M4 Exit Gate: PASS（2026-08-28）.** Production Visual System、immutable Renderer IR、Final SVG、PptxGenJS Native、Hybrid、asset/font/geometry preflight、PNG/PDF export、measured editability、Production Render Manifest、M4 Application/CLI and G6/G7 are the frozen rendering boundary reused by M5.
+
+**M5 Exit Gate: PASS（2026-08-29）.** Independent deterministic/semantic/visual review、severity-first scorecard、phase-correct Repair Plan/Regeneration、cross-deck regression、Production Quality Report/G8、Golden baseline and M5 Application/CLI are the frozen review/repair boundary for M6. Built-in production semantic/visual model providers and M6 productization remain incomplete.
 
 ### P3 Narrative architecture
 
@@ -213,7 +215,18 @@ Prefer Hybrid PPTX when both visual quality and editability matter. Never call s
 
 ### P8 Review and repair
 
-Run in this order:
+Production M5 can be invoked with:
+
+```bash
+slidethus m5 run <workspace>
+slidethus m5 list <workspace>
+slidethus m5 show <workspace> M5R-XXXXXXXXXXXXXXXX
+slidethus m5 gate <workspace>
+```
+
+The CLI intentionally does not bundle fake semantic or visual review providers. Without injected provider capability, M5 records the deterministic review and stops at the explicit capability boundary rather than claiming G8.
+
+Run review in this order:
 
 1. deterministic checks;
 2. open issue mining without scores;

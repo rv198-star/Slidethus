@@ -142,6 +142,34 @@ class FontResolutionError(RenderingError):
     """Raised when an admitted font family cannot be resolved consistently."""
 
 
+class ReviewError(SlidethusError):
+    """Base exception for M5 independent review and repair failures."""
+
+
+class DeterministicReviewError(ReviewError):
+    """Raised when an M5 deterministic review fact is unsafe or inconsistent."""
+
+
+class SemanticReviewError(ReviewError):
+    """Raised when an M5 semantic review proposal or persisted fact is inconsistent."""
+
+
+class VisualReviewError(ReviewError):
+    """Raised when an M5 visual review proposal or persisted fact is inconsistent."""
+
+
+class ReviewRepairError(ReviewError):
+    """Raised when an M5 repair plan or bounded repair execution is inconsistent."""
+
+
+class ReviewRegressionError(ReviewError):
+    """Raised when an M5 post-repair regression fact is inconsistent."""
+
+
+class M5ApplicationError(ReviewError):
+    """Raised when integrated M5 review/repair orchestration cannot continue safely."""
+
+
 class SchemaError(SlidethusError):
     """Raised when a schema registry cannot be loaded."""
 

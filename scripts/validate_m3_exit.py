@@ -232,8 +232,24 @@ def evaluate_m3_exit(
     kickoff = _read(root, "CODEX_KICKOFF.md")
     kickoff_ok = (
         "M3 Exit Gate: PASS" in kickoff
-        and ("M4 Exit Gate: PASS" in kickoff or "M4 Rendering Backends" in kickoff)
-        and ("不要重做 M2 或 M3" in kickoff or "不要重做 M2、M3 或 M4" in kickoff)
+        and any(
+            marker in kickoff
+            for marker in (
+                "M4 Exit Gate: PASS",
+                "M5 Exit Gate: PASS",
+                "M6 Productization and Distribution",
+                "M4 Rendering Backends",
+            )
+        )
+        and any(
+            marker in kickoff
+            for marker in (
+                "不要重做 M2 或 M3",
+                "不要重做 M2、M3 或 M4",
+                "不要重做 M2、M3、M4 或 M5",
+                "不要重做 M2–M5",
+            )
+        )
     )
     checks.append(
         Check(

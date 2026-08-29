@@ -193,6 +193,16 @@ def required_paths(root: Path) -> list[Path]:
         root / "audit/M3-round-1-open-issues.md",
         root / "audit/M3-round-2-scorecard.md",
         root / "audit/M3-BUILD_REPORT.md",
+        root / "plans/M5-review-repair-loop.md",
+        root / "docs/adr/ADR-0020-independent-review-repair-boundary.md",
+        root / "audit/M5-round-1-open-issues.md",
+        root / "audit/M5-round-2-scorecard.md",
+        root / "audit/M5-BUILD_REPORT.md",
+        root / "golden/m5/manifest.json",
+        root / "schemas/m5_application_report.schema.json",
+        root / "src/slidethus/services/m5_application.py",
+        root / "scripts/validate_m5_exit.py",
+        root / "tests/test_m5_exit.py",
     ]
 
 
@@ -349,57 +359,24 @@ def main() -> int:
         )
     )
 
-    m2_exit_process = subprocess.run(
-        [sys.executable, str(root / "scripts/validate_m2_exit.py")],
+    # Package Audit verifies that the latest Exit contract is persistently wired and
+    # internally consistent. The full runtime M2→M5 regression belongs to the explicit
+    # M5 Exit invocation, so do not repeat that expensive smoke chain here.
+    m5_exit_process = subprocess.run(
+        [sys.executable, str(root / "scripts/validate_m5_exit.py"), "--static"],
         cwd=root,
         check=False,
         capture_output=True,
         text=True,
     )
-    m2_exit_output = (m2_exit_process.stdout + m2_exit_process.stderr).strip()
+    m5_exit_output = (m5_exit_process.stdout + m5_exit_process.stderr).strip()
     checks.append(
         Check(
-            "m2_exit_gate",
-            m2_exit_process.returncode == 0,
-            "repository-wide M2 Exit Gate passes"
-            if m2_exit_process.returncode == 0
-            else m2_exit_output[-4000:],
-        )
-    )
-
-    m3_exit_process = subprocess.run(
-        [sys.executable, str(root / "scripts/validate_m3_exit.py")],
-        cwd=root,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    m3_exit_output = (m3_exit_process.stdout + m3_exit_process.stderr).strip()
-    checks.append(
-        Check(
-            "m3_exit_gate",
-            m3_exit_process.returncode == 0,
-            "repository-wide M3 Exit Gate passes"
-            if m3_exit_process.returncode == 0
-            else m3_exit_output[-4000:],
-        )
-    )
-
-    m4_exit_process = subprocess.run(
-        [sys.executable, str(root / "scripts/validate_m4_exit.py")],
-        cwd=root,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    m4_exit_output = (m4_exit_process.stdout + m4_exit_process.stderr).strip()
-    checks.append(
-        Check(
-            "m4_exit_gate",
-            m4_exit_process.returncode == 0,
-            "repository-wide M4 Exit Gate passes"
-            if m4_exit_process.returncode == 0
-            else m4_exit_output[-4000:],
+            "m5_exit_contract",
+            m5_exit_process.returncode == 0,
+            "repository-wide M5 Exit persistent contract passes static validation"
+            if m5_exit_process.returncode == 0
+            else m5_exit_output[-4000:],
         )
     )
 
@@ -502,6 +479,30 @@ def main() -> int:
             "PptxGenJS/Hybrid and independent SVG export sidecar are pinned and tested"
             if renderer_contract_ok
             else "M4 renderer sidecar/package-lock contract is incomplete",
+        )
+    )
+
+    deterministic_review_schema = root / "schemas/deterministic_review_report.schema.json"
+    deterministic_review_service = root / "src/slidethus/services/deterministic_review.py"
+    deterministic_review_tests = root / "tests/test_deterministic_review.py"
+    deterministic_review_contract_ok = (
+        (root / "plans/M5-review-repair-loop.md").is_file()
+        and (root / "docs/adr/ADR-0020-independent-review-repair-boundary.md").is_file()
+        and deterministic_review_schema.is_file()
+        and (root / "src/slidethus/_schemas/deterministic_review_report.schema.json").is_file()
+        and deterministic_review_service.is_file()
+        and deterministic_review_tests.is_file()
+        and "observed_content_hash" in deterministic_review_schema.read_text(encoding="utf-8")
+        and "deterministic_review_workspace_errors" in validation_text
+        and "DeterministicReviewService" in deterministic_review_service.read_text(encoding="utf-8")
+    )
+    checks.append(
+        Check(
+            "deterministic_review_contract",
+            deterministic_review_contract_ok,
+            "M5.1 immutable deterministic review, observed lineage and workspace validation are present"
+            if deterministic_review_contract_ok
+            else "M5.1 deterministic review contract is incomplete",
         )
     )
 
