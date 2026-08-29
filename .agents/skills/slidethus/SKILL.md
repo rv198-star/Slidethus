@@ -158,7 +158,9 @@ M3 uses a provider-neutral `PlanningProvider`: providers propose bounded structu
 
 **M4 Exit Gate: PASS（2026-08-28）.** Production Visual System、immutable Renderer IR、Final SVG、PptxGenJS Native、Hybrid、asset/font/geometry preflight、PNG/PDF export、measured editability、Production Render Manifest、M4 Application/CLI and G6/G7 are the frozen rendering boundary reused by M5.
 
-**M5 Exit Gate: PASS（2026-08-29）.** Independent deterministic/semantic/visual review、severity-first scorecard、phase-correct Repair Plan/Regeneration、cross-deck regression、Production Quality Report/G8、Golden baseline and M5 Application/CLI are the frozen review/repair boundary for M6. Built-in production semantic/visual model providers and M6 productization remain incomplete.
+**M5 Exit Gate: PASS（2026-08-29）.** Independent deterministic/semantic/visual review、severity-first scorecard、phase-correct Repair Plan/Regeneration、cross-deck regression、Production Quality Report/G8、Golden baseline and M5 Application/CLI are the frozen review/repair boundary reused by M6.
+
+**M6 Exit Gate: PASS（2026-08-30）. v1.0 Release Gate: PASS（2026-08-30）.** Workflow runtime、operational controls、Plugin/wheel distribution、evaluation/compatibility、rights/SBOM、Preview hardening and retrospective Stage Review/Synthesis are frozen. Built-in production search、Planning、semantic/visual review and image-generation model providers remain external capability boundaries; never claim them when they are not injected.
 
 ### P3 Narrative architecture
 

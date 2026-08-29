@@ -1,4 +1,4 @@
-.PHONY: install test lint validate m2-exit m3-exit m4-exit m5-exit renderer-test demo audit verify clean
+.PHONY: install test lint validate m2-exit m3-exit m4-exit m5-exit m6-exit renderer-test demo audit verify clean
 
 install:
 	python -m pip install -e '.[dev]'
@@ -25,6 +25,9 @@ m4-exit:
 m5-exit:
 	python scripts/validate_m5_exit.py
 
+m6-exit:
+	python scripts/validate_m6_exit.py
+
 renderer-test:
 	npm test --prefix renderers/pptxgenjs
 
@@ -34,7 +37,7 @@ demo:
 audit:
 	python scripts/audit_package.py
 
-verify: lint test validate m2-exit m3-exit m4-exit m5-exit renderer-test audit
+verify: lint test validate m2-exit m3-exit m4-exit m5-exit m6-exit renderer-test audit
 
 clean:
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +

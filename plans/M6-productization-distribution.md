@@ -37,7 +37,7 @@
 | M6.3 | Plugin Packaging：installable Plugin bundle、schema/skill/workflow packaging、Node sidecar bootstrap/version verification | M6.1–M6.2 | clean install/build/supply-chain tests | complete |
 | M6.4 | Examples & Evaluation：workflow examples、golden/eval corpus、compatibility matrix、release docs | M6.1–M6.3 | executable examples + regression corpus | complete |
 | M6.5 | License & Third-party Policy：project license、dependency/asset/font/model policy、NOTICE/SBOM boundaries | M6.3–M6.4 | package/license audit | complete |
-| M6.6 | v1.0 Preview Hardening & Release Gate：完整 Production Attempt 后的 retrospective Stage AI Review、whole-attempt Review Synthesis/归因、systemic repair promotion、Round A/B、release validator、artifact/package reproducibility、handoff | M6.1–M6.5 | same-case preview regression + abstract-repair audit + Python 3.11 + Node 22 + M2–M5 regression + package/release audit | in progress：Round 4 SYN 完成；5 systemic candidates 待根修，含 1 Critical P7 font-coverage blocker |
+| M6.6 | v1.0 Preview Hardening & Release Gate：完整 Production Attempt 后的 retrospective Stage AI Review、whole-attempt Review Synthesis/归因、systemic repair promotion、Round A/B、release validator、artifact/package reproducibility、handoff | M6.1–M6.5 | same-case preview regression + abstract-repair audit + Python 3.11 + Node 22 + M2–M5 regression + package/release audit | complete |
 
 ## 5. M6.1 contract
 
@@ -107,8 +107,8 @@ git diff --check
 ## 9. Final outcome
 
 - 已完成：M6.1 Multi-workflow Runtime、M6.2 Operational Controls、M6.3 Plugin Packaging、M6.4 Examples & Evaluation、M6.5 License & Third-party Policy 均已通过 Round A/B Submodule Gate。
-- M6.6 当前检查点：ADR-0026 的 retrospective Stage AI Review / whole-attempt Synthesis 已实现并用于 Round 4 真实 Preview；`WFR-EC19B30C1A1E7A29` 已生成 8 页 SVG/PNG/PDF/Native PPTX/Hybrid PPTX，`SYN-EE4D0FD5BEFECEA0` 将 6 个 finding 归因为 5 个 systemic candidates + 1 个 case-local。
-- 当前 Release blocker：P7 font fallback 只验证 fontconfig family resolution，未验证 deck 所需 script/glyph coverage；Round 4 将 zh-CN 的 `Noto Sans CJK SC` 替换为不含 CJK coverage 的 `DejaVu Sans` 仍判 ready。另有 P7 decoration/layout collision、P4 headline semantic compression、P4 structural-slide meta copy、P5A action CTA duplication 四个 Major systemic candidates。
-- 下一步：按 `audit/M6.6-preview-hardening-handoff.md` 逐个做抽象根修，再用完全相同 Preview source 跑新的完整 Production Attempt → 九阶段 SAR → SYN；不得中途边发现边修改。
-- 未完成：上述 5 个 systemic candidates 根修、same-case final regression、M6.6 Round B、最终 release validator、可重复 release artifacts、repository-wide M6 Exit / v1.0 Release Gate。
+- M6.6：Round 4 的五个 systemic candidates 与 Round 5 新归因的 headline closure / planning text-capacity candidates 均完成抽象根修和 unrelated regression；未修改冻结 Source/Brief 或 case-local title。
+- Round 6：`WFR-928E28C10F896F5C` 到达 `DRAFT_RENDERED`，生成 8 页 SVG/PNG/PDF/Native PPTX/Hybrid PPTX；仅在缺少外部 `SemanticReviewProvider` 的声明边界停止。
+- Retrospective：九阶段 SAR 与 `SYN-E17A689D3096E148` 无 Critical/Major systemic candidate；仅保留 case-local Major title identity 与 non-promotable Minor mixed-script wrap。
+- M6 Exit Gate：PASS（2026-08-30）。v1.0 Release Gate：PASS（2026-08-30）。Python 3.11 + Node 22、M2–M5、M6.3–M6.5、可重复 wheel/Plugin 与 Package Audit 全部通过。
 - 相关 ADR：`docs/adr/ADR-0021-workflow-productization-boundary.md`、`docs/adr/ADR-0022-workflow-operational-controls.md`、`docs/adr/ADR-0023-plugin-and-renderer-distribution.md`、`docs/adr/ADR-0024-evaluation-and-compatibility-corpus.md`、`docs/adr/ADR-0025-license-rights-and-sbom-boundary.md`。

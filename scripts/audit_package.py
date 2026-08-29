@@ -204,6 +204,14 @@ def required_paths(root: Path) -> list[Path]:
         root / "src/slidethus/services/m5_application.py",
         root / "scripts/validate_m5_exit.py",
         root / "tests/test_m5_exit.py",
+        root / "plans/M6-productization-distribution.md",
+        root / "plans/M6.6-preview-hardening-root-fixes.md",
+        root / "audit/M6.6-round-6-synthesis.md",
+        root / "audit/M6-round-1-open-issues.md",
+        root / "audit/M6-round-2-scorecard.md",
+        root / "audit/M6-BUILD_REPORT.md",
+        root / "scripts/validate_m6_exit.py",
+        root / "tests/test_m6_exit.py",
     ]
 
 

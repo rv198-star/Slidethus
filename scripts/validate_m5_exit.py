@@ -305,11 +305,18 @@ def evaluate_m5_exit(root: Path, *, run_runtime_checks: bool = True) -> tuple[Ch
 
     readme = _read(root, "README.md")
     skill = _read(root, ".agents/skills/slidethus/SKILL.md")
+    release_state_ok = (
+        ("尚未完成" in readme and "不声明 v1.0 发布就绪" in readme)
+        or (
+            "M6 Exit Gate：PASS" in readme
+            and "v1.0 Release Gate：PASS" in readme
+            and "capability boundary" in readme
+        )
+    )
     truth_ok = (
         "M5 Exit Gate：PASS" in readme
         and "M6.6" in readme
-        and "尚未完成" in readme
-        and "不声明 v1.0 发布就绪" in readme
+        and release_state_ok
         and "M5 Exit Gate: PASS" in skill
         and "M6" in skill
     )
@@ -317,7 +324,7 @@ def evaluate_m5_exit(root: Path, *, run_runtime_checks: bool = True) -> tuple[Ch
         Check(
             "capability_truthfulness",
             truth_ok,
-            "README/Skill preserve the frozen M5 boundary while later M6 productization advances monotonically toward an incomplete v1.0 Release Gate"
+            "README/Skill preserve the frozen M5 boundary across pre-release and completed M6 release states"
             if truth_ok
             else "README/Skill M5 completion or current post-M5 release boundary is incomplete",
         )

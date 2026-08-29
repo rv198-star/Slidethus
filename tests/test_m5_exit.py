@@ -114,3 +114,14 @@ def test_m5_exit_rejects_non_monotonic_gate_validation(tmp_path: Path) -> None:
     )
 
     assert not _checks(root)["monotonic_gate_validation"].ok
+
+
+def test_m5_exit_rejects_release_claim_without_capability_boundary(tmp_path: Path) -> None:
+    root = _copy_repository(tmp_path)
+    readme = root / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8").replace("capability boundary", "implicit success"),
+        encoding="utf-8",
+    )
+
+    assert not _checks(root)["capability_truthfulness"].ok

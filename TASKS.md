@@ -121,9 +121,11 @@ M0 只代表基础合同成立，不代表端到端 PPT 生成完成。
 - [x] **M6.3 Plugin Packaging**：Plugin bundle、Schema/Skill/workflow 打包、Node sidecar bootstrap/version verification
 - [x] **M6.4 Examples & Evaluation**：六 workflow 示例、评测集、兼容矩阵与发布文档
 - [x] **M6.5 License & Third-party Policy**：项目许可证、依赖/素材/字体/模型分发策略、NOTICE/SBOM 边界
-- [ ] **M6.6 v1.0 Preview Hardening & Release Gate**：retrospective Stage AI Review / whole-attempt Synthesis 机制与 Round 4 真实 Preview 已完成；当前 5 个 systemic candidates 待根修，其中 P7 字体 script/glyph coverage 为 Critical Release blocker。完成后继续 same-case regression、Round A/B、release validator、可重复构建与最终发布 Gate。交接见 `audit/M6.6-preview-hardening-handoff.md`。
+- [x] **M6.6 v1.0 Preview Hardening & Release Gate**：Round 4/5/6 完整 Attempt → 九阶段 retrospective Review → whole-attempt Synthesis 已收敛；五个原始候选与 Round 5 两个 Major systemic candidates 均完成抽象根修，同案 Round 6 无 Critical/Major systemic candidate。Python 3.11 + Node 22、M2–M5、M6.3–M6.5、可重复 wheel/Plugin 和 Package Audit 全部通过。
 
 执行计划：`plans/M6-productization-distribution.md`。架构边界：`docs/adr/ADR-0021-workflow-productization-boundary.md`。
+
+**M6 Exit Gate：PASS（2026-08-30）。v1.0 Release Gate：PASS（2026-08-30）。** Preview 证据见 `audit/M6.6-round-6-synthesis.md`；最终 Gate 与仍存边界见 `audit/M6-round-2-scorecard.md`、`audit/M6-BUILD_REPORT.md`。
 
 ## 实施纪律
 

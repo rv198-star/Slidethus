@@ -15,9 +15,11 @@
 - **M3 Exit Gate: PASS（2026-08-27）**。
 - **M4 Exit Gate: PASS（2026-08-28）**。
 - **M5 Exit Gate: PASS（2026-08-29）**。
+- **M6 Exit Gate: PASS（2026-08-30）**。
+- **v1.0 Release Gate: PASS（2026-08-30）**。
 - M2 Source/Research/Evidence、M3 Narrative/Planning、M4 Production Rendering 与 M5 Production Review/Repair boundaries 均已冻结，无 waiver。
 - M5 使用 independent DVR/SVR/SCR/VVR review facts、phase-correct Repair Plan/Report、cross-deck Regression、Production Quality Report/G8、Golden baseline 与 M5 Application/CLI。
-- 下一里程碑是 **M6 Productization and Distribution**。
+- M6 Productization and Distribution 已冻结；缺少外部 Planning/Semantic/Visual providers 时继续按 capability boundary 显式降级或阻断。
 
 ## 接手动作
 
@@ -51,7 +53,7 @@
    - independent deterministic/semantic/scorecard/visual review facts；
    - severity-first issue handling、earliest-phase routing、Repair Plan/Report、cross-deck regression；
    - Production Quality Report lineage、G8、Golden baseline 与 M5 Application Report。
-5. 从 **M6 Productization and Distribution** 开始：稳定 Create/Rebuild/Improve/Audit/Revise/Extract Style 多工作流、可观测性、缓存、成本预算、并发控制、Plugin 打包、示例/评测集、许可证/第三方素材策略和发布文档。
+5. 从 v1.0 的 provider-neutral 扩展点继续：新增真实 provider 适配与独立评测时，不得伪造 capability，也不得重开已冻结的 M2–M6 核心边界。
 6. M6 不得把产品化需求反向塞入 Evidence、Planning、Renderer 或 Review 的私有状态；Production boundaries 继续通过已有 artifacts/protocols 交互。
 7. 保持单一主编排器。只对独立只读审计、测试分析或代码探索使用子代理；重叠代码由一个 writer 修改。
 8. 做根因修复，直接替换错误逻辑；架构变化同步 ADR、Schema、示例、文档和测试。

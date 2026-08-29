@@ -6,7 +6,7 @@
 - **PASS — skill_frontmatter:** name and description present
 - **PASS — schemas:** 45 valid (16 catalog artifacts)
 - **PASS — packaged_schema_mirror:** matches repository schemas
-- **PASS — instruction_budget:** 19138 bytes across AGENTS.md and SKILL.md
+- **PASS — instruction_budget:** 19499 bytes across AGENTS.md and SKILL.md
 - **PASS — raw_browser_html_omitted:** no browser-session HTML in package
 - **PASS — state_contract_alignment:** blocked is modeled as status, not phase
 - **PASS — minimal_project:** PASS: no validation issues

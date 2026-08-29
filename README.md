@@ -1,4 +1,4 @@
-# Slidethus v0.4.0 — Complete Action-Chain MVP + M2/M3 Production Boundaries
+# Slidethus v1.0.0 — Evidence-backed Presentation Engineering
 
 > 面向通用 Agentic Host 的 **Agentic Presentation Engineering Skill**：从本地文本依次产出策划稿、布局诊断、调试稿、设计稿和最终可编辑 PPTX。
 
@@ -46,12 +46,13 @@ Slidethus 不是“输入标题后套模板”的 PPT 生成器，而是一套�
 
 ## 这不是什么
 
-当前包已经完成 **M0 Foundation Contract**、**M1 Artifact Runtime**、**MVP0 Planning Proof**、跨 M2–M5 的 **MVP1 完整动作链**、**M2 Production Source/Research/Evidence Boundary**、**M3 Narrative/Planning Production Boundary**、**M4 Production Rendering Boundary**、**M5 Production Review and Repair Boundary**，以及 M6.1–M6.5 的多工作流、运行控制、Plugin 分发、评测/兼容矩阵和许可证/SBOM 边界。**M2 Exit Gate：PASS（2026-08-27）。M3 Exit Gate：PASS（2026-08-27）。M4 Exit Gate：PASS（2026-08-28）。M5 Exit Gate：PASS（2026-08-29）。** M6.6 v1.0 Preview Hardening & Release Gate 尚未完成，因此当前包仍不是生产级端到端 PPT 产品，也不声明 v1.0 发布就绪。Round 4 已生成真实 8 页 PPTX/PDF/PNG，并完成 retrospective Stage AI Review + whole-attempt Synthesis；五个 systemic candidates 已完成抽象根修，仍须通过不修改 Source/Brief 的 same-case regression 与新一轮 retrospective Review/Synthesis。以下能力仍未完成或属于外部适配：
+Slidethus v1.0 是 provider-neutral 的工程 Skill 与可验证 runtime/distribution boundary；它不是生产级端到端 PPT 产品（此处特指内置全部搜索、模型、图像和审阅供应商的一体化产品）。外部能力缺失时必须显式降级或阻断。
+
+当前包已经完成 **M0 Foundation Contract**、**M1 Artifact Runtime**、**MVP0 Planning Proof**、跨 M2–M5 的 **MVP1 完整动作链**、**M2 Production Source/Research/Evidence Boundary**、**M3 Narrative/Planning Production Boundary**、**M4 Production Rendering Boundary**、**M5 Production Review and Repair Boundary**，以及 M6.1–M6.6 的多工作流、运行控制、Plugin 分发、评测/兼容矩阵、许可证/SBOM 和 Preview Hardening。**M2 Exit Gate：PASS（2026-08-27）。M3 Exit Gate：PASS（2026-08-27）。M4 Exit Gate：PASS（2026-08-28）。M5 Exit Gate：PASS（2026-08-29）。M6 Exit Gate：PASS（2026-08-30）。v1.0 Release Gate：PASS（2026-08-30）。** Round 6 使用完全相同的 Source/Brief 生成了真实 8 页 SVG/PNG/PDF/Native PPTX/Hybrid PPTX，并在 Attempt 终止后完成九阶段 retrospective Review + whole-attempt Synthesis；无 Critical、无 Major systemic candidate。以下能力仍属于外部适配或显式 capability boundary：
 
 - 内置搜索供应商、LLM/图片生成服务的真实适配；
 - OCR、图片语义理解、音视频解释、公式计算和旧版 OLE/宏文件解析；
 - 真实 LLM PlanningProvider、SemanticReviewProvider、VisualReviewProvider 适配及其独立模型评测；
-- M6.6 same-case final regression、retrospective Review/Synthesis、最终 release validator、可重复发布物和 release handoff；
 - GUI、云端服务、多租户和商业化能力。
 
 MVP1 的 MinimalImpl 仍只是跨里程碑回归切片。M2.2 的 `partial` 来源只提供已记录文本/元数据，Research Result 仍不是事实；M3 的确定性 PlanningProvider 是真实 Production contract baseline，但不声称具备通用 LLM 叙事智能。M4 已提供真实多后端渲染与输出完整性，M5 已提供独立 deterministic/semantic/visual review、severity-first scorecard、Repair Plan、cross-deck regression、Production Quality/G8 和 Golden baseline；没有注入语义/视觉 reviewer provider 时仍会显式停在 capability boundary，不伪造质量判断。
@@ -325,8 +326,8 @@ audit/                      本包审计记录与完整性清单
 
 ## 版本定位
 
-- 包版本：`0.4.0`
-- 成熟度：MVP1 Complete Action Chain + M2–M5 Production Boundaries + M6.1–M6.5 Productization Candidate（M2/M3/M4/M5 Exit PASS；M6.6 Stage Review/Synthesis 已实现并完成 Round 4 Preview 归因，但 v1.0 Release Gate 尚未完成）
+- 包版本：`1.0.0`
+- 成熟度：v1.0 Release（M2–M6 Exit PASS；same-case Preview hardening 已收敛；可重复 wheel/Plugin 与 package/license/SBOM Gate 通过）
 - 默认语言：中文
 - 逻辑画布：`1280 × 720`
 - 推荐最终渲染：Hybrid（原生文本/形状 + SVG/图片复杂视觉）
@@ -334,4 +335,4 @@ audit/                      本包审计记录与完整性清单
 
 ## 下一步
 
-下一步继续 **M6.6 v1.0 Preview Hardening & Release Gate**：从 `audit/M6.6-preview-hardening-handoff.md` 的 Round 4 Synthesis 接手，先根修 5 个 promoted systemic candidates（优先 P7 font script/glyph coverage Critical blocker），再用同一 Preview source 完整重跑 Production Attempt → 九阶段 SAR → SYN。只有 Preview hardening 收敛后，才继续 release validator、可重复 wheel/Plugin 构建、最终 M2–M5 回归、Package/License/SBOM 审计和发布 handoff。不要重做 M2–M6.5，也不要把发布工程反向侵入 Evidence、Planning、Renderer 或 Review 的事实边界。
+下一步保持 v1.0 的既有 artifacts/protocols 和 provider-neutral boundary，优先补充真实搜索、Planning、SemanticReviewProvider、VisualReviewProvider 与图像生成适配器的独立评测。不要把外部模型能力伪装成内置能力，也不要把产品化状态反向侵入 Evidence、Planning、Renderer 或 Review 的事实边界。
