@@ -80,6 +80,7 @@ ee1087e6eb1134d64d3ed186d7e1a56ca74591fadc184b12c6bc063feef70c1f  audit/M6.4-rou
 1cc79a82b4901145db80af9579cca29d2e62b0e55b60ffe8709d6adb1ae61b85  audit/M6.5-round-2-scorecard.md
 764319dbd2a30d17d6d3911a396da39cac31b80edf0501e5fc40a22becf2328b  audit/M6.6-preview-hardening-handoff.md
 ff53d5183905fe115fa5fa1a7ae3db3dafa439ac17901d588c2482b59c925afb  audit/M6.6-round-5-synthesis.md
+a1a1b92c6560833498f8f91b73a750577ea8c42e398c07c458f43448181333a3  audit/M6.6-round-6-synthesis.md
 091418404f1a1a01ca29067adacc319d4e848f68d19e494d3164e7f45dffe913  audit/MVP0-BUILD_REPORT.md
 f158e2dc0e16cf8033e941a77bf48c31c92b34634ca777537174b66208943e24  audit/MVP0-round-1-open-issues.md
 aa7f58a3c2609c676af693a067fe1a686ffb02596750b72493e0f82371d4442f  audit/MVP0-round-2-scorecard.md
@@ -187,7 +188,7 @@ a95adaebcd6d05616f6a5d03fdc2aced4f44a37eebebb4130f562e371e37cc9b  plans/M3-narra
 8505ae461c91b4ba1382cb12a392efbf05beeb04abf0faca997e7176923d5650  plans/M4-rendering-backends.md
 237f552658652b30fa41d3352d96571661bb312e327d8732e0b93c8893c99716  plans/M5-review-repair-loop.md
 5c3e8a8de8f54770945fb98ff8e570c8f7c84c01da10eaedcccecfecb42cfb28  plans/M6-productization-distribution.md
-8d879a52b237bd55c59ff265455f87127f565f2b4d84f8e33f3e9a90cd9a2f7b  plans/M6.6-preview-hardening-root-fixes.md
+2fb55163c74e7870e98d803304700473e50e638accb4d9b7ddfa15a239b2347d  plans/M6.6-preview-hardening-root-fixes.md
 a8d7a1e55db507bf5cc5b267ea91208d950bcacd91c5a1cd1bdb7578853ee741  plans/MVP0-minimal-end-to-end.md
 96355a90a372f1fb0c674ffdd22ae079709a6baab6e1132bb0bed60620e5d415  plans/MVP1-complete-action-chain.md
 972e617010021a9bac1acd5b8c616219606c6347c1a53c31cc09044311dba248  prompts/README.md
