@@ -9,6 +9,7 @@ from slidethus.brief_completion import is_unresolved
 from slidethus.errors import WorkspaceError
 from slidethus.io_utils import ensure_within, sha256_file, sha256_json
 from slidethus.planning_lineage import planning_lineage_reference_errors
+from slidethus.text_capacity import estimated_text_height
 
 
 def usable_evidence_map(evidence: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -177,6 +178,18 @@ def layout_gate_reasons(
             admitted_floor = 12.0 if role in {"caption", "footer", "label"} else minimum
             if float(region.get("min_font_pt", 0)) < admitted_floor:
                 reasons.append(f"Region {region.get('region_id')} violates font floor")
+            required_height = estimated_text_height(
+                block.get("content"),
+                str(block.get("content_type")),
+                width=region_width,
+                font_size=admitted_floor,
+                line_height=1.18 if role == "headline" else 1.28,
+                qualification=block.get("evidence_qualification"),
+            )
+            if required_height > region_height:
+                reasons.append(
+                    f"Region {region.get('region_id')} cannot fit its Block at font floor"
+                )
             for other in regions[index + 1 :]:
                 if _regions_overlap(region, other):
                     reasons.append(

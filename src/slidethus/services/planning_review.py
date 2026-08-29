@@ -356,6 +356,28 @@ class PlanningReviewService:
                         repairability="automatic",
                     )
                 )
+            if (
+                slide.get("slide_type") not in {"cover", "agenda", "section", "action"}
+                and re.search(r"…|\.{3}", _text(headline))
+            ):
+                issues.append(
+                    _issue(
+                        code="headline_contains_truncation_marker",
+                        severity="major",
+                        artifact_type="deck_outline",
+                        earliest_phase="P4",
+                        slide_id=str(slide["slide_id"]),
+                        message=(
+                            "Headline exposes a shortening marker instead of a grammatical "
+                            "closed page proposition."
+                        ),
+                        suggested_action=(
+                            "Regenerate the page proposition from semantic roles; do not admit "
+                            "a headline assembled from truncated source fragments."
+                        ),
+                        repairability="assisted",
+                    )
+                )
             if slide.get("slide_type") not in {"cover", "agenda", "section", "action"}:
                 headline_key = _semantic_key(headline)
                 copied_from = next(

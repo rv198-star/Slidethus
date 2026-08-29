@@ -17,6 +17,7 @@ from slidethus.render_ir import (
 )
 from slidethus.schema_registry import SchemaRegistry
 from slidethus.services.font_resolution import FontResolution
+from slidethus.text_capacity import fitting_font_size
 
 
 @dataclass(frozen=True)
@@ -377,6 +378,19 @@ class RenderCompileService:
                     visual,
                     font_map,
                 )
+                if str(region.get("overflow_strategy")) == "shrink_with_floor":
+                    fitted = fitting_font_size(
+                        block.get("content"),
+                        str(block.get("content_type")),
+                        width=float(region["w"]),
+                        height=float(region["h"]),
+                        preferred=float(style["font_size"]),
+                        floor=float(region.get("min_font_pt", style["font_size"])),
+                        line_height=float(style["line_height"]),
+                        qualification=block.get("evidence_qualification"),
+                    )
+                    if fitted is not None:
+                        style["font_size"] = fitted
                 fonts.add(style["font_family"])
                 block_assets = [str(item) for item in block.get("asset_refs", [])]
                 used_assets.update(block_assets)

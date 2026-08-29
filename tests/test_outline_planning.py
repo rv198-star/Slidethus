@@ -208,8 +208,8 @@ def test_page_proposition_synthesizes_sequence_job_instead_of_selecting_clause()
         "Third stage measures resolution quality",
     }
     assert headline not in clauses
-    assert headline.startswith("From ")
-    assert "staged path" in headline
+    assert headline == "3 stages form a progressive path"
+    assert "…" not in headline
 
 
 def test_structural_outline_uses_headline_only_framing_without_navigation_meta_copy(

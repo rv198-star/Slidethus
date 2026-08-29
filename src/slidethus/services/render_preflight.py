@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -26,6 +25,7 @@ from slidethus.schema_registry import SchemaRegistry
 from slidethus.services.font_resolution import FontResolution, FontResolutionService
 from slidethus.services.render_assets import RenderAssetService, ResolvedRenderAsset
 from slidethus.services.render_compile import RenderCompileResult, RenderCompileService
+from slidethus.text_capacity import estimated_text_height
 
 _BACKENDS = {"final-svg", "pptxgenjs-native", "pptxgenjs-hybrid"}
 _SUPPORTED_CONTENT = {
@@ -43,29 +43,6 @@ class RenderPreflightResult:
     fonts: tuple[FontResolution, ...]
     assets: dict[str, ResolvedRenderAsset]
     changed: bool
-
-
-def _text_values(content: Any, content_type: str) -> list[str]:
-    if isinstance(content, list):
-        values = [str(item) for item in content]
-        return [f"• {item}" for item in values] if content_type == "list" else values
-    if isinstance(content, dict):
-        return [f"{key}: {value}" for key, value in content.items()]
-    return [str(content or "")]
-
-
-def _glyph_units(value: str) -> float:
-    return sum(0.56 if ord(char) < 128 else 1.0 for char in value)
-
-
-def _estimated_lines(region: dict[str, Any]) -> int:
-    style = region["style"]
-    font_size = max(1.0, float(style["font_size"]))
-    max_units = max(1.0, (float(region["w"]) - 32.0) / font_size)
-    lines = 0
-    for value in _text_values(region.get("content"), str(region.get("content_type"))):
-        lines += max(1, math.ceil(_glyph_units(value) / max_units))
-    return lines
 
 
 def _overlap(left: dict[str, Any], right: dict[str, Any]) -> bool:
@@ -331,12 +308,14 @@ class RenderPreflightService:
                     )
                 content_type = str(region["content_type"])
                 if content_type in {"text", "list", "metric", "quote"}:
-                    lines = _estimated_lines(region)
-                    line_height = float(region["style"]["font_size"]) * float(
-                        region["style"]["line_height"]
+                    required_height = estimated_text_height(
+                        region.get("content"),
+                        content_type,
+                        width=float(region["w"]),
+                        font_size=float(region["style"]["font_size"]),
+                        line_height=float(region["style"]["line_height"]),
+                        qualification=region.get("evidence_qualification"),
                     )
-                    qualification_height = 24.0 if region.get("evidence_qualification") else 0.0
-                    required_height = lines * line_height + qualification_height + 24.0
                     if required_height > float(region["h"]):
                         checks.append(
                             _check(

@@ -169,7 +169,7 @@ def _trim_proposition_part(value: Any, limit: int = 28) -> str:
         text,
         flags=re.IGNORECASE,
     )
-    return _shorten(text, limit)
+    return text if len(text) <= limit else ""
 
 
 def _contrast_proposition(value: Any, limit: int) -> str | None:
@@ -183,7 +183,8 @@ def _contrast_proposition(value: Any, limit: int) -> str | None:
         before = _trim_proposition_part(chinese.group(1), 22)
         after = _trim_proposition_part(chinese.group(2), 26)
         if before and after:
-            return _shorten(f"重点应从{before}转向{after}", limit)
+            proposition = f"重点应从{before}转向{after}"
+            return proposition if len(proposition) <= limit else None
     english = re.search(
         r"\b(?:should\s+not|not)\s+(.{2,100}?)\s+"
         r"(?:but|rather\s+than|instead\s+of)\s+(.{2,120}?)(?:[.;]|$)",
@@ -194,7 +195,8 @@ def _contrast_proposition(value: Any, limit: int) -> str | None:
         before = _trim_proposition_part(english.group(1), 28)
         after = _trim_proposition_part(english.group(2), 32)
         if before and after:
-            return _shorten(f"Shift the focus from {before} to {after}", limit)
+            proposition = f"Shift the focus from {before} to {after}"
+            return proposition if len(proposition) <= limit else None
     return None
 
 
@@ -209,7 +211,9 @@ def _responsibility_proposition(value: Any, limit: int) -> str | None:
     ]
     pairs = [(subject, responsibility) for subject, responsibility in pairs if subject and responsibility]
     if len(pairs) >= 2:
-        return _shorten(f"{pairs[0][0]}与{pairs[1][0]}应按职责边界分工", limit)
+        left, right = pairs[-2:]
+        proposition = f"{left[0]}与{right[0]}应按职责边界分工"
+        return proposition if len(proposition) <= limit else None
     english_pairs = [
         (_trim_proposition_part(subject, 24), _trim_proposition_part(responsibility, 30))
         for subject, responsibility in re.findall(
@@ -220,10 +224,9 @@ def _responsibility_proposition(value: Any, limit: int) -> str | None:
     ]
     english_pairs = [item for item in english_pairs if all(item)]
     if len(english_pairs) >= 2:
-        return _shorten(
-            f"{english_pairs[0][0]} and {english_pairs[1][0]} need distinct responsibilities",
-            limit,
-        )
+        left, right = english_pairs[-2:]
+        proposition = f"{left[0]} and {right[0]} need distinct responsibilities"
+        return proposition if len(proposition) <= limit else None
     return None
 
 
@@ -252,10 +255,16 @@ def _sequence_proposition(value: Any, limit: int) -> str | None:
     labels = [_trim_proposition_part(item, 14 if _is_cjk(text) else 12) for item in ordered[:4]]
     labels = [item for item in labels if item]
     if len(labels) < 2:
-        return None
+        return (
+            f"{len(ordered)}个阶段构成递进路径"
+            if _is_cjk(text)
+            else f"{len(ordered)} stages form a progressive path"
+        )
     if _is_cjk(text):
-        return _shorten(f"从{labels[0]}到{labels[-1]}形成递进路径", limit)
-    return _shorten(f"From {labels[0]} to {labels[-1]}: staged path", limit)
+        proposition = f"从{labels[0]}到{labels[-1]}形成递进路径"
+    else:
+        proposition = f"From {labels[0]} to {labels[-1]}: staged path"
+    return proposition if len(proposition) <= limit else None
 
 
 def _diagnostic_proposition(value: Any, limit: int) -> str | None:
@@ -291,26 +300,53 @@ def _page_proposition(
         proposition = builder(combined, limit)
         if proposition:
             return proposition
+    title = _text(section.get("title"), limit=32)
+    is_cjk = _is_cjk(combined + question)
     if "framework" in roles:
-        framework = _headline_from_claim(combined, limit)
-        if framework:
-            return framework
+        count = max(
+            (len(_support_fragments(text, max_fragments=12)) for text in texts),
+            default=0,
+        )
+        if count >= 3:
+            return (
+                f"{count}项关键要素共同构成{title}"
+                if is_cjk
+                else f"{count} key elements jointly define {title}"
+            )
+    if any(marker in combined for marker in ("不应", "不是", "而是")) or re.search(
+        r"\b(?:should\s+not|rather\s+than|instead\s+of)\b",
+        combined,
+        flags=re.IGNORECASE,
+    ):
+        return (
+            f"{title}需要完成从旧重点到新重点的转移"
+            if is_cjk
+            else f"{title} requires a clear shift in focus"
+        )
+    if "process" in roles or "action" in roles:
+        return (
+            f"{title}需要分阶段推进并设置验证点"
+            if is_cjk
+            else f"{title} needs staged execution and verification checkpoints"
+        )
     subjects = [
         _trim_proposition_part(clause.split("，", 1)[0].split(",", 1)[0], 18)
         for text in texts
         for clause in _claim_clauses(text)[:1]
     ]
     subjects = list(dict.fromkeys(item for item in subjects if item))
-    title = _text(section.get("title"), limit=32)
     if len(subjects) >= 2:
-        if _is_cjk(combined + question):
-            return _shorten(f"{subjects[0]}与{subjects[1]}共同支撑{title}的判断", limit)
-        return _shorten(f"{subjects[0]} and {subjects[1]} jointly shape {title}", limit)
+        if is_cjk:
+            return f"多项证据共同支撑{title}的核心判断"
+        return f"Multiple evidence points jointly shape {title}"
     if subjects:
-        if _is_cjk(combined + question):
-            return _shorten(f"{title}的关键在于{subjects[0]}", limit)
-        return _shorten(f"{subjects[0]} is central to {title}", limit)
-    return _shorten(section.get("thesis") or question or title, limit)
+        if is_cjk:
+            proposition = f"{title}的关键在于{subjects[0]}"
+        else:
+            proposition = f"{subjects[0]} is central to {title}"
+        if len(proposition) <= limit:
+            return proposition
+    return f"{title}需要形成可执行的核心判断" if is_cjk else f"{title} requires an actionable core judgment"
 
 
 def _semantic_key(value: Any) -> str:
@@ -616,7 +652,7 @@ class DeterministicPlanningProvider:
     """Provider-neutral, no-network Production planning baseline."""
 
     name = "deterministic-planning-provider"
-    version = "1.2.0"
+    version = "1.3.0"
 
     def propose(
         self,
@@ -998,6 +1034,30 @@ class DeterministicPlanningProvider:
                     semantic_role = (
                         "body" if claim_role in {"process", "progression"} else "subhead"
                     )
+                group_as_list = len(fragments) > 1 and (
+                    (
+                        len(evidence_ids) > 1
+                        and claim_role in {"framework", "problem"}
+                    )
+                    or (
+                        claim_role in {"process", "action"}
+                        and slide_type != "timeline"
+                    )
+                )
+                if group_as_list:
+                    blocks.append(
+                        {
+                            "semantic_role": semantic_role,
+                            "content_type": "list",
+                            "priority": "secondary",
+                            "content": fragments,
+                            "evidence_ids": [evidence_id],
+                            "evidence_requirement": "required",
+                            "claim_mode": "fact",
+                            "evidence_qualification": _claim_qualification(claim),
+                        }
+                    )
+                    continue
                 for fragment in fragments:
                     blocks.append(
                         {

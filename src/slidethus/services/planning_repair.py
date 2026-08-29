@@ -58,6 +58,16 @@ def _shorten_to_units(text: str, max_units: int = 42) -> str:
     normalized = _text(text, limit=2000)
     if planning_content_units(normalized) <= max_units:
         return normalized
+    for size in range(1, len(normalized) // 2 + 1):
+        unit = normalized[:size]
+        repeats, remainder = divmod(len(normalized), size)
+        if (
+            repeats >= 2
+            and remainder == 0
+            and unit * repeats == normalized
+            and planning_content_units(unit) <= max_units
+        ):
+            return unit
     candidate = normalized
     while candidate and planning_content_units(candidate + "…") > max_units:
         candidate = candidate[:-1].rstrip("，,。.;；:： ")

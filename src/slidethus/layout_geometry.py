@@ -133,6 +133,56 @@ def _ordered_body_boxes(
     return [boxes[index] for index in range(len(blocks))]
 
 
+def _matrix_body_boxes(
+    blocks: list[dict[str, Any]],
+    *,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    gap: float,
+) -> list[tuple[float, float, float, float]]:
+    """Give one high-cardinality classification list a full-width evidence band."""
+
+    list_positions = [
+        index
+        for index, block in enumerate(blocks)
+        if block.get("content_type") == "list"
+        and isinstance(block.get("content"), list)
+        and len(block["content"]) >= 3
+    ]
+    if len(list_positions) != 1 or len(blocks) < 2:
+        columns = min(3, max(2, math.ceil(math.sqrt(len(blocks)))))
+        return _grid_boxes(
+            len(blocks),
+            x=x,
+            y=y,
+            width=width,
+            height=height,
+            columns=columns,
+            gap=gap,
+        )
+    list_position = list_positions[0]
+    other_positions = [index for index in range(len(blocks)) if index != list_position]
+    list_height = min(260.0, max(240.0, height * 0.52))
+    upper_height = height - list_height - gap
+    upper_boxes = _grid_boxes(
+        len(other_positions),
+        x=x,
+        y=y,
+        width=width,
+        height=upper_height,
+        columns=min(4, len(other_positions)),
+        gap=gap,
+    )
+    boxes: dict[int, tuple[float, float, float, float]] = {
+        list_position: (x, y + upper_height + gap, width, list_height)
+    }
+    for index, box in zip(other_positions, upper_boxes, strict=True):
+        boxes[index] = box
+    return [boxes[index] for index in range(len(blocks))]
+
+
 def _body_boxes(
     family: str,
     count: int,
@@ -193,7 +243,18 @@ def _body_boxes(
             columns=2,
             gap=gap,
         )
-    if family in {"matrix", "architecture", "case", "bento", "custom", "full-bleed"}:
+    if family == "matrix":
+        if blocks is None or len(blocks) != count:
+            raise LayoutPlanningError("matrix layout requires block semantics")
+        return _matrix_body_boxes(
+            blocks,
+            x=x,
+            y=y,
+            width=width,
+            height=height,
+            gap=gap,
+        )
+    if family in {"architecture", "case", "bento", "custom", "full-bleed"}:
         columns = min(3, max(2, math.ceil(math.sqrt(count)))) if count > 1 else 1
         return _grid_boxes(
             count,

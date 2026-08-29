@@ -276,3 +276,52 @@ def test_structural_and_action_blocks_keep_distinct_visible_responsibilities() -
     assert decision["content"] not in support["content"]
     assert len(support["content"]) == 3
     assert len({item.split(":", 1)[0] for item in support["content"]}) == 3
+
+
+def test_high_cardinality_claim_stays_one_semantic_list_block() -> None:
+    specs = DeterministicPlanningProvider().propose(
+        "slide_specs",
+        {
+            "deck_outline": {
+                "slides": [
+                    {
+                        "slide_id": "S-001",
+                        "slide_type": "matrix",
+                        "headline": "Seven controls define operational readiness",
+                        "takeaway": "The operating model depends on seven explicit controls.",
+                        "purpose": "Keep one classified claim coherent.",
+                        "audience_question": "Which controls are required?",
+                        "evidence_ids": ["EVD-001", "EVD-002"],
+                    }
+                ]
+            },
+            "evidence_ledger": {
+                "claims": [
+                    {
+                        "evidence_id": "EVD-001",
+                        "claim": "1. Intake: normalize requests 2. Policy: enforce rules 3. Routing: assign owners 4. Tools: expose actions 5. Access: limit permissions 6. Quality: measure outcomes 7. Recovery: handle exceptions",
+                        "support_status": "verified",
+                        "use_policy": "allowed",
+                        "freshness_decision": {"status": "current"},
+                    },
+                    {
+                        "evidence_id": "EVD-002",
+                        "claim": "The controls form one operating system.",
+                        "support_status": "verified",
+                        "use_policy": "allowed",
+                        "freshness_decision": {"status": "current"},
+                    },
+                ]
+            },
+            "project_brief": {"constraints": {"editability_target": "E3"}},
+        },
+        PlanningLimits(),
+    ).content
+
+    list_blocks = [
+        block
+        for block in specs["slides"][0]["content_blocks"]
+        if block["content_type"] == "list"
+    ]
+    assert len(list_blocks) == 1
+    assert len(list_blocks[0]["content"]) == 7

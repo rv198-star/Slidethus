@@ -83,6 +83,29 @@ def test_planning_review_has_no_blocking_issue_on_current_production_chain(
     assert validate_workspace(workspace, check_hashes=True).ok
 
 
+def test_outline_review_rejects_truncated_fragment_headline() -> None:
+    issues = PlanningReviewService._outline_issues(
+        None,
+        {
+            "slides": [
+                {
+                    "slide_id": "S-001",
+                    "slide_type": "evidence",
+                    "headline": "Shift from intake fragments…to accountable resolution…",
+                    "takeaway": "Accountable resolution requires a complete operating path.",
+                    "evidence_ids": [],
+                    "status": "approved",
+                }
+            ]
+        },
+        {},
+        {"claims": []},
+        {"sections": []},
+    )
+
+    assert "headline_contains_truncation_marker" in {item["code"] for item in issues}
+
+
 def test_review_routes_outline_contract_break_to_p4(tmp_path: Path) -> None:
     workspace = _layout_ready_workspace(tmp_path)
     runtime = ArtifactRuntime(workspace)

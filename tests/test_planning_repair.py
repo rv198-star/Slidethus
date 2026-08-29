@@ -109,6 +109,7 @@ def test_automatic_headline_repair_rebuilds_only_dependent_planning_stages(
     outline = runtime.show_artifact("deck_outline")
     repaired = next(item for item in outline["slides"] if item["slide_id"] == slide_id)
     assert planning_content_units(repaired["headline"]) <= 42
+    assert "…" not in repaired["headline"]
     assert next(
         item for item in runtime.list_artifacts() if item["artifact_type"] == "deck_outline"
     )["version"] > changed_outline_version
