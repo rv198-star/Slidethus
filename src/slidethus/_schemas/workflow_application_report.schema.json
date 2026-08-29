@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/workflow-application-report.schema.json",
+  "title": "Workflow Application Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "project_id", "report_id", "workflow", "request_hash",
+    "mutation_policy", "status", "capabilities", "actions", "artifacts_before",
+    "artifacts_after", "changed_artifacts", "outputs", "final_phase", "gate_result", "blockers"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "report_id": {"type": "string", "pattern": "^WFR-[A-F0-9]{16}$"},
+    "workflow": {"enum": ["create", "rebuild", "improve", "audit", "revise", "extract_style"]},
+    "request_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "mutation_policy": {
+      "enum": ["create_workspace", "rebuild_workspace", "admitted_repair", "review_only", "target_scoped_change", "style_candidate"]
+    },
+    "status": {"enum": ["ready", "blocked", "failed"]},
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["capability", "status", "detail"],
+        "properties": {
+          "capability": {"type": "string", "minLength": 1, "maxLength": 128},
+          "status": {"enum": ["available", "missing", "degraded"]},
+          "detail": {"type": "string", "minLength": 1, "maxLength": 2000}
+        }
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action_id", "stage", "status", "detail", "refs"],
+        "properties": {
+          "action_id": {"type": "string", "pattern": "^WFA-[0-9]{3}$"},
+          "stage": {"type": "string", "minLength": 1, "maxLength": 128},
+          "status": {"enum": ["complete", "blocked", "failed", "skipped"]},
+          "detail": {"type": "string", "minLength": 1, "maxLength": 4000},
+          "refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "artifacts_before": {"type": "array", "items": {"$ref": "#/$defs/artifactRef"}},
+    "artifacts_after": {"type": "array", "items": {"$ref": "#/$defs/artifactRef"}},
+    "changed_artifacts": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "ref_id", "path", "sha256"],
+        "properties": {
+          "kind": {"type": "string", "minLength": 1, "maxLength": 128},
+          "ref_id": {"type": "string", "minLength": 1, "maxLength": 256},
+          "path": {"type": "string", "minLength": 1},
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+        }
+      }
+    },
+    "final_phase": {"type": "string", "minLength": 1},
+    "gate_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate_id", "status", "reasons"],
+      "properties": {
+        "gate_id": {"type": ["string", "null"]},
+        "status": {"enum": ["pass", "fail", "blocked", "not_run"]},
+        "reasons": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+          "message": {"type": "string", "minLength": 1, "maxLength": 4000}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_type", "version", "content_hash"],
+      "properties": {
+        "artifact_type": {"type": "string", "minLength": 1},
+        "version": {"type": "integer", "minimum": 1},
+        "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      }
+    }
+  }
+}

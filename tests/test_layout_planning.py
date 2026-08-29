@@ -136,6 +136,57 @@ def test_layout_provider_cannot_override_declared_family_with_unrelated_choice(
         ).generate()
 
 
+def test_high_cardinality_process_preserves_ordered_topology_and_setup_space() -> None:
+    blocks = [
+        {
+            "block_id": "BLK-S001-01",
+            "semantic_role": "headline",
+            "content_type": "text",
+            "content": "Process decision",
+            "content_hash": "sha256:" + "a" * 64,
+        },
+        {
+            "block_id": "BLK-S001-02",
+            "semantic_role": "subhead",
+            "content_type": "text",
+            "content": "A longer setup statement that explains the purpose before the ordered steps begin.",
+            "content_hash": "sha256:" + "b" * 64,
+        },
+    ]
+    blocks.extend(
+        {
+            "block_id": f"BLK-S001-{index:02d}",
+            "semantic_role": "body",
+            "content_type": "text",
+            "content": f"Step {index - 2}",
+            "content_hash": "sha256:" + f"{index:x}" * 64,
+        }
+        for index in range(3, 10)
+    )
+    slide = {
+        "slide_id": "S-001",
+        "density_budget": {"min_body_pt": 18},
+        "visual_intent": {"relationship": "sequence"},
+        "content_blocks": blocks,
+    }
+
+    plan = build_layout_plan(
+        slide,
+        family="process",
+        canvas={"width": 1280, "height": 720},
+        safe_area={"top": 60, "right": 80, "bottom": 60, "left": 80},
+    )
+
+    regions = {item["block_id"]: item for item in plan["regions"]}
+    setup = regions["BLK-S001-02"]
+    step_regions = [regions[f"BLK-S001-{index:02d}"] for index in range(3, 10)]
+    assert setup["w"] == 1120.0
+    assert setup["h"] >= 140.0
+    assert all(item["y"] > setup["y"] + setup["h"] for item in step_regions)
+    assert len({item["y"] for item in step_regions}) == 2
+    assert [item["region_id"] for item in plan["regions"]] == plan["reading_order"]
+
+
 def test_layout_geometry_fails_when_content_cannot_fit_font_floor() -> None:
     slide = {
         "slide_id": "S-001",

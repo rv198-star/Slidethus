@@ -1,0 +1,68 @@
+{
+  "schema_version": "0.1.0",
+  "project_license": "Apache-2.0",
+  "project_owned": [
+    ".agents/skills/slidethus/",
+    "docs/",
+    "examples/workflows/",
+    "renderers/pptxgenjs/README.md",
+    "renderers/pptxgenjs/preview.mjs",
+    "renderers/pptxgenjs/render.mjs",
+    "schemas/",
+    "scripts/",
+    "src/slidethus/",
+    "tests/"
+  ],
+  "excluded_from_project_license": [
+    {
+      "scope": "source_material/",
+      "reason": "User-provided and/or third-party provenance and research material; original rights remain with applicable rights holders.",
+      "release_default": "exclude"
+    },
+    {
+      "scope": "user workspace inputs",
+      "reason": "Decks, documents, data, images and other user inputs retain their existing rights/confidentiality.",
+      "release_default": "exclude"
+    },
+    {
+      "scope": "third-party dependency code",
+      "reason": "Python and Node dependencies retain their own licenses and are not relicensed by Apache-2.0.",
+      "release_default": "rights_review"
+    },
+    {
+      "scope": "external brand assets and templates",
+      "reason": "Trademark/copyright/license permissions must be established independently.",
+      "release_default": "reference_only"
+    },
+    {
+      "scope": "provider/model outputs",
+      "reason": "Rights and permitted use depend on provider terms and the rights in source inputs/assets.",
+      "release_default": "rights_review"
+    }
+  ],
+  "default_release_excludes": [
+    "source_material/",
+    "node_modules/",
+    "host font files",
+    "model binaries or model weights",
+    "private/user workspace inputs",
+    "unmanifested external assets",
+    "prepared renderer caches"
+  ],
+  "asset_policy": {
+    "default": "rights_cleared_only",
+    "rule": "Only assets with an explicit Asset Manifest use decision that permits redistribution may enter a public delivery or packaged asset set. Reference-only and do-not-use assets remain excluded."
+  },
+  "font_policy": {
+    "default": "exclude",
+    "rule": "Slidethus may resolve/use host fonts locally but does not redistribute font files by default. Redistribution requires an explicit font license review."
+  },
+  "model_policy": {
+    "default": "external_terms",
+    "rule": "Production model/provider implementations and generated outputs are governed by provider terms and source rights; Slidethus does not bundle production model weights."
+  },
+  "prepared_environment_policy": {
+    "default": "rights_cleared_only",
+    "rule": "Any redistributed environment/container/prepared renderer cache that vendors third-party dependency files must include exact dependency license notices and an artifact-specific SBOM."
+  }
+}

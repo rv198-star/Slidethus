@@ -1,0 +1,104 @@
+{
+  "schema_version": "0.1.0",
+  "suite_id": "EVAL-M6-WORKFLOWS",
+  "cases": [
+    {
+      "case_id": "EVAL-M6-CREATE",
+      "workflow": "create",
+      "execution_tier": "production",
+      "fixture": {"kind": "markdown", "path": "examples/workflows/create/source.md", "base_case": null},
+      "request": {
+        "title": "M6 Create Example",
+        "brief_hints": {
+          "purpose": "Present the enterprise agent operating model",
+          "desired_outcome": "Approve implementation",
+          "call_to_action": "Approve project initiation",
+          "delivery_context": "Management decision meeting",
+          "audience_role": "Executive management",
+          "page_target": 8
+        }
+      },
+      "expected": {
+        "status": "ready",
+        "gate_id": "G8",
+        "gate_status": "pass",
+        "invariants": ["workspace_valid", "m3_m4_m5_outputs", "reviewed_phase"]
+      },
+      "pytest_selector": "tests/test_workflow_application.py::test_create_workflow_reaches_g8_and_persists_valid_report"
+    },
+    {
+      "case_id": "EVAL-M6-REBUILD",
+      "workflow": "rebuild",
+      "execution_tier": "production",
+      "fixture": {"kind": "generated_pptx", "path": null, "base_case": null},
+      "request": {"title": "M6 Rebuild Example"},
+      "expected": {
+        "status": "ready",
+        "gate_id": "G8",
+        "gate_status": "pass",
+        "invariants": ["source_byte_identical", "workspace_valid", "reviewed_phase"]
+      },
+      "pytest_selector": "tests/test_workflow_application.py::test_rebuild_workflow_keeps_original_pptx_byte_identical"
+    },
+    {
+      "case_id": "EVAL-M6-IMPROVE",
+      "workflow": "improve",
+      "execution_tier": "production",
+      "fixture": {"kind": "created_workspace", "path": null, "base_case": "EVAL-M6-CREATE"},
+      "request": {"title": "M6 Improve Example", "auto_repair": true},
+      "expected": {
+        "status": "ready",
+        "gate_id": "G8",
+        "gate_status": "pass",
+        "invariants": ["audit_first", "admitted_repair_only", "clean_case_noop"]
+      },
+      "pytest_selector": "tests/test_workflow_application.py::test_improve_workflow_audits_before_repair_and_is_noop_on_clean_deck"
+    },
+    {
+      "case_id": "EVAL-M6-AUDIT",
+      "workflow": "audit",
+      "execution_tier": "production",
+      "fixture": {"kind": "created_workspace", "path": null, "base_case": "EVAL-M6-CREATE"},
+      "request": {"title": "M6 Audit Example", "auto_repair": false},
+      "expected": {
+        "status": "ready",
+        "gate_id": "G8",
+        "gate_status": "pass",
+        "invariants": ["no_hidden_edit", "frozen_truth_unchanged", "workspace_valid"]
+      },
+      "pytest_selector": "tests/test_workflow_application.py::test_audit_workflow_preserves_frozen_truth"
+    },
+    {
+      "case_id": "EVAL-M6-REVISE",
+      "workflow": "revise",
+      "execution_tier": "production",
+      "fixture": {"kind": "created_workspace", "path": null, "base_case": "EVAL-M6-CREATE"},
+      "request": {
+        "title": "M6 Revise Example",
+        "slide_updates": {"S-001": {"headline": "Revised enterprise agent operating model"}},
+        "reason": "Clarify the opening proposition"
+      },
+      "expected": {
+        "status": "ready",
+        "gate_id": "G8",
+        "gate_status": "pass",
+        "invariants": ["stable_target_slide_id", "downstream_regenerated", "workspace_valid"]
+      },
+      "pytest_selector": "tests/test_workflow_application.py::test_revise_workflow_updates_target_slide_and_regenerates_downstream"
+    },
+    {
+      "case_id": "EVAL-M6-EXTRACT_STYLE",
+      "workflow": "extract_style",
+      "execution_tier": "quick",
+      "fixture": {"kind": "generated_pptx", "path": null, "base_case": null},
+      "request": {"title": "M6 Extract Style Example"},
+      "expected": {
+        "status": "ready",
+        "gate_id": null,
+        "gate_status": "not_run",
+        "invariants": ["schema_valid_candidate", "reference_byte_identical", "no_font_or_media_copy"]
+      },
+      "pytest_selector": "tests/test_workflow_application.py::test_extract_style_produces_schema_valid_candidate_without_copying_reference_bytes"
+    }
+  ]
+}

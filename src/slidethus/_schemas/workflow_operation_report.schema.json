@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/workflow-operation-report.schema.json",
+  "title": "Workflow Operation Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "project_id", "operation_id", "attempt_id", "workflow", "request_hash",
+    "execution_signature", "status", "cache_status", "started_at", "finished_at", "duration_ms", "limits",
+    "metrics", "lease", "workflow_report", "blockers"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "operation_id": {"type": "string", "pattern": "^WOP-[A-F0-9]{16}$"},
+    "attempt_id": {"type": "string", "pattern": "^WAT-[A-F0-9]{16}$"},
+    "workflow": {"enum": ["create", "rebuild", "improve", "audit", "revise", "extract_style"]},
+    "request_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "execution_signature": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "status": {"enum": ["ready", "blocked", "failed"]},
+    "cache_status": {"enum": ["hit", "miss"]},
+    "started_at": {"type": "string", "format": "date-time"},
+    "finished_at": {"type": "string", "format": "date-time"},
+    "duration_ms": {"type": "integer", "minimum": 0},
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_input_bytes", "max_slide_updates", "max_wall_seconds", "max_cache_age_seconds", "max_provider_cost_usd"],
+      "properties": {
+        "max_input_bytes": {"type": "integer", "minimum": 1},
+        "max_slide_updates": {"type": "integer", "minimum": 1},
+        "max_wall_seconds": {"type": "integer", "minimum": 1},
+        "max_cache_age_seconds": {"type": "integer", "minimum": 0, "maximum": 2592000},
+        "max_provider_cost_usd": {"type": ["number", "null"], "minimum": 0}
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_bytes", "slide_updates", "actions", "outputs", "changed_artifacts", "provider_cost_usd", "provider_cost_status"],
+      "properties": {
+        "input_bytes": {"type": "integer", "minimum": 0},
+        "slide_updates": {"type": "integer", "minimum": 0},
+        "actions": {"type": "integer", "minimum": 0},
+        "outputs": {"type": "integer", "minimum": 0},
+        "changed_artifacts": {"type": "integer", "minimum": 0},
+        "provider_cost_usd": {"type": ["number", "null"], "minimum": 0},
+        "provider_cost_status": {"enum": ["measured", "not_measured", "not_applicable"]}
+      }
+    },
+    "lease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "status"],
+      "properties": {
+        "mode": {"const": "exclusive"},
+        "status": {"const": "acquired"}
+      }
+    },
+    "workflow_report": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["report_id", "path", "sha256"],
+          "properties": {
+            "report_id": {"type": "string", "pattern": "^WFR-[A-F0-9]{16}$"},
+            "path": {"type": "string", "minLength": 1},
+            "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+          }
+        }
+      ]
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+          "message": {"type": "string", "minLength": 1, "maxLength": 4000}
+        }
+      }
+    }
+  }
+}

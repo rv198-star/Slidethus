@@ -36,7 +36,9 @@ _UNTRUSTED_INSTRUCTION_PATTERNS = (
         re.IGNORECASE,
     ),
     re.compile(r"忽略(?:以上|前文|之前|先前|所有).{0,12}(?:指令|提示|要求|内容)"),
-    re.compile(r"(?:执行|运行|调用)(?:以下|这个|该)?(?:命令|工具|脚本|终端)"),
+    re.compile(
+        r"(?:(?:请|必须|现在|立即|直接|务必|你(?:需要|应该|要)?)(?:执行|运行|调用)(?:以下|这个|该)?|(?:执行|运行|调用)(?:以下|这个|该))(?:命令|工具|脚本|终端)"
+    ),
     re.compile(r"(?:上传|泄露|显示|输出)(?:密钥|令牌|密码|系统提示词|API\s*Key)", re.IGNORECASE),
 )
 _EXTERNAL_LINK = re.compile(r"https?://[^\s)>\]]+", re.IGNORECASE)

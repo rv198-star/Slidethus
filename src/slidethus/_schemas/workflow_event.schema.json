@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/workflow-event.schema.json",
+  "title": "Workflow Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "project_id", "event_id", "attempt_id", "workflow",
+    "request_hash", "execution_signature", "event_type", "occurred_at",
+    "sequence", "detail", "operation_id"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "event_id": {"type": "string", "pattern": "^WEV-[A-F0-9]{16}$"},
+    "attempt_id": {"type": "string", "pattern": "^WAT-[A-F0-9]{16}$"},
+    "workflow": {"enum": ["create", "rebuild", "improve", "audit", "revise", "extract_style"]},
+    "request_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "execution_signature": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "event_type": {"enum": ["started", "recovered", "cache_hit", "blocked", "completed", "failed"]},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "sequence": {"type": "integer", "minimum": 1, "maximum": 16},
+    "detail": {"type": "string", "minLength": 1, "maxLength": 4000},
+    "operation_id": {
+      "type": ["string", "null"],
+      "pattern": "^WOP-[A-F0-9]{16}$"
+    }
+  }
+}

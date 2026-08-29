@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/evaluation-suite.schema.json",
+  "title": "Slidethus Evaluation Suite",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "suite_id", "cases"],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "suite_id": {"type": "string", "pattern": "^EVAL-[A-Z0-9_-]+$"},
+    "cases": {
+      "type": "array",
+      "minItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["case_id", "workflow", "execution_tier", "fixture", "request", "expected", "pytest_selector"],
+        "properties": {
+          "case_id": {"type": "string", "pattern": "^EVAL-M6-[A-Z0-9_-]+$"},
+          "workflow": {"enum": ["create", "rebuild", "improve", "audit", "revise", "extract_style"]},
+          "execution_tier": {"enum": ["quick", "production"]},
+          "fixture": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "path", "base_case"],
+            "properties": {
+              "kind": {"enum": ["markdown", "generated_pptx", "created_workspace"]},
+              "path": {"type": ["string", "null"]},
+              "base_case": {"type": ["string", "null"]}
+            }
+          },
+          "request": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["title"]
+          },
+          "expected": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "gate_id", "gate_status", "invariants"],
+            "properties": {
+              "status": {"enum": ["ready", "blocked", "failed"]},
+              "gate_id": {"type": ["string", "null"]},
+              "gate_status": {"enum": ["pass", "blocked", "fail", "not_run"]},
+              "invariants": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {"type": "string", "minLength": 1, "maxLength": 256}
+              }
+            }
+          },
+          "pytest_selector": {"type": "string", "pattern": "^tests/[^:]+::test_[A-Za-z0-9_]+$"}
+        }
+      }
+    }
+  }
+}

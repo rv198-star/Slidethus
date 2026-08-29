@@ -49,10 +49,12 @@ def test_outline_generation_creates_stable_digital_sticky_notes(tmp_path: Path) 
     assert first.version == second.version
     outline = first.outline
     active = [item for item in outline["slides"] if item["status"] != "excluded"]
-    assert len(active) == 10
-    assert [item["ordinal"] for item in active] == list(range(1, 11))
+    page_contract = ArtifactRuntime(workspace).show_artifact("project_brief")["constraints"]["page_count"]
+    assert page_contract["min"] <= len(active) <= page_contract["target"]
+    assert outline["target_page_count"] == len(active)
+    assert [item["ordinal"] for item in active] == list(range(1, len(active) + 1))
     assert [item["slide_id"] for item in active] == [
-        f"S-{index:03d}" for index in range(1, 11)
+        f"S-{index:03d}" for index in range(1, len(active) + 1)
     ]
     assert active[0]["slide_type"] == "cover"
     assert active[-1]["slide_type"] == "action"

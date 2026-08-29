@@ -133,7 +133,12 @@ def m5_report_reference_errors(
                 quality = read_json(path)
                 errors.extend(
                     f"Quality snapshot: {message}"
-                    for message in production_quality_reference_errors(workspace, quality, schema_dir)
+                    for message in production_quality_reference_errors(
+                        workspace,
+                        quality,
+                        schema_dir,
+                        require_current=(revision == current_revision),
+                    )
                 )
         except Exception as exc:  # noqa: BLE001
             errors.append(f"M5 Application review ref is invalid ({key}): {exc}")

@@ -3,9 +3,14 @@
   "generated_on": "2026-08-26",
   "files": [
     {
+      "path": "source_material/LICENSE.md",
+      "sha256": "ac9ddb1a2ae1dd4b34c9576ebf07bf3afa7ccdcf9eab2d18eebbd08a7ea2c412",
+      "bytes": 1305
+    },
+    {
       "path": "source_material/README.md",
-      "sha256": "5bb75a2b119e9120acfd185bbef4de3cabb24ad092082f49ff26409a1ccad35a",
-      "bytes": 1032
+      "sha256": "d952de795e4407ebceaeb47ff3f751a89d12bcd7d5648dc29b904775afbae383",
+      "bytes": 1121
     },
     {
       "path": "source_material/cleaned-main-post.md",

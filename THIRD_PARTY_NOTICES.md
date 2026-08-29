@@ -1,32 +1,64 @@
-# Third-Party Source Boundary
+# Third-Party Notices and Redistribution Boundary
 
-This package was derived from a user-provided saved HTML page titled “应该是目前最强的PPT Agent，附上完整思路分享” and retains only cleaned extraction notes and source-preserved prompts.
+Slidethus project-owned code is licensed under Apache-2.0. Third-party software and source material retain their own licenses and rights.
 
-The retained files are design research inputs:
+## User-provided / third-party source material
 
-- original browser HTML: intentionally omitted from this bootstrap package
-- `source_material/cleaned-main-post.md`
-- `source_material/source-preserved/`
+The repository retains provenance material derived from a user-provided saved HTML page titled “应该是目前最强的PPT Agent，附上完整思路分享”. Relevant files live under `source_material/`.
 
 Rules:
 
-- Preserve source excerpts and prompts verbatim in `source-preserved`.
-- Put repairs, extensions, and production prompt contracts in separate files.
-- Do not imply ownership, endorsement, or license transfer.
-- Do not ship raw third-party material in a public release without a rights review.
-- Slidethus architecture decisions are documented separately and are not claims made by the source author.
+- `source_material/` is excluded from the Apache-2.0 project grant unless a specific file states otherwise;
+- source-preserved excerpts/prompts remain distinguishable from project-authored repairs/extensions;
+- no ownership, endorsement, or license transfer is implied;
+- the default wheel and Plugin bundle do not ship `source_material/`;
+- any public redistribution of original third-party excerpts/assets requires a separate rights review.
 
-## Runtime dependencies
+See `source_material/LICENSE.md`.
 
-The Python package resolves, but does not vendor, runtime dependencies or their transitive dependencies. Current direct dependencies and optional ingestion adapters include:
+## Python direct dependencies
 
-- `jsonschema` — MIT — Draft 2020-12 artifact and snapshot validation;
-- `python-pptx` — MIT — editable PPTX generation and PPTX source parsing;
-- `pypdf` — BSD-3-Clause — optional PDF text extraction;
-- `python-docx` — MIT — optional DOCX text/table/story extraction;
-- `openpyxl` — MIT — optional XLSX cell extraction without formula evaluation;
-- `Pillow` — MIT-CMU — optional raster-image verification and bounded metadata/EXIF extraction without OCR.
+The Python package declares but does not vendor these direct runtime/optional dependencies. Their transitive dependencies also retain their own licenses.
 
-LibreOffice, Poppler, and Fontconfig tools are optional host capabilities used for preview. Review the license notices supplied by each installed distribution before redistributing an environment or binary bundle.
+| Dependency | Use | License |
+|---|---|---|
+| `jsonschema` | Draft 2020-12 validation | MIT |
+| `python-pptx` | PPTX generation/parsing | MIT |
+| `pypdf` | optional PDF extraction | BSD-3-Clause |
+| `python-docx` | optional DOCX extraction | MIT |
+| `openpyxl` | optional XLSX extraction | MIT |
+| `Pillow` | optional raster verification/metadata | MIT-CMU |
 
-Fonts discovered on the host are copied only into a temporary LibreOffice profile for the duration of preview. Slidethus does not embed or redistribute those font files in the PPTX, workspace, package, or delivery.
+If you redistribute a Python environment, container, zipapp, executable or vendor directory containing resolved dependency packages, include the notices/licenses required by the exact versions contained in that artifact and regenerate the SBOM from the release environment.
+
+## Node renderer dependencies
+
+The renderer source is shipped with `package.json` and `package-lock.json`; downloaded `node_modules` are **not** part of the default wheel or Plugin bundle. `slidethus plugin bootstrap-renderer` performs a local `npm ci` into a user cache.
+
+Direct renderer dependencies are:
+
+| Dependency | Pinned version | License |
+|---|---:|---|
+| `@resvg/resvg-js` | 2.6.2 | MPL-2.0 |
+| `pdf-lib` | 1.17.1 | MIT |
+| `pptxgenjs` | 4.0.1 | MIT |
+
+The Plugin builder and `scripts/generate_sbom.py` deterministically generate `release/sbom.spdx.json` from the exact Node lock graph and the declared Python dependency boundary.
+
+If you redistribute a prepared renderer cache or another artifact containing downloaded `node_modules`, you are the redistributor of those dependency files and must include the applicable license texts/notices. The default Slidethus release intentionally avoids this by distributing only renderer source + lockfile.
+
+## Optional host tools
+
+LibreOffice, Poppler and Fontconfig are optional host capabilities and are not bundled by the default Slidethus wheel/Plugin. Review the licenses supplied by the platform/distribution from which those tools are installed before redistributing them.
+
+## Fonts, brand assets and generated media
+
+Host-discovered fonts may be used temporarily for local rendering/preview but are not copied into Slidethus packages or deliveries by default. User/third-party logos, templates, icons, images, videos and other assets require an `Asset Manifest` rights decision before redistribution. Extract Style records reusable tokens and provenance; it does not copy font/media bytes merely because they exist in a reference deck.
+
+## Models and providers
+
+Slidethus is provider-neutral and does not bundle production LLM/vision model weights. Any external provider SDK, model, generated asset or hosted service is subject to its own terms. Provider output does not override source copyright, trademark, privacy or asset-license obligations.
+
+## SBOM
+
+`scripts/generate_sbom.py` generates the source-distribution SPDX 2.3 SBOM. The default Plugin bundle embeds that generated document as `release/sbom.spdx.json`. It records the project package, curated Python direct dependency constraints and the exact Node lock dependency graph. Release environments that vendor or bundle resolved binaries must generate an artifact-specific SBOM in addition to this source-distribution SBOM.

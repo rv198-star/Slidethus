@@ -1,0 +1,82 @@
+{
+  "schema_version": "0.1.0",
+  "matrix_id": "COMPAT-M6-RELEASE",
+  "release_baseline": {
+    "python": "3.11",
+    "node": "22",
+    "npm": "10"
+  },
+  "capabilities": [
+    {
+      "capability": "core_artifact_runtime",
+      "requirement": "required",
+      "release_verified": true,
+      "degradation": "No degradation: workspace/schema/runtime operations require Python 3.11+.",
+      "notes": "M6 formal release baseline is Python 3.11; pyproject declares Python >=3.11."
+    },
+    {
+      "capability": "production_renderer",
+      "requirement": "conditional",
+      "release_verified": true,
+      "degradation": "Planning/review artifacts remain available, but workflows requiring M4 final outputs stop before G7.",
+      "notes": "Node >=20 and npm >=9 are admitted; M6 release baseline verifies Node 22/npm 10."
+    },
+    {
+      "capability": "semantic_review_provider",
+      "requirement": "conditional",
+      "release_verified": true,
+      "degradation": "M5/M6 workflows stop at an explicit semantic-review capability boundary; no false G8 PASS.",
+      "notes": "Core package is provider-neutral and does not bundle a production semantic model. Fixture providers verify the contract only."
+    },
+    {
+      "capability": "visual_review_provider",
+      "requirement": "conditional",
+      "release_verified": true,
+      "degradation": "Deterministic/semantic review can run, but full Production G8 is blocked without visual review capability.",
+      "notes": "Core package is provider-neutral and does not bundle a production visual model."
+    },
+    {
+      "capability": "research_provider",
+      "requirement": "optional",
+      "release_verified": true,
+      "degradation": "User-material workflows remain available under explicit evidence/research degradation policy.",
+      "notes": "Online research requires an injected provider and separate external-disclosure approval."
+    },
+    {
+      "capability": "office_preview",
+      "requirement": "optional",
+      "release_verified": false,
+      "degradation": "Final SVG-to-PNG/PDF remains the minimum independent page evidence; Office preview absence is disclosed.",
+      "notes": "LibreOffice/Poppler are host capabilities and are not bundled by Slidethus."
+    },
+    {
+      "capability": "workflow_cost_meter",
+      "requirement": "optional",
+      "release_verified": true,
+      "degradation": "If no cost limit is requested, cost is reported not_measured; requesting a cost cap without a meter blocks before provider work.",
+      "notes": "Vendor billing is host-supplied; Slidethus does not guess cost from token estimates."
+    }
+  ],
+  "platforms": [
+    {
+      "platform": "Linux arm64 container",
+      "status": "verified",
+      "reason": "Python 3.11 formal baseline, Node 22 renderer, npm bootstrap, wheel clean install and workflow tests executed on the current Linux arm64 environment."
+    },
+    {
+      "platform": "Linux x86_64",
+      "status": "declared_not_verified",
+      "reason": "Python/Node dependencies publish x86_64 builds, but M6 has not executed the final release matrix on x86_64 yet."
+    },
+    {
+      "platform": "macOS arm64/x86_64",
+      "status": "declared_not_verified",
+      "reason": "Package paths and renderer bootstrap are designed to be portable, but M6 release evidence does not yet certify macOS."
+    },
+    {
+      "platform": "Windows",
+      "status": "unsupported",
+      "reason": "M6 WorkflowLease currently uses POSIX fcntl exclusive locking and intentionally fails closed when that capability is unavailable."
+    }
+  ]
+}

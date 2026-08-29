@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -9,6 +9,8 @@ description = "Agentic presentation engineering skill foundation"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{name = "Slidethus contributors"}]
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE.md", "THIRD_PARTY_NOTICES.md"]
 dependencies = [
   "jsonschema>=4.22,<5",
   "python-pptx>=1,<2",
@@ -41,6 +43,41 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 slidethus = ["_schemas/*.json"]
+
+[tool.setuptools.data-files]
+"share/slidethus/skill" = [".agents/skills/slidethus/SKILL.md"]
+"share/slidethus/skill/agents" = [".agents/skills/slidethus/agents/openai.yaml"]
+"share/slidethus/skill/assets" = [".agents/skills/slidethus/assets/README.md"]
+"share/slidethus/skill/references" = [
+  ".agents/skills/slidethus/references/artifact-map.md",
+  ".agents/skills/slidethus/references/capability-matrix.md",
+  ".agents/skills/slidethus/references/failure-recovery.md",
+  ".agents/skills/slidethus/references/layout-system.md",
+  ".agents/skills/slidethus/references/phase-contracts.md",
+  ".agents/skills/slidethus/references/quality-gates.md",
+  ".agents/skills/slidethus/references/source-integrity.md",
+]
+"share/slidethus/skill/workflows" = [
+  ".agents/skills/slidethus/workflows/audit-deck.md",
+  ".agents/skills/slidethus/workflows/create-deck.md",
+  ".agents/skills/slidethus/workflows/extract-style.md",
+  ".agents/skills/slidethus/workflows/improve-deck.md",
+  ".agents/skills/slidethus/workflows/rebuild-deck.md",
+  ".agents/skills/slidethus/workflows/revise-slide.md",
+]
+"share/slidethus/renderer" = [
+  "renderers/pptxgenjs/README.md",
+  "renderers/pptxgenjs/package.json",
+  "renderers/pptxgenjs/package-lock.json",
+  "renderers/pptxgenjs/render.mjs",
+  "renderers/pptxgenjs/preview.mjs",
+]
+"share/slidethus/release" = [
+  "LICENSE",
+  "NOTICE.md",
+  "THIRD_PARTY_NOTICES.md",
+  "release/rights-policy.json",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

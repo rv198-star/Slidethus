@@ -93,6 +93,23 @@ def _research_workspace(tmp_path: Path) -> tuple[Path, ResearchRuntime, object]:
     return workspace, research, plan
 
 
+def test_structural_heading_is_not_promoted_as_standalone_evidence(tmp_path: Path) -> None:
+    workspace = init_workspace(tmp_path / "heading-only", title="Heading boundary")
+    source = _write_source(
+        tmp_path / "heading-source.md",
+        "# Operating model\n\nOrganizations need explicit business context before automation.\n",
+    )
+    engine, candidates = _public_source(workspace, source)
+
+    assert [candidate.claim for candidate in candidates] == [
+        "Organizations need explicit business context before automation."
+    ]
+    published = engine.adjudicate(candidates)
+    assert [item["claim"] for item in published.ledger["claims"]] == [
+        "Organizations need explicit business context before automation."
+    ]
+
+
 def test_high_risk_source_requires_explicit_evidence_override(tmp_path: Path) -> None:
     workspace = init_workspace(tmp_path / "high-risk", title="High-risk Evidence")
     source = _write_source(

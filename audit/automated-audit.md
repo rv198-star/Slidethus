@@ -4,7 +4,7 @@
 
 - **PASS — required_paths:** all present
 - **PASS — skill_frontmatter:** name and description present
-- **PASS — schemas:** 36 valid (16 catalog artifacts)
+- **PASS — schemas:** 45 valid (16 catalog artifacts)
 - **PASS — packaged_schema_mirror:** matches repository schemas
 - **PASS — instruction_budget:** 19138 bytes across AGENTS.md and SKILL.md
 - **PASS — raw_browser_html_omitted:** no browser-session HTML in package

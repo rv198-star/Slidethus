@@ -336,12 +336,20 @@ class EvidenceEngine:
         candidates = []
         for item in snapshot.get("chunks", []):
             metadata = dict(item.get("metadata", {}))
+            chunk_text = _normalize_text(item.get("text"))
+            heading_text = _normalize_text(metadata.get("title"))
+            if (
+                metadata.get("heading_level") is not None
+                and heading_text
+                and claim_key(chunk_text) == claim_key(heading_text)
+            ):
+                continue
             result_id = metadata.get("research_result_id")
             run_id = metadata.get("research_run_id")
             research_summary = bool(metadata.get("remote_body_fetched") is False and result_id)
             candidates.append(
                 make_evidence_candidate(
-                    claim=str(item["text"]),
+                    claim=chunk_text,
                     source_id=source_id,
                     locator=str(item["locator"]),
                     support_type="indirect" if research_summary else "direct",

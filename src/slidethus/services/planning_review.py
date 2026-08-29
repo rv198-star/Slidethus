@@ -110,6 +110,24 @@ def _issue(
     return item
 
 
+def _layout_topology_signature(plan: dict[str, Any]) -> tuple[Any, ...]:
+    body = [
+        item for item in plan.get("regions", [])
+        if str(item.get("role", "")) != "headline"
+    ]
+    if not body:
+        return ("headline_only",)
+    if len(body) == 1:
+        return ("single_support",)
+    xs = {round(float(item.get("x", 0.0)) / 40.0) for item in body}
+    ys = {round(float(item.get("y", 0.0)) / 40.0) for item in body}
+    if len(ys) == 1 and len(xs) == len(body):
+        return ("row", len(body))
+    if len(xs) == 1:
+        return ("column", len(body))
+    return ("grid", len(xs), len(ys), len(body))
+
+
 def _generated_at(graph: dict[str, dict[str, Any]]) -> str:
     values = [
         str(item.get("updated_at") or "")
@@ -163,6 +181,23 @@ class PlanningReviewService:
         issues: list[dict[str, Any]] = []
         objections = list(narrative.get("objections", []))
         primary = (brief.get("audiences") or [{}])[0]
+        brief_signature = " ".join(
+            _text(brief.get("intent", {}).get(key))
+            for key in ("purpose", "desired_outcome", "call_to_action")
+        )
+        thesis = _text(narrative.get("central_thesis"))
+        if thesis and _jaccard(thesis, brief_signature) >= 0.75:
+            issues.append(
+                _issue(
+                    code="narrative_thesis_restates_brief",
+                    severity="major",
+                    artifact_type="narrative_blueprint",
+                    earliest_phase="P3",
+                    message="Narrative central thesis mostly restates Brief intent/outcome instead of a substantive presentation argument.",
+                    suggested_action="Derive the thesis from admitted source/evidence semantics while preserving the Brief as purpose and action constraints.",
+                    repairability="assisted",
+                )
+            )
         if primary.get("decision_power") in {"decision_maker", "mixed"} and not objections:
             issues.append(
                 _issue(
@@ -181,6 +216,30 @@ class PlanningReviewService:
             if item.get("status") != "excluded"
         ]
         total_budget = sum(int(item.get("slide_budget", 0)) for item in sections)
+        evidence_sections = [
+            section for section in sections if section.get("evidence_ids")
+        ]
+        generic_section_theses = sum(
+            bool(_text(section.get("thesis")))
+            and _jaccard(section.get("thesis"), section.get("purpose")) >= 0.9
+            for section in evidence_sections
+        )
+        if evidence_sections and generic_section_theses >= max(
+            2, (len(evidence_sections) + 1) // 2
+        ):
+            issues.append(
+                _issue(
+                    code="narrative_section_theses_are_structural_labels",
+                    severity="major",
+                    artifact_type="narrative_blueprint",
+                    earliest_phase="P3",
+                    message=(
+                        f"{generic_section_theses} Narrative section theses merely restate their structural purpose."
+                    ),
+                    suggested_action="Give each section a substantive claim or question resolution grounded in its admitted evidence rather than copying the section template purpose.",
+                    repairability="assisted",
+                )
+            )
         for section in sections:
             if total_budget and int(section.get("slide_budget", 0)) / total_budget > 0.55:
                 issues.append(
@@ -221,7 +280,26 @@ class PlanningReviewService:
             key=lambda item: int(item.get("ordinal", 0)),
         )
         for slide in slides:
-            if planning_content_units(slide.get("headline")) > 42:
+            headline = slide.get("headline")
+            takeaway = slide.get("takeaway")
+            if (
+                slide.get("slide_type") not in {"cover", "agenda", "section", "action"}
+                and planning_content_units(headline) >= 18
+                and _jaccard(headline, takeaway) >= 0.78
+            ):
+                issues.append(
+                    _issue(
+                        code="headline_takeaway_role_collapse",
+                        severity="major",
+                        artifact_type="deck_outline",
+                        earliest_phase="P4",
+                        slide_id=str(slide["slide_id"]),
+                        message="Headline and takeaway are near-duplicate, so proposition and support responsibilities have collapsed.",
+                        suggested_action="Synthesize a concise page proposition for the headline and keep supporting explanation/evidence semantically distinct.",
+                        repairability="assisted",
+                    )
+                )
+            if planning_content_units(headline) > 42:
                 issues.append(
                     _issue(
                         code="headline_too_long",
@@ -309,7 +387,7 @@ class PlanningReviewService:
                             f"Estimated slide time {estimated:.1f} min differs from Brief duration {duration} min."
                         ),
                         suggested_action="Rebalance page count or estimated minutes before page design.",
-                        repairability="automatic",
+                        repairability="assisted",
                     )
                 )
         return issues
@@ -336,6 +414,35 @@ class PlanningReviewService:
                         repairability="assisted",
                     )
                 )
+            headline_blocks = [
+                item for item in blocks if item.get("semantic_role") == "headline"
+            ]
+            if headline_blocks:
+                headline_content = headline_blocks[0].get("content")
+                duplicated_support = next(
+                    (
+                        item
+                        for item in blocks
+                        if item.get("semantic_role") != "headline"
+                        and planning_content_units(item.get("content")) >= 18
+                        and _jaccard(headline_content, item.get("content")) >= 0.82
+                    ),
+                    None,
+                )
+                if duplicated_support is not None:
+                    issues.append(
+                        _issue(
+                            code="content_role_duplication",
+                            severity="major",
+                            artifact_type="slide_specs",
+                            earliest_phase="P5A",
+                            slide_id=str(slide["slide_id"]),
+                            block_id=str(duplicated_support["block_id"]),
+                            message="A supporting content block substantially duplicates the headline instead of carrying distinct proof or structure.",
+                            suggested_action="Decompose the page into non-duplicative semantic roles before assigning geometry.",
+                            repairability="assisted",
+                        )
+                    )
             primary_blocks = [
                 item for item in blocks if item.get("priority") == "primary"
             ]
@@ -354,9 +461,51 @@ class PlanningReviewService:
                 )
         return issues
 
-    def _layout_issues(self, layout: dict[str, Any]) -> list[dict[str, Any]]:
+    def _layout_issues(
+        self,
+        layout: dict[str, Any],
+        specs: dict[str, Any],
+    ) -> list[dict[str, Any]]:
         issues: list[dict[str, Any]] = []
         plans = list(layout.get("plans", []))
+        relationship_by_slide = {
+            str(item["slide_id"]): str(item.get("visual_intent", {}).get("relationship", ""))
+            for item in specs.get("slides", [])
+        }
+        slide_type_by_slide = {
+            str(item["slide_id"]): str(item.get("slide_type", ""))
+            for item in specs.get("slides", [])
+        }
+        topology_groups: dict[tuple[Any, ...], list[dict[str, Any]]] = {}
+        for plan in plans:
+            slide_type = slide_type_by_slide.get(str(plan.get("slide_id")), "")
+            if slide_type in {"cover", "agenda", "section", "action", "summary", "appendix"}:
+                continue
+            topology_groups.setdefault(_layout_topology_signature(plan), []).append(plan)
+        for signature, grouped in topology_groups.items():
+            relationships = {
+                relationship_by_slide.get(str(item.get("slide_id")), "")
+                for item in grouped
+            }
+            relationships.discard("")
+            if len(grouped) < 3 or len(relationships) < 2:
+                continue
+            ratio = len(grouped) / max(1, len(plans))
+            issues.append(
+                _issue(
+                    code="layout_relationship_topology_collapse",
+                    severity="major" if ratio >= 0.6 else "minor",
+                    artifact_type="layout_plans",
+                    earliest_phase="P5B",
+                    slide_id=str(grouped[-1]["slide_id"]),
+                    message=(
+                        f"{len(grouped)} pages with {len(relationships)} different declared relationships share the same coarse topology {signature}."
+                    ),
+                    suggested_action="Make region topology express the information relationship; do not treat a family label as sufficient differentiation.",
+                    repairability="assisted",
+                )
+            )
+        families = [str(item.get("layout_family", "")) for item in plans]
         families = [str(item.get("layout_family", "")) for item in plans]
         if plans and families.count("bento") / len(plans) > 0.4:
             issues.append(
@@ -367,7 +516,7 @@ class PlanningReviewService:
                     earliest_phase="P5B",
                     message="Bento is used on more than 40% of pages.",
                     suggested_action="Select layout families from page relationships instead of defaulting to cards.",
-                    repairability="automatic",
+                    repairability="assisted",
                 )
             )
         run_start = 0
@@ -388,7 +537,7 @@ class PlanningReviewService:
                             f"{run_length} consecutive pages use layout family {families[run_start]}."
                         ),
                         suggested_action="Vary the spatial relationship only where page semantics support it.",
-                        repairability="automatic",
+                        repairability="assisted",
                     )
                 )
             run_start = run_end
@@ -484,7 +633,7 @@ class PlanningReviewService:
             *self._narrative_issues(narrative, brief),
             *self._outline_issues(outline, brief),
             *self._spec_issues(specs),
-            *self._layout_issues(layout),
+            *self._layout_issues(layout, specs),
         ]
         issues_by_id: dict[str, dict[str, Any]] = {}
         for issue in issues:

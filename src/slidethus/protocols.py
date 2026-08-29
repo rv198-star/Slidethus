@@ -297,3 +297,30 @@ class VisualReviewProvider(Protocol):
     version: str
 
     def review(self, image_paths: Sequence[Path], context: dict[str, Any]) -> dict[str, Any]: ...
+
+
+class StageReviewProvider(Protocol):
+    """Host-supplied AI reviewer for one retrospective production-stage lens."""
+
+    name: str
+    version: str
+
+    def review(self, context: dict[str, Any]) -> dict[str, Any]: ...
+
+
+class ReviewSynthesisProvider(Protocol):
+    """Host-supplied AI attribution/clustering provider over a completed review set."""
+
+    name: str
+    version: str
+
+    def synthesize(self, context: dict[str, Any]) -> dict[str, Any]: ...
+
+
+class WorkflowCostMeter(Protocol):
+    """Host-supplied cumulative external-provider cost meter for M6 budgets."""
+
+    name: str
+    version: str
+
+    def current_cost_usd(self) -> float: ...

@@ -166,8 +166,24 @@ class ReviewRegressionError(ReviewError):
     """Raised when an M5 post-repair regression fact is inconsistent."""
 
 
+class StageReviewError(ReviewError):
+    """Raised when a retrospective Stage AI Review fact is unsafe or inconsistent."""
+
+
+class ReviewSynthesisError(ReviewError):
+    """Raised when whole-attempt review attribution/synthesis is unsafe or inconsistent."""
+
+
 class M5ApplicationError(ReviewError):
     """Raised when integrated M5 review/repair orchestration cannot continue safely."""
+
+
+class WorkflowError(SlidethusError):
+    """Base exception for M6 product workflow failures."""
+
+
+class WorkflowApplicationError(WorkflowError):
+    """Raised when a workflow request/report is unsafe or inconsistent."""
 
 
 class SchemaError(SlidethusError):

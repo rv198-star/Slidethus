@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/compatibility-matrix.schema.json",
+  "title": "Slidethus Compatibility Matrix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "matrix_id", "release_baseline", "capabilities", "platforms"],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "matrix_id": {"type": "string", "pattern": "^COMPAT-[A-Z0-9_-]+$"},
+    "release_baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["python", "node", "npm"],
+      "properties": {
+        "python": {"type": "string", "minLength": 1},
+        "node": {"type": "string", "minLength": 1},
+        "npm": {"type": "string", "minLength": 1}
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["capability", "requirement", "release_verified", "degradation", "notes"],
+        "properties": {
+          "capability": {"type": "string", "minLength": 1, "maxLength": 128},
+          "requirement": {"enum": ["required", "conditional", "optional"]},
+          "release_verified": {"type": "boolean"},
+          "degradation": {"type": "string", "minLength": 1, "maxLength": 1000},
+          "notes": {"type": "string", "minLength": 1, "maxLength": 2000}
+        }
+      }
+    },
+    "platforms": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["platform", "status", "reason"],
+        "properties": {
+          "platform": {"type": "string", "minLength": 1, "maxLength": 128},
+          "status": {"enum": ["verified", "declared_not_verified", "unsupported"]},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 2000}
+        }
+      }
+    }
+  }
+}

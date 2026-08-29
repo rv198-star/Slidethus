@@ -175,20 +175,39 @@ Quality Report 可以用于前置规划审计，但最终 P8 Review 必须生成
 
 页面职责/节奏问题回 P4，内容容量问题回 P5A，空间关系问题回 P5B，视觉 token 问题才回 P6；不能只换皮肤。
 
-## 9. 修复闭环
+## 9. Stage AI Review 与统一修复
+
+Stage AI Review 不插入生产过程。一次 Production Attempt 先按现有确定性合同完整执行，直到正常完成，或命中既有的安全、证据、能力、几何、输出完整性等硬阻断。AI Review 本身既不新增中途 Gate，也不为了继续试跑而当场修改任何 Production Artifact。
+
+当本次 Production Attempt 已结束后，P8 再分别用 P0、P1、P2、P3、P4、P5A、P5B、P6、P7 的责任视角执行独立 AI Open Issue Review。若流程在某个既有硬阻断处结束，则 Review 审计所有已经真实产生的 artifact 与 failure fact，并记录未到达下游阶段的影响，不当场修复 blocker 后继续跑。
+
+所有阶段 Review 全部结束后，问题才统一汇入 Review Synthesis，先做跨阶段归因和抽象 failure pattern 聚类，再决定是否存在值得进入框架的 systemic fix。Synthesis 完成前不允许修改 provider prompt、生产规则、artifact 或为当前 case 增加例外。
+
+框架级修复必须遵循两条原则：
+
+1. **修抽象范式，不修具体样例**：移除当前主题、原句、页码和业务场景后，修复仍必须成立；否则只能作为 case-local 处理，不能进入生产规则。
+2. **抓大放小**：Critical/Major 通用缺陷优先；Minor 只有跨页、跨 artifact 或跨 case 重复时才晋升；Suggestion 默认不进入代码修复。每轮只推动少量 systemic fixes，不追求把所有审美偏好规则化。
+
+推荐闭环：
 
 ```mermaid
 flowchart LR
-    R[Render] --> A[Open Issue Mining]
-    A --> T[Triage to earliest phase]
-    T --> F[Targeted fix]
+    D[Production Attempt finished or hard-blocked] --> R[Retrospective Stage AI Reviews P0-P7]
+    R --> S[Whole-attempt Review Synthesis + Attribution]
+    S --> P[Systemic Issue Promotion]
+    P --> T[Triage to earliest phase]
+    T --> F[Abstract root fix]
     F --> L[Local retest]
-    L --> C[Cross-deck regression]
-    C --> S[Scorecard]
-    S --> G{Gate}
-    G -->|fail| T
-    G -->|pass| D[Delivery]
+    L --> C[Dependency + cross-deck regression]
+    C --> V[Final semantic / visual review]
+    V --> G{Gate}
+    G -->|fail| S
+    G -->|pass| X[Delivery]
 ```
+
+质量底线优先于完整规则覆盖。例如应约束“headline 是提炼后的单页命题而不是原文证据段落”“layout family 由信息关系驱动而不是全局默认”，但不应枚举所有合法标题写法或所有可接受页面构图。
+
+详细决策见 `docs/adr/ADR-0026-stage-ai-review-and-systemic-repair-promotion.md`。
 
 ## 10. Golden corpus
 

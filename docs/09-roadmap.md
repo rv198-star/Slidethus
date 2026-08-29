@@ -105,7 +105,16 @@ M5 Review runtime facts 位于 `.slidethus/review/`，Production Quality Report 
 
 ## v0.8 Multi-workflow
 
-目标：Create、Rebuild、Improve、Audit、Revise、Extract Style 稳定可用。
+目标：Create、Rebuild、Improve、Audit、Revise、Extract Style 稳定可用，并形成可观测、可分发的产品入口。
+
+- [x] M6.1 Multi-workflow Runtime：统一 `WorkflowApplicationService`、immutable `WFR-*`、Create/Rebuild/Improve/Audit/Revise/Extract Style 与 `workflow run/list/show`；
+- [x] M6.2 Operational Controls：structured events、cache/budget、concurrency/lease/recovery；
+- [x] M6.3 Plugin Packaging；
+- [x] M6.4 Examples & Evaluation；
+- [x] M6.5 License & Third-party Policy；
+- [ ] M6.6 v1.0 Preview Hardening & Release Gate：Stage Review/Synthesis 机制与 Round 4 Preview 归因已完成；5 个 promoted systemic candidates 待根修，其中 P7 font script/glyph coverage 为 Critical Release blocker。
+
+**M6.1–M6.5 Submodule Gates：PASS（2026-08-29）。** 六类 Workflow 共用同一产品编排边界；运行层具备事件/缓存/预算/lease/recovery；wheel/Plugin 可离仓库分发并 bootstrap pinned renderer；六 workflow corpus/兼容矩阵可执行；项目主许可证为 Apache-2.0，第三方/用户素材与依赖权利由 rights policy/NOTICE/SPDX 独立约束。M6.6 已完成 retrospective Stage AI Review / whole-attempt Synthesis 纵切并对真实 8 页 Preview 形成 `SYN-EE4D0FD5BEFECEA0`；继续点见 `audit/M6.6-preview-hardening-handoff.md`。v1.0 Release Gate 仍未通过。
 
 ## v0.9 Distribution Candidate
 

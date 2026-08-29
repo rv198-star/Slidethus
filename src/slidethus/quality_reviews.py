@@ -76,8 +76,10 @@ def production_quality_reference_errors(
     workspace: Path,
     data: dict[str, Any],
     schema_dir: Path,
+    *,
+    require_current: bool = True,
 ) -> tuple[str, ...]:
-    """Validate Production Quality Report runtime lineage and currentness."""
+    """Validate immutable Quality lineage and, when active, current G8 readiness."""
 
     production = data.get("production_review")
     if not isinstance(production, dict):
@@ -131,24 +133,25 @@ def production_quality_reference_errors(
         )
         errors.extend(repair_errors)
 
-    if d is not None:
-        if d.get("status") != "pass":
-            errors.append("Production G8 requires a passing deterministic review")
-        if not _report_artifacts_are_current(workspace, d):
-            errors.append("Production deterministic review is stale")
-    if s is not None:
-        if s.get("status") == "blocked" or s.get("capability", {}).get("status") != "available":
-            errors.append("Production G8 requires semantic review capability")
-        if not _report_artifacts_are_current(workspace, s):
-            errors.append("Production semantic review is stale")
-    if c is not None and (c.get("status") == "blocked" or c.get("capability", {}).get("status") != "available"):
-        errors.append("Production G8 requires semantic scorecard capability")
-    if v is not None and (v.get("status") == "blocked" or v.get("capability", {}).get("status") != "available"):
-        errors.append("Production G8 requires full-page visual review capability")
-    if r is not None and r.get("status") != "pass":
-        errors.append("Production G8 requires passing cross-deck regression")
-    if repair is not None and repair.get("status") in {"blocked", "failed"}:
-        errors.append("Production G8 cannot use a blocked/failed repair result")
+    if require_current:
+        if d is not None:
+            if d.get("status") != "pass":
+                errors.append("Production G8 requires a passing deterministic review")
+            if not _report_artifacts_are_current(workspace, d):
+                errors.append("Production deterministic review is stale")
+        if s is not None:
+            if s.get("status") == "blocked" or s.get("capability", {}).get("status") != "available":
+                errors.append("Production G8 requires semantic review capability")
+            if not _report_artifacts_are_current(workspace, s):
+                errors.append("Production semantic review is stale")
+        if c is not None and (c.get("status") == "blocked" or c.get("capability", {}).get("status") != "available"):
+            errors.append("Production G8 requires semantic scorecard capability")
+        if v is not None and (v.get("status") == "blocked" or v.get("capability", {}).get("status") != "available"):
+            errors.append("Production G8 requires full-page visual review capability")
+        if r is not None and r.get("status") != "pass":
+            errors.append("Production G8 requires passing cross-deck regression")
+        if repair is not None and repair.get("status") in {"blocked", "failed"}:
+            errors.append("Production G8 cannot use a blocked/failed repair result")
 
     source_issues: dict[str, tuple[str, dict[str, Any]]] = {}
     if s is not None:
@@ -199,7 +202,12 @@ def production_quality_gate_reasons(
 ) -> tuple[str, ...]:
     if not isinstance(data.get("production_review"), dict):
         return ("Production Render Manifest requires M5 production_review lineage for G8",)
-    return production_quality_reference_errors(workspace, data, schema_dir)
+    return production_quality_reference_errors(
+        workspace,
+        data,
+        schema_dir,
+        require_current=True,
+    )
 
 
 def quality_review_workspace_errors(workspace: Path, schema_dir: Path) -> tuple[tuple[str, str], ...]:
@@ -210,7 +218,24 @@ def quality_review_workspace_errors(workspace: Path, schema_dir: Path) -> tuple[
         data = read_json(path)
     except Exception as exc:  # noqa: BLE001
         return (("review/quality_report.json", f"Quality Report is unreadable: {exc}"),)
+    state = read_json(workspace / "project_state.json")
+    entry = next(
+        (
+            item
+            for item in state.get("artifacts", [])
+            if item.get("artifact_type") == "quality_report"
+        ),
+        None,
+    )
+    active = bool(entry) and str(entry.get("status")) != "draft" and str(
+        state.get("current_phase")
+    ) in {"REVIEWED", "DELIVERY_READY", "COMPLETED"}
     return tuple(
         ("review/quality_report.json", message)
-        for message in production_quality_reference_errors(workspace, data, schema_dir)
+        for message in production_quality_reference_errors(
+            workspace,
+            data,
+            schema_dir,
+            require_current=active,
+        )
     )

@@ -17,7 +17,7 @@
 
 ## 暂未决定
 
-- 最终开源许可证；
+- Apache-2.0 已作为项目主许可证；第三方/用户素材、依赖、字体、模型与品牌资产继续按 `release/rights-policy.json` 和各自许可处理；
 - 默认 LLM/search/image provider；
 - PptxGenJS 与 OOXML 的长期边界；
 - GUI 是否独立项目；

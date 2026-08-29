@@ -19,7 +19,20 @@ def renderer_root(explicit: Path | None = None) -> Path:
     configured = os.environ.get("SLIDETHUS_PPTXGENJS_ROOT")
     if configured:
         return Path(configured).expanduser().resolve()
-    return find_repository_root() / "renderers/pptxgenjs"
+    from slidethus.distribution import prepared_renderer_root, renderer_source_root
+
+    prepared = prepared_renderer_root()
+    if prepared is not None:
+        return prepared
+    try:
+        repository = find_repository_root()
+    except FileNotFoundError:
+        repository = None
+    if repository is not None:
+        candidate = repository / "renderers/pptxgenjs"
+        if candidate.is_dir():
+            return candidate
+    return renderer_source_root()
 
 
 def node_executable(explicit: str | None = None) -> str:
@@ -61,7 +74,8 @@ def validate_sidecar(
         if not package_path.is_file():
             raise RenderCapabilityError(
                 "Node renderer dependencies are not installed. Run "
-                f"`npm ci --prefix {root}` before rendering."
+                "`slidethus plugin bootstrap-renderer` for the managed cache, or "
+                f"`npm ci --prefix {root}` for an explicit sidecar root."
             )
         package = read_json(package_path)
         if package.get("version") != expected_version:

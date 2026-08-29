@@ -281,9 +281,24 @@ class M5ApplicationService:
                     visual,
                 )
                 reviews["repair_plan"] = self._ref(self.workspace, plan.path, plan.plan, "plan_id")
-                repair = ReviewRepairExecutionService(self.workspace).execute(plan)
-                reviews["repair_report"] = self._ref(self.workspace, repair.path, repair.report, "repair_id")
-                self._add_action(actions, stage="review_repair", status="blocked" if repair.report["status"] == "blocked" else "complete", detail=f"M5.5 review repair status={repair.report['status']}.", refs=(str(repair.report["repair_id"]),))
+                if auto_repair:
+                    repair = ReviewRepairExecutionService(self.workspace).execute(plan)
+                    reviews["repair_report"] = self._ref(self.workspace, repair.path, repair.report, "repair_id")
+                    self._add_action(
+                        actions,
+                        stage="review_repair",
+                        status="blocked" if repair.report["status"] == "blocked" else "complete",
+                        detail=f"M5.5 review repair status={repair.report['status']}.",
+                        refs=(str(repair.report["repair_id"]),),
+                    )
+                else:
+                    self._add_action(
+                        actions,
+                        stage="review_repair",
+                        status="skipped",
+                        detail="Automatic repair is disabled; retained the immutable Repair Plan without executing mutations.",
+                        refs=(str(plan.plan["plan_id"]),),
+                    )
                 blockers.append(
                     {
                         "code": "review_requires_rework",

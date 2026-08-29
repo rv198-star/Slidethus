@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/review-synthesis-report.schema.json",
+  "title": "Review Synthesis Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "project_id", "report_id", "review_mode", "provider", "capability",
+    "workflow_report", "stage_reviews", "clusters", "unclustered_issue_ids", "summary", "status"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "report_id": {"type": "string", "pattern": "^SYN-[A-F0-9]{16}$"},
+    "review_mode": {"const": "whole_attempt_attribution"},
+    "provider": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 128},
+        "version": {"type": "string", "minLength": 1, "maxLength": 128}
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "detail"],
+      "properties": {
+        "status": {"enum": ["available", "missing"]},
+        "detail": {"type": "string", "minLength": 1, "maxLength": 2000}
+      }
+    },
+    "workflow_report": {"$ref": "#/$defs/workflowRef"},
+    "stage_reviews": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/stageReviewRef"}
+    },
+    "clusters": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/cluster"}
+    },
+    "unclustered_issue_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^SAI-[A-F0-9]{16}$"}
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage_review_count", "issue_count", "cluster_count", "systemic_candidate_count",
+        "case_local_count", "unclustered_count"
+      ],
+      "properties": {
+        "stage_review_count": {"type": "integer", "minimum": 1},
+        "issue_count": {"type": "integer", "minimum": 0},
+        "cluster_count": {"type": "integer", "minimum": 0},
+        "systemic_candidate_count": {"type": "integer", "minimum": 0},
+        "case_local_count": {"type": "integer", "minimum": 0},
+        "unclustered_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "status": {"enum": ["pass", "issues", "blocked"]}
+  },
+  "$defs": {
+    "workflowRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["report_id", "path", "sha256", "workflow", "status", "final_phase"],
+      "properties": {
+        "report_id": {"type": "string", "pattern": "^WFR-[A-F0-9]{16}$"},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "workflow": {"enum": ["create", "rebuild", "improve", "audit", "revise", "extract_style"]},
+        "status": {"enum": ["ready", "blocked", "failed"]},
+        "final_phase": {"type": "string", "minLength": 1}
+      }
+    },
+    "stageReviewRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["report_id", "stage", "path", "sha256", "status"],
+      "properties": {
+        "report_id": {"type": "string", "pattern": "^SAR-[A-F0-9]{16}$"},
+        "stage": {"enum": ["P0", "P1", "P2", "P3", "P4", "P5A", "P5B", "P6", "P7"]},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "status": {"enum": ["pass", "issues", "blocked", "not_applicable"]}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stages", "artifact_types", "slide_ids"],
+      "properties": {
+        "stages": {
+          "type": "array", "uniqueItems": true,
+          "items": {"enum": ["P0", "P1", "P2", "P3", "P4", "P5A", "P5B", "P6", "P7"]}
+        },
+        "artifact_types": {
+          "type": "array", "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "slide_ids": {
+          "type": "array", "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^S-[0-9]{3}$"}
+        }
+      }
+    },
+    "cluster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cluster_id", "pattern_code", "title", "scenario_independent_statement", "issue_ids",
+        "max_severity", "root_phase", "attribution", "scope", "classification",
+        "promotion_eligible", "promotion_reason"
+      ],
+      "properties": {
+        "cluster_id": {"type": "string", "pattern": "^SYS-[A-F0-9]{16}$"},
+        "pattern_code": {"type": "string", "pattern": "^[a-z][a-z0-9_]{2,127}$"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 500},
+        "scenario_independent_statement": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "issue_ids": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^SAI-[A-F0-9]{16}$"}
+        },
+        "max_severity": {"enum": ["critical", "major", "minor", "suggestion"]},
+        "root_phase": {"enum": ["P0", "P1", "P2", "P3", "P4", "P5A", "P5B", "P6", "P7"]},
+        "attribution": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "scope": {"$ref": "#/$defs/scope"},
+        "classification": {"enum": ["case_local", "systemic_candidate"]},
+        "promotion_eligible": {"type": "boolean"},
+        "promotion_reason": {"type": "string", "minLength": 1, "maxLength": 4000}
+      }
+    }
+  }
+}

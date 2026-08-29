@@ -50,6 +50,247 @@ def _claim_qualification(claim: dict[str, Any]) -> str | None:
     return "；".join(reasons) if reasons else None
 
 
+_THESIS_MARKERS = (
+    "应该", "应当", "不应", "必须", "真正需要", "核心是", "关键是",
+    " should ", " must ", " need ", " rather than ", " instead of ",
+)
+_PROBLEM_MARKERS = (
+    "问题", "缺失", "不足", "阻碍", "风险", "无法", "不能", "不一致",
+    " problem", " gap", " risk", " fail", " missing", " inconsistent",
+)
+_ACTION_MARKERS = (
+    "建议", "批准", "立项", "决策请求", "下一步",
+    " recommend", " approve", " decision", " next step", " pilot",
+)
+
+
+def _claim_clauses(value: Any) -> list[str]:
+    text = _text(value, limit=4000)
+    if not text:
+        return []
+    parts = re.split(r"[。！？!?；;]+|\s+(?=\d+[.、)]\s*)", text)
+    return [part.strip(" ，,：:。；;!?！？") for part in parts if part.strip(" ，,：:。；;!?！？")]
+
+
+def _numbered_labels(value: Any) -> list[str]:
+    text = _text(value, limit=4000)
+    return [
+        _text(match, limit=24)
+        for match in re.findall(r"(?:^|\s)\d+[.、)]\s*([^：:；;。]{1,24})[：:]", text)
+        if _text(match, limit=24)
+    ]
+
+
+def _explicit_enumeration(value: Any) -> list[str]:
+    text = _text(value, limit=4000)
+    if text.count("、") < 3:
+        return []
+    clause = _claim_clauses(text)[0] if _claim_clauses(text) else text
+    parts = [part.strip(" ，,。；;：:") for part in clause.split("、")]
+    if len(parts) < 4 or any(not part for part in parts):
+        return []
+    tail = parts[-1]
+    if "和" in tail and len(tail) <= 24:
+        final = [item.strip() for item in tail.rsplit("和", 1) if item.strip()]
+        if len(final) == 2:
+            parts = [*parts[:-1], *final]
+    return [_shorten(part, 72) for part in parts[:8]]
+
+
+def _claim_role(value: Any) -> str:
+    text = _text(value, limit=4000)
+    folded = f" {text.casefold()} "
+    if len(text) <= 18 and len(_claim_clauses(text)) <= 1:
+        return "label"
+    if any(marker in folded for marker in _ACTION_MARKERS):
+        return "action"
+    if re.search(r"(?:第一阶段|第二阶段|第三阶段|\bstage\s+\d|\bphase\s+\d)", folded):
+        return "progression"
+    if text.count("？") + text.count("?") >= 2:
+        return "diagnostic"
+    if _numbered_labels(text) or _explicit_enumeration(text):
+        return "framework"
+    clauses = _claim_clauses(text)
+    if (
+        re.search(r"(?:先.{1,120}(?:再|然后).{1,120}(?:最后|最终)|\bfirst\b.{1,120}\bthen\b.{1,120}\bfinally\b)", folded)
+        or (
+            len(clauses) >= 3
+            and clauses[0].lstrip().startswith("先")
+            and any(clause.lstrip().startswith(("最后", "最终")) for clause in clauses[1:])
+        )
+    ):
+        return "process"
+    if any(marker in folded for marker in _PROBLEM_MARKERS):
+        return "problem"
+    if any(marker in folded for marker in _THESIS_MARKERS):
+        return "principle"
+    return "evidence"
+
+
+def _headline_from_claim(value: Any, limit: int = 56) -> str:
+    text = _text(value, limit=4000)
+    role = _claim_role(text)
+    labels = _numbered_labels(text)
+    enumeration = _explicit_enumeration(text)
+    if role == "framework" and len(labels) >= 3:
+        prefix = "核心构成：" if re.search(r"[\u3400-\u9fff]", text) else "Key elements: "
+        return _shorten(prefix + "、".join(labels[:6]), limit)
+    if role == "framework" and len(enumeration) >= 4:
+        return _shorten("结构要素：" + "、".join(enumeration[:4]), limit)
+    clauses = _claim_clauses(text)
+    if not clauses:
+        return _shorten(text, limit)
+    if role == "principle":
+        def score(clause: str) -> tuple[int, int]:
+            folded = f" {clause.casefold()} "
+            points = sum(marker in folded for marker in _THESIS_MARKERS)
+            points += 2 * sum(marker in folded for marker in ("真正", "rather than", "instead of"))
+            return points, min(len(clause), limit)
+        candidate = max(clauses, key=score)
+    else:
+        candidate = clauses[0]
+    return _shorten(candidate, limit)
+
+
+def _support_fragments(value: Any, *, max_fragments: int = 8) -> list[str]:
+    text = _text(value, limit=4000)
+    enumeration = _explicit_enumeration(text)
+    if enumeration:
+        return enumeration[:max_fragments]
+    parts = _claim_clauses(text)
+    if len(parts) <= 1:
+        return [_shorten(text, 180)] if text else []
+    normalized = [_shorten(part, 180) for part in parts if len(part.strip()) >= 4]
+    if len(normalized) <= max_fragments:
+        return normalized
+    return [
+        *normalized[: max_fragments - 1],
+        _shorten("；".join(normalized[max_fragments - 1 :]), 240),
+    ]
+
+
+def _takeaway_from_claims(
+    claims: list[dict[str, Any]],
+    headline: str,
+) -> str:
+    if not claims:
+        return ""
+    support: list[str] = []
+    headline_folded = _text(headline).casefold()
+    for claim_index, claim in enumerate(claims):
+        fragments = _support_fragments(claim.get("claim"), max_fragments=4)
+        if claim_index == 0:
+            fragments = [
+                fragment
+                for fragment in fragments
+                if _text(fragment).casefold() != headline_folded
+                and headline_folded not in _text(fragment).casefold()
+            ]
+        if not fragments and claim_index > 0:
+            fragments = [_headline_from_claim(claim.get("claim"), 80)]
+        support.extend(fragment for fragment in fragments if fragment)
+    if support:
+        return _shorten("；".join(support[:4]), 240)
+    if len(claims) > 1:
+        return _shorten(
+            "；".join(_headline_from_claim(item.get("claim"), 80) for item in claims[1:]),
+            240,
+        )
+    return _shorten(_text(claims[0].get("claim")), 240)
+
+
+def _claim_score_for_thesis(claim: dict[str, Any]) -> tuple[int, int]:
+    text = _text(claim.get("claim"), limit=4000)
+    role = _claim_role(text)
+    score = {
+        "principle": 8,
+        "framework": 5,
+        "problem": 5,
+        "process": 4,
+        "progression": 4,
+        "action": 3,
+        "diagnostic": 3,
+        "evidence": 2,
+        "label": -3,
+    }[role]
+    if 24 <= len(text) <= 260:
+        score += 2
+    return score, min(len(text), 260)
+
+
+def _effective_page_target(
+    brief: dict[str, Any],
+    claims: list[dict[str, Any]],
+) -> int:
+    contract = brief.get("constraints", {}).get("page_count", {})
+    requested = max(3, int(contract.get("target", 3) or 3))
+    minimum = max(3, int(contract.get("min", 1) or 1))
+    maximum = max(minimum, int(contract.get("max", requested) or requested))
+    semantic_capacity = max(3, len(claims) + 2)
+    return max(minimum, min(requested, maximum, semantic_capacity))
+
+
+def _section_index_for_role(arc: str, role: str, count: int) -> int:
+    if count <= 1:
+        return 0
+    normalized = {
+        "problem-solution-proof-action": {
+            "label": 0,
+            "progression": 0,
+            "problem": 1,
+            "diagnostic": 1,
+            "principle": 2,
+            "framework": 2,
+            "evidence": 3,
+            "process": 4,
+            "action": 4,
+        },
+        "teaching": {
+            "label": 0,
+            "problem": 0,
+            "principle": 1,
+            "framework": 1,
+            "diagnostic": 2,
+            "evidence": 2,
+            "progression": 2,
+            "process": 2,
+            "action": 3,
+        },
+    }.get(arc, {
+        "label": 0,
+        "problem": 0,
+        "diagnostic": 0,
+        "principle": 1,
+        "framework": 1,
+        "evidence": 2,
+        "progression": 2,
+        "process": 2,
+        "action": 3,
+    })
+    return min(count - 1, int(normalized.get(role, count - 1)))
+
+
+def _relationship_for_claims(slide_type: str, claims: list[dict[str, Any]]) -> str:
+    if slide_type == "cover":
+        return "single thesis"
+    if slide_type == "section":
+        return "section transition"
+    if slide_type == "action":
+        return "ordered action"
+    roles = {_claim_role(item.get("claim")) for item in claims}
+    if "progression" in roles:
+        return "time"
+    if roles.intersection({"process", "action"}):
+        return "sequence"
+    if roles.intersection({"framework", "diagnostic"}):
+        return "classification"
+    if "problem" in roles and "principle" in roles:
+        return "contrast"
+    if slide_type == "comparison":
+        return "contrast"
+    return "claim and proof" if claims else "hierarchy"
+
+
 def _story_arc(brief: dict[str, Any]) -> str:
     purpose = _text(brief.get("intent", {}).get("purpose")).casefold()
     outcome = _text(brief.get("intent", {}).get("desired_outcome")).casefold()
@@ -119,7 +360,29 @@ def _allocate_slide_budgets(target: int, count: int) -> list[int]:
     return [max(1, base + (1 if index < remainder else 0)) for index in range(count)]
 
 
-def _layout_family_for(slide_type: str, blocks: list[dict[str, Any]]) -> str:
+def _layout_family_for(
+    slide_type: str,
+    blocks: list[dict[str, Any]],
+    relationship: str | None = None,
+) -> str:
+    relation = _text(relationship, limit=160).casefold()
+    relation_mapping = {
+        "single thesis": "hero",
+        "section transition": "hero",
+        "ordered action": "process",
+        "sequence": "process",
+        "time": "timeline",
+        "contrast": "split",
+        "classification": "matrix",
+        "two-dimensional classification": "matrix",
+        "system relationships": "architecture",
+        "quantitative evidence": "chart-story",
+        "claim and proof": "case",
+    }
+    if relation in relation_mapping:
+        family = relation_mapping[relation]
+    else:
+        family = ""
     mapping = {
         "cover": "hero",
         "agenda": "split",
@@ -138,7 +401,7 @@ def _layout_family_for(slide_type: str, blocks: list[dict[str, Any]]) -> str:
         "action": "process",
         "appendix": "split",
     }
-    family = mapping.get(slide_type, "split")
+    family = family or mapping.get(slide_type, "split")
     if len(blocks) >= 6 and family in {"split", "case"}:
         return "bento"
     return family
@@ -148,7 +411,7 @@ class DeterministicPlanningProvider:
     """Provider-neutral, no-network Production planning baseline."""
 
     name = "deterministic-planning-provider"
-    version = "1.0.0"
+    version = "1.1.0"
 
     def propose(
         self,
@@ -183,29 +446,43 @@ class DeterministicPlanningProvider:
         evidence = context["evidence_ledger"]
         claims = _usable_claims(evidence)
         arc = _story_arc(brief)
-        target = int(brief["constraints"]["page_count"]["target"])
-        section_limit = max(2, min(limits.max_sections, max(2, target - 1)))
+        target = _effective_page_target(brief, claims)
+        section_limit = max(2, min(limits.max_sections, max(2, target - 2)))
         templates = _section_templates(arc)[:section_limit]
         budgets = _allocate_slide_budgets(target, len(templates))
         claim_ids = [str(item["evidence_id"]) for item in claims]
+        claims_by_id = {str(item["evidence_id"]): item for item in claims}
+        section_claim_ids: list[list[str]] = [[] for _ in templates]
+        unclassified_claim_ids: list[str] = []
+        for claim in claims:
+            role = _claim_role(claim.get("claim"))
+            if role == "evidence":
+                unclassified_claim_ids.append(str(claim["evidence_id"]))
+                continue
+            target_index = _section_index_for_role(arc, role, len(templates))
+            section_claim_ids[target_index].append(str(claim["evidence_id"]))
+        for evidence_id in unclassified_claim_ids:
+            target_index = min(
+                range(len(section_claim_ids)),
+                key=lambda index: (len(section_claim_ids[index]), index),
+            )
+            section_claim_ids[target_index].append(evidence_id)
         sections: list[dict[str, Any]] = []
         for index, ((title, purpose, question), budget) in enumerate(
             zip(templates, budgets, strict=True)
         ):
-            if not claim_ids:
-                assigned: list[str] = []
-            elif index == 0:
-                assigned = claim_ids[: min(2, len(claim_ids))]
-            elif index == len(templates) - 1:
-                assigned = claim_ids[-min(2, len(claim_ids)) :]
-            else:
-                assigned = claim_ids[index - 1 :: max(1, len(templates) - 2)][:budget]
+            assigned = list(dict.fromkeys(section_claim_ids[index]))
+            section_thesis = (
+                _headline_from_claim(claims_by_id[assigned[0]].get("claim"), 120)
+                if assigned
+                else purpose
+            )
             sections.append(
                 {
                     "title": title,
                     "purpose": purpose,
                     "key_questions": [question],
-                    "evidence_ids": list(dict.fromkeys(assigned)),
+                    "evidence_ids": assigned,
                     "transition": (
                         "在建立共同背景后进入核心问题。"
                         if index == 0
@@ -215,7 +492,7 @@ class DeterministicPlanningProvider:
                             else "沿着前一结论继续推进论证。"
                         )
                     ),
-                    "thesis": purpose,
+                    "thesis": section_thesis,
                     "audience_shift": question,
                     "proof_strategy": (
                         "使用当前 Evidence Ledger 中可用声明；无证据的组织语句不作为外部事实。"
@@ -225,7 +502,12 @@ class DeterministicPlanningProvider:
             )
         purpose = _text(brief["intent"]["purpose"])
         outcome = _text(brief["intent"]["desired_outcome"])
-        thesis = _shorten(f"围绕“{purpose}”，本演示将引导受众{outcome}", 240)
+        thesis_claim = max(claims, key=_claim_score_for_thesis) if claims else None
+        thesis = (
+            _headline_from_claim(thesis_claim.get("claim"), 120)
+            if thesis_claim is not None
+            else _shorten(f"围绕“{purpose}”，本演示将引导受众{outcome}", 240)
+        )
         audience = brief.get("audiences", [{}])[0]
         journey = [
             f"从受众“{_text(audience.get('role'))}”当前关心的问题出发",
@@ -234,14 +516,20 @@ class DeterministicPlanningProvider:
         ]
         objections = []
         raw_objections = list(audience.get("objections", []))
+        inferred_objections = False
         if not raw_objections and audience.get("decision_power") in {"decision_maker", "mixed"}:
             raw_objections = ["价值是否足以覆盖投入？", "主要风险和边界是什么？"]
+            inferred_objections = True
         for objection in raw_objections:
             objections.append(
                 {
                     "objection": _text(objection),
-                    "response_strategy": "使用直接相关 Evidence 回应；证据不足时明确限定或保留问题。",
-                    "evidence_ids": claim_ids[:2],
+                    "response_strategy": (
+                        "当前来源未提供直接回答该异议的证据；作为决策检查项显式保留。"
+                        if inferred_objections
+                        else "使用直接相关 Evidence 回应；证据不足时明确限定或保留问题。"
+                    ),
+                    "evidence_ids": [] if inferred_objections else claim_ids[:2],
                     "severity": "high",
                 }
             )
@@ -288,7 +576,7 @@ class DeterministicPlanningProvider:
             str(item["evidence_id"]): item for item in _usable_claims(evidence)
         }
         target = min(
-            int(brief["constraints"]["page_count"]["target"]),
+            _effective_page_target(brief, list(claims_by_id.values())),
             limits.max_slides,
         )
         target = max(3, target)
@@ -326,16 +614,24 @@ class DeterministicPlanningProvider:
                 if _text(item)
             ] or [_text(section["purpose"])]
             section_prefix = 1 if budget > 1 else 0
+            content_slots = max(1, budget - section_prefix)
+            evidence_groups: list[list[str]] = [[] for _ in range(content_slots)]
+            for position, evidence_id in enumerate(evidence_ids):
+                bucket = min(
+                    content_slots - 1,
+                    position * content_slots // max(1, len(evidence_ids)),
+                )
+                evidence_groups[bucket].append(evidence_id)
             for local_index in range(budget):
                 evidence_slot = local_index - section_prefix
                 assigned = (
-                    [evidence_ids[evidence_slot]]
-                    if 0 <= evidence_slot < len(evidence_ids)
+                    evidence_groups[evidence_slot]
+                    if 0 <= evidence_slot < len(evidence_groups)
                     else []
                 )
                 if assigned:
                     used_evidence_ids.update(assigned)
-                claim = claims_by_id.get(assigned[0]) if assigned else None
+                assigned_claims = [claims_by_id[item] for item in assigned if item in claims_by_id]
                 question = questions[min(local_index, len(questions) - 1)]
                 if local_index == 0 and budget > 1:
                     slide_type = "section"
@@ -345,19 +641,29 @@ class DeterministicPlanningProvider:
                         180,
                     )
                     assigned = []
-                elif claim is not None:
-                    claim_text = _text(claim.get("claim"))
-                    numeric = bool(re.search(r"\d", claim_text))
-                    slide_type = "chart" if numeric and len(assigned) == 1 else "evidence"
-                    headline = _shorten(claim_text, 88)
-                    takeaway = _shorten(claim_text, 180)
+                elif assigned_claims:
+                    roles = {_claim_role(item.get("claim")) for item in assigned_claims}
+                    if "framework" in roles or "diagnostic" in roles:
+                        slide_type = "matrix"
+                    elif "progression" in roles:
+                        slide_type = "timeline"
+                    elif roles.intersection({"process", "action"}):
+                        slide_type = "process"
+                    elif "problem" in roles and "principle" in roles:
+                        slide_type = "comparison"
+                    else:
+                        claim_text = _text(assigned_claims[0].get("claim"))
+                        numeric = bool(re.search(r"\d", claim_text))
+                        slide_type = "chart" if numeric and len(assigned_claims) == 1 else "evidence"
+                    headline = _headline_from_claim(assigned_claims[0].get("claim"), 56)
+                    takeaway = _takeaway_from_claims(assigned_claims, headline)
                 else:
                     slide_type = (
                         "process"
                         if "如何" in question or "how" in question.casefold()
                         else "statement"
                     )
-                    headline = _shorten(f"{section['title']}：{question}", 88)
+                    headline = _shorten(f"{section['title']}：{question}", 72)
                     takeaway = _shorten(
                         f"{section['purpose']}；本页聚焦回答“{question}”",
                         180,
@@ -425,7 +731,7 @@ class DeterministicPlanningProvider:
                 "appendix_policy": "只有在 Brief 明确需要或正文证据过载时才生成附录。",
             },
             [],
-            ["页面数量优先满足 Brief target，并以 section slide_budget 分配。"],
+            ["页面数量在 Brief min/max 内按可用语义容量生成；target 不通过空洞页面强行补齐。"],
         )
 
     def _slide_specs(
@@ -442,6 +748,17 @@ class DeterministicPlanningProvider:
                 continue
             slide_id = str(outline_slide["slide_id"])
             evidence_ids = list(outline_slide.get("evidence_ids", []))
+            assigned_claims = [
+                claims[evidence_id]
+                for evidence_id in evidence_ids
+                if evidence_id in claims
+            ]
+            slide_type = str(outline_slide["slide_type"])
+            relationship = _relationship_for_claims(slide_type, assigned_claims)
+            has_ordered_structure = relationship in {"sequence", "time", "ordered action"} and any(
+                _claim_role(claim.get("claim")) in {"process", "progression"}
+                for claim in assigned_claims
+            )
             blocks: list[dict[str, Any]] = [
                 {
                     "semantic_role": "headline",
@@ -458,18 +775,35 @@ class DeterministicPlanningProvider:
                 claim = claims.get(evidence_id)
                 if claim is None:
                     continue
-                blocks.append(
-                    {
-                        "semantic_role": "evidence",
-                        "content_type": "text",
-                        "priority": "secondary",
-                        "content": _text(claim["claim"]),
-                        "evidence_ids": [evidence_id],
-                        "evidence_requirement": "required",
-                        "claim_mode": "fact",
-                        "evidence_qualification": _claim_qualification(claim),
-                    }
-                )
+                claim_role = _claim_role(claim.get("claim"))
+                fragments = _support_fragments(claim["claim"])
+                headline_text = _text(outline_slide["headline"]).casefold()
+                if len(fragments) > 1:
+                    non_duplicate = [
+                        fragment
+                        for fragment in fragments
+                        if _text(fragment).casefold() != headline_text
+                    ]
+                    if non_duplicate:
+                        fragments = non_duplicate
+                semantic_role = "evidence"
+                if has_ordered_structure:
+                    semantic_role = (
+                        "body" if claim_role in {"process", "progression"} else "subhead"
+                    )
+                for fragment in fragments:
+                    blocks.append(
+                        {
+                            "semantic_role": semantic_role,
+                            "content_type": "text",
+                            "priority": "secondary",
+                            "content": fragment,
+                            "evidence_ids": [evidence_id],
+                            "evidence_requirement": "required",
+                            "claim_mode": "fact",
+                            "evidence_qualification": _claim_qualification(claim),
+                        }
+                    )
             if len(blocks) == 1:
                 blocks.append(
                     {
@@ -500,8 +834,7 @@ class DeterministicPlanningProvider:
                     }
                 )
             blocks = blocks[: limits.max_blocks_per_slide]
-            slide_type = str(outline_slide["slide_type"])
-            family = _layout_family_for(slide_type, blocks)
+            family = _layout_family_for(slide_type, blocks, relationship)
             slides.append(
                 {
                     "slide_id": slide_id,
@@ -511,18 +844,7 @@ class DeterministicPlanningProvider:
                     "core_message": _text(outline_slide["takeaway"]),
                     "content_blocks": blocks,
                     "visual_intent": {
-                        "relationship": {
-                            "cover": "single thesis",
-                            "section": "section transition",
-                            "comparison": "contrast",
-                            "process": "sequence",
-                            "timeline": "time",
-                            "matrix": "two-dimensional classification",
-                            "architecture": "system relationships",
-                            "chart": "quantitative evidence",
-                            "evidence": "claim and proof",
-                            "action": "ordered action",
-                        }.get(slide_type, "hierarchy"),
+                        "relationship": relationship,
                         "suggested_layout_families": [family],
                         "avoid": [
                             "用装饰替代信息层级",
@@ -548,18 +870,14 @@ class DeterministicPlanningProvider:
     ) -> tuple[dict[str, Any], list[str], list[str]]:
         del limits
         plans = []
-        outline_by_id = {
-            str(item["slide_id"]): item for item in context["deck_outline"].get("slides", [])
-        }
         for slide in context["slide_specs"].get("slides", []):
-            outline_slide = outline_by_id[str(slide["slide_id"])]
+            suggested = list(
+                slide.get("visual_intent", {}).get("suggested_layout_families", [])
+            )
             plans.append(
                 {
                     "slide_id": slide["slide_id"],
-                    "layout_family": _layout_family_for(
-                        str(outline_slide["slide_type"]),
-                        list(slide.get("content_blocks", [])),
-                    ),
+                    "layout_family": str(suggested[0]) if suggested else "custom",
                 }
             )
         return {"plans": plans}, [], []

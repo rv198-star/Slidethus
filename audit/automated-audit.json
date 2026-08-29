@@ -15,7 +15,7 @@
     {
       "name": "schemas",
       "ok": true,
-      "detail": "36 valid (16 catalog artifacts)"
+      "detail": "45 valid (16 catalog artifacts)"
     },
     {
       "name": "packaged_schema_mirror",

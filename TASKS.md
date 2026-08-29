@@ -116,12 +116,14 @@ M0 只代表基础合同成立，不代表端到端 PPT 生成完成。
 
 ## M6 — Productization and Distribution
 
-- [ ] 多工作流稳定化
-- [ ] 可观测性、缓存、成本预算和并发控制
-- [ ] Plugin 打包
-- [ ] 示例库、评测集和发布文档
-- [ ] 许可证与第三方素材策略
-- [ ] v1.0 发布 Gate
+- [x] **M6.1 Multi-workflow Runtime**：Create/Rebuild/Improve/Audit/Revise/Extract Style 统一 request/run/report、dispatcher、CLI 与 capability/mutation policy
+- [x] **M6.2 Operational Controls**：structured events、缓存策略、成本/资源预算、并发/lease/恢复
+- [x] **M6.3 Plugin Packaging**：Plugin bundle、Schema/Skill/workflow 打包、Node sidecar bootstrap/version verification
+- [x] **M6.4 Examples & Evaluation**：六 workflow 示例、评测集、兼容矩阵与发布文档
+- [x] **M6.5 License & Third-party Policy**：项目许可证、依赖/素材/字体/模型分发策略、NOTICE/SBOM 边界
+- [ ] **M6.6 v1.0 Preview Hardening & Release Gate**：retrospective Stage AI Review / whole-attempt Synthesis 机制与 Round 4 真实 Preview 已完成；当前 5 个 systemic candidates 待根修，其中 P7 字体 script/glyph coverage 为 Critical Release blocker。完成后继续 same-case regression、Round A/B、release validator、可重复构建与最终发布 Gate。交接见 `audit/M6.6-preview-hardening-handoff.md`。
+
+执行计划：`plans/M6-productization-distribution.md`。架构边界：`docs/adr/ADR-0021-workflow-productization-boundary.md`。
 
 ## 实施纪律
 

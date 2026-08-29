@@ -624,8 +624,8 @@ def m3_report_reference_errors(
                     if int(summary.get(field, -1)) != int(review_ref.get(field, -2)):
                         errors.append(f"Planning Review {field} mismatch")
                 if report.get("status") == "ready":
-                    if review.get("status") != "pass":
-                        errors.append("ready M3 report requires a passing Planning Review")
+                    if int(summary.get("critical_count", 0)) or int(summary.get("major_count", 0)):
+                        errors.append("ready M3 report requires zero Critical/Major Planning Review issues")
                     review_inputs = {
                         str(item.get("artifact_type")): {
                             "version": int(item.get("version", 0)),

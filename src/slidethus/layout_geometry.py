@@ -83,6 +83,56 @@ def _stack_boxes(
     )
 
 
+def _ordered_body_boxes(
+    blocks: list[dict[str, Any]],
+    *,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    gap: float,
+) -> list[tuple[float, float, float, float]]:
+    if not blocks:
+        return []
+    lead_positions = [
+        index for index, block in enumerate(blocks)
+        if block.get("semantic_role") == "subhead"
+    ]
+    boxes: dict[int, tuple[float, float, float, float]] = {}
+    step_positions = [index for index in range(len(blocks)) if index not in lead_positions]
+    step_y = y
+    step_height = height
+    if lead_positions:
+        lead_height = min(height * 0.45, max(140.0, min(170.0, height * 0.36)))
+        lead_boxes = _stack_boxes(
+            len(lead_positions),
+            x=x,
+            y=y,
+            width=width,
+            height=lead_height,
+            gap=gap,
+        )
+        for index, box in zip(lead_positions, lead_boxes, strict=True):
+            boxes[index] = box
+        step_y = y + lead_height + (gap if step_positions else 0.0)
+        step_height = height - lead_height - (gap if step_positions else 0.0)
+    if step_positions:
+        count = len(step_positions)
+        columns = count if count <= 5 else min(4, math.ceil(count / 2))
+        step_boxes = _grid_boxes(
+            count,
+            x=x,
+            y=step_y,
+            width=width,
+            height=step_height,
+            columns=columns,
+            gap=gap,
+        )
+        for index, box in zip(step_positions, step_boxes, strict=True):
+            boxes[index] = box
+    return [boxes[index] for index in range(len(blocks))]
+
+
 def _body_boxes(
     family: str,
     count: int,
@@ -92,17 +142,21 @@ def _body_boxes(
     width: float,
     height: float,
     gap: float,
+    blocks: list[dict[str, Any]] | None = None,
 ) -> list[tuple[float, float, float, float]]:
     if count < 1:
         return []
-    if family in {"process", "timeline"} and count <= 5:
-        return _grid_boxes(
-            count,
+    if family in {"process", "timeline"}:
+        if blocks is None or len(blocks) != count:
+            raise LayoutPlanningError(
+                f"{family} layout requires block semantics for ordered topology"
+            )
+        return _ordered_body_boxes(
+            blocks,
             x=x,
             y=y,
             width=width,
             height=height,
-            columns=count,
             gap=gap,
         )
     if family == "chart-story" and count >= 2:
@@ -232,6 +286,7 @@ def build_layout_plan(
         width=content_width,
         height=body_height,
         gap=gap,
+        blocks=[blocks[index] for index in body_indices],
     )
     for index, box in zip(body_indices, body_boxes, strict=True):
         boxes_by_index[index] = box

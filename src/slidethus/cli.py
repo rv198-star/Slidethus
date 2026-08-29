@@ -12,6 +12,12 @@ from pathlib import Path
 from slidethus import __version__
 from slidethus.artifact_runtime import ArtifactRuntime
 from slidethus.constants import find_repository_root
+from slidethus.distribution import (
+    bootstrap_renderer,
+    build_plugin_bundle,
+    distribution_status,
+    materialize_skill,
+)
 from slidethus.errors import SlidethusError
 from slidethus.gates import evaluate_gate
 from slidethus.io_utils import read_json
@@ -37,6 +43,10 @@ from slidethus.protocols import (
     PlanningLimits,
     ResearchLimits,
     SourceParseLimits,
+)
+from slidethus.review_proposals import (
+    ReviewSynthesisProposalProvider,
+    StageReviewProposalProvider,
 )
 from slidethus.schema_registry import SchemaRegistry
 from slidethus.services.brief_completion import BriefCompletionService
@@ -66,9 +76,22 @@ from slidethus.services.research import (
     plan_orientation_research,
     plan_targeted_research,
 )
+from slidethus.services.review_synthesis import ReviewSynthesisService
 from slidethus.services.source_ingestion import SourceIngestionService
+from slidethus.services.stage_ai_review import (
+    StageAIReviewService,
+    load_unique_stage_review_set,
+)
+from slidethus.services.workflow_application import (
+    WorkflowApplicationService,
+    WorkflowRequest,
+)
 from slidethus.validation import format_report, validate_workspace
 from slidethus.wireframe import render_wireframes
+from slidethus.workflow_application_reports import (
+    inspect_workflow_application_report,
+    list_workflow_application_reports,
+)
 from slidethus.workspace import init_workspace
 
 
@@ -430,6 +453,83 @@ def _parser() -> argparse.ArgumentParser:
 
     m5_gate = m5_sub.add_parser("gate", help="evaluate current Production M5/G8 readiness")
     m5_gate.add_argument("workspace", type=Path)
+
+    workflow = sub.add_parser(
+        "workflow",
+        help="run and inspect product workflows above the frozen M2-M5 boundaries",
+    )
+    workflow_sub = workflow.add_subparsers(dest="workflow_command", required=True)
+
+    workflow_run = workflow_sub.add_parser("run", help="run one admitted product workflow")
+    workflow_run.add_argument(
+        "workflow_type",
+        choices=["create", "rebuild", "improve", "audit", "revise", "extract_style"],
+    )
+    workflow_run.add_argument("workspace", type=Path)
+    workflow_run.add_argument("--source", action="append", dest="sources", type=Path)
+    workflow_run.add_argument("--title", default="Slidethus Workflow")
+    workflow_run.add_argument("--request", default="")
+    workflow_run.add_argument("--purpose")
+    workflow_run.add_argument("--desired-outcome")
+    workflow_run.add_argument("--call-to-action")
+    workflow_run.add_argument("--delivery-context")
+    workflow_run.add_argument("--audience-role")
+    workflow_run.add_argument("--page-target", type=int)
+    workflow_run.add_argument("--slide-updates-json", type=Path)
+    workflow_run.add_argument("--reason", default="")
+    workflow_run.add_argument("--renderer-root", type=Path)
+    workflow_run.add_argument("--node")
+    workflow_run.add_argument("--font-match")
+    workflow_run.add_argument("--no-auto-repair", action="store_true")
+
+    workflow_list = workflow_sub.add_parser("list", help="list verified Workflow Application Reports")
+    workflow_list.add_argument("workspace", type=Path)
+
+    workflow_show = workflow_sub.add_parser("show", help="show one verified Workflow Application Report")
+    workflow_show.add_argument("workspace", type=Path)
+    workflow_show.add_argument("report_id")
+
+    review_attempt = sub.add_parser(
+        "review-attempt",
+        help="admit Host AI retrospective stage reviews, then synthesize in a separate step",
+    )
+    review_attempt_sub = review_attempt.add_subparsers(
+        dest="review_attempt_command",
+        required=True,
+    )
+    review_stages = review_attempt_sub.add_parser(
+        "stages",
+        help="admit the complete P0-P7 retrospective Stage AI Review set",
+    )
+    review_stages.add_argument("workspace", type=Path)
+    review_stages.add_argument("workflow_report_id")
+    review_stages.add_argument("--proposals", type=Path, required=True)
+
+    review_synthesis = review_attempt_sub.add_parser(
+        "synthesize",
+        help="attribute and cluster one already-complete Stage AI Review set",
+    )
+    review_synthesis.add_argument("workspace", type=Path)
+    review_synthesis.add_argument("workflow_report_id")
+    review_synthesis.add_argument("--proposal", type=Path, required=True)
+
+    plugin = sub.add_parser("plugin", help="inspect and materialize Slidethus distribution assets")
+    plugin_sub = plugin.add_subparsers(dest="plugin_command", required=True)
+    plugin_sub.add_parser("status", help="show installed/repository Skill and renderer assets")
+
+    plugin_build = plugin_sub.add_parser("build", help="build a deterministic Slidethus Plugin zip")
+    plugin_build.add_argument("output", type=Path)
+
+    plugin_skill = plugin_sub.add_parser("install-skill", help="materialize the Skill under one host root")
+    plugin_skill.add_argument("destination", type=Path)
+
+    plugin_renderer = plugin_sub.add_parser(
+        "bootstrap-renderer",
+        help="materialize the pinned Node renderer into user cache and run npm ci",
+    )
+    plugin_renderer.add_argument("--cache-home", type=Path)
+    plugin_renderer.add_argument("--npm")
+    plugin_renderer.add_argument("--node")
     return parser
 
 
@@ -1002,6 +1102,180 @@ def main(argv: list[str] | None = None) -> int:
                 result = evaluate_m5_workspace_gate(args.workspace)
                 print(json.dumps(result, ensure_ascii=False, indent=2))
                 return 0 if result["status"] == "pass" else 1
+        if args.command == "workflow":
+            if args.workflow_command == "run":
+                slide_updates = None
+                if args.slide_updates_json is not None:
+                    slide_updates = read_json(args.slide_updates_json)
+                    if not isinstance(slide_updates, dict):
+                        raise ValueError("--slide-updates-json must contain an object keyed by slide ID")
+                hints = None
+                if any(
+                    value is not None and value != ""
+                    for value in (
+                        args.request,
+                        args.purpose,
+                        args.desired_outcome,
+                        args.call_to_action,
+                        args.delivery_context,
+                        args.audience_role,
+                        args.page_target,
+                    )
+                ):
+                    hints = BriefCompletionHints(
+                        request_text=args.request,
+                        purpose=args.purpose,
+                        desired_outcome=args.desired_outcome,
+                        call_to_action=args.call_to_action,
+                        delivery_context=args.delivery_context,
+                        audience_role=args.audience_role,
+                        page_target=args.page_target,
+                    )
+                result = WorkflowApplicationService(
+                    args.workspace,
+                    renderer_root=args.renderer_root,
+                    node=args.node,
+                    font_match=args.font_match,
+                ).run(
+                    WorkflowRequest(
+                        workflow=args.workflow_type,
+                        title=args.title,
+                        source_paths=tuple(args.sources or ()),
+                        brief_hints=hints,
+                        auto_repair=not args.no_auto_repair,
+                        slide_updates=slide_updates,
+                        reason=args.reason,
+                    )
+                )
+                print(
+                    json.dumps(
+                        {
+                            "report_id": result.report["report_id"],
+                            "path": str(result.path),
+                            "changed": result.changed,
+                            "report": result.report,
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
+                return 0 if result.report["status"] == "ready" else 1
+            if args.workflow_command == "list":
+                print(
+                    json.dumps(
+                        list(list_workflow_application_reports(args.workspace)),
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
+                return 0
+            if args.workflow_command == "show":
+                print(
+                    json.dumps(
+                        inspect_workflow_application_report(args.workspace, args.report_id),
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
+                return 0
+        if args.command == "review-attempt":
+            if args.review_attempt_command == "stages":
+                provider = StageReviewProposalProvider(args.proposals)
+                reviews = StageAIReviewService(
+                    args.workspace,
+                    args.workflow_report_id,
+                    provider=provider,
+                ).review_all()
+                print(
+                    json.dumps(
+                        {
+                            "workflow_report_id": args.workflow_report_id,
+                            "stage_reviews": [
+                                {
+                                    "stage": result.report["stage"],
+                                    "report_id": result.report["report_id"],
+                                    "status": result.report["status"],
+                                    "path": str(result.path),
+                                    "summary": result.report["summary"],
+                                    "issues": result.report["issues"],
+                                }
+                                for result in reviews
+                            ],
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
+                return 0 if all(result.report["status"] != "blocked" for result in reviews) else 1
+            if args.review_attempt_command == "synthesize":
+                reviews = load_unique_stage_review_set(
+                    args.workspace,
+                    args.workflow_report_id,
+                )
+                provider = ReviewSynthesisProposalProvider(args.proposal)
+                synthesis = ReviewSynthesisService(
+                    args.workspace,
+                    args.workflow_report_id,
+                    provider=provider,
+                ).synthesize(reviews)
+                print(
+                    json.dumps(
+                        {
+                            "workflow_report_id": args.workflow_report_id,
+                            "report_id": synthesis.report["report_id"],
+                            "status": synthesis.report["status"],
+                            "path": str(synthesis.path),
+                            "summary": synthesis.report["summary"],
+                            "clusters": synthesis.report["clusters"],
+                            "unclustered_issue_ids": synthesis.report["unclustered_issue_ids"],
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
+                return 0 if synthesis.report["status"] != "blocked" else 1
+        if args.command == "plugin":
+            if args.plugin_command == "status":
+                print(json.dumps(distribution_status(), ensure_ascii=False, indent=2))
+                return 0
+            if args.plugin_command == "build":
+                result = build_plugin_bundle(args.output)
+                print(
+                    json.dumps(
+                        {
+                            "path": str(result.path),
+                            "sha256": result.sha256,
+                            "file_count": result.file_count,
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
+                return 0
+            if args.plugin_command == "install-skill":
+                path = materialize_skill(args.destination)
+                print(json.dumps({"skill_root": str(path)}, ensure_ascii=False, indent=2))
+                return 0
+            if args.plugin_command == "bootstrap-renderer":
+                result = bootstrap_renderer(
+                    cache_home=args.cache_home,
+                    npm=args.npm,
+                    node=args.node,
+                )
+                print(
+                    json.dumps(
+                        {
+                            "renderer_root": str(result.root),
+                            "lock_sha256": result.lock_sha256,
+                            "source_sha256": result.source_sha256,
+                            "dependency_sha256": result.dependency_sha256,
+                            "changed": result.changed,
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
+                return 0
         if args.command == "artifact":
             runtime = ArtifactRuntime(args.workspace)
             if args.artifact_command == "list":

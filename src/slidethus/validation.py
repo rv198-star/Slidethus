@@ -30,11 +30,18 @@ from slidethus.render_manifest import production_render_manifest_reference_error
 from slidethus.render_preflight import render_preflight_workspace_errors
 from slidethus.review_regressions import review_regression_workspace_errors
 from slidethus.review_repairs import review_repair_workspace_errors
+from slidethus.review_syntheses import synthesis_workspace_errors
 from slidethus.schema_registry import SchemaRegistry
 from slidethus.semantic_reviews import semantic_review_workspace_errors
 from slidethus.services.research import research_workspace_errors
 from slidethus.source_snapshots import load_source_snapshot, source_snapshot_reference_errors
+from slidethus.stage_ai_reviews import stage_review_workspace_errors
 from slidethus.visual_reviews import visual_review_workspace_errors
+from slidethus.workflow_application_reports import workflow_application_workspace_errors
+from slidethus.workflow_operations import (
+    workflow_event_workspace_errors,
+    workflow_operation_workspace_errors,
+)
 
 
 @dataclass(frozen=True)
@@ -202,6 +209,16 @@ def validate_workspace(workspace: Path, registry: SchemaRegistry | None = None, 
         report.add("invalid_review_regression_report", message, path)
     for path, message in quality_review_workspace_errors(workspace, registry.schema_dir):
         report.add("invalid_quality_review_report", message, path)
+    for path, message in stage_review_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_stage_ai_review_report", message, path)
+    for path, message in synthesis_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_review_synthesis_report", message, path)
+    for path, message in workflow_application_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_workflow_application_report", message, path)
+    for path, message in workflow_operation_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_workflow_operation_report", message, path)
+    for path, message in workflow_event_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_workflow_event", message, path)
     return report
 
 
@@ -1075,6 +1092,11 @@ def _validate_cross_references(
             report.add("unregistered_artifact", f"Present artifact is not registered: {expected_path}", "project_state.json")
 
     render = loaded.get("render_manifest", {})
+    render_is_current = (
+        artifact_status.get("render_manifest") != "draft"
+        and current_phase
+        in {"DRAFT_RENDERED", "REVIEWED", "DELIVERY_READY", "COMPLETED"}
+    )
     for input_artifact in render.get("input_artifacts", []):
         relative = input_artifact.get("path")
         registered = registered_by_path.get(relative)
@@ -1083,9 +1105,9 @@ def _validate_cross_references(
             continue
         if registered is None or not artifact_path.exists():
             report.add("invalid_render_input", f"Render input is not a registered existing artifact: {relative}", "renders/render_manifest.json")
-        elif input_artifact.get("version") != registered.get("version"):
+        elif render_is_current and input_artifact.get("version") != registered.get("version"):
             report.add("render_input_version_mismatch", f"Render input version mismatch: {relative}", "renders/render_manifest.json")
-        elif input_artifact.get("sha256") != sha256_file(artifact_path):
+        elif render_is_current and input_artifact.get("sha256") != sha256_file(artifact_path):
             report.add("render_input_hash_mismatch", f"Render input hash mismatch: {relative}", "renders/render_manifest.json")
     render_outputs = render.get("outputs", [])
     if render.get("status") == "success" and render.get("editability_level") == "not_measured":
