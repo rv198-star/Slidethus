@@ -9,7 +9,8 @@ from slidethus.gates import evaluate_gate
 from slidethus.protocols import BriefCompletionHints
 from slidethus.render_ir import validate_renderer_ir_data
 from slidethus.services.m3_application import M3ApplicationService
-from slidethus.services.render_compile import RenderCompileService
+from slidethus.services.render_compile import RenderCompileService, _decorations
+from slidethus.services.render_preflight import _line_crosses_region
 from slidethus.services.visual_system import VisualSystemService
 from slidethus.validation import validate_workspace
 from slidethus.workspace import init_workspace
@@ -150,3 +151,42 @@ def test_historical_renderer_ir_remains_valid_after_visual_system_refresh(tmp_pa
 
     assert first.path != second.path
     assert validate_workspace(workspace, check_hashes=True).ok
+
+
+def test_process_connectors_follow_region_anchors_without_crossing_cards() -> None:
+    visual = {"colors": {"accent": "#00AA88", "primary": "#112233"}}
+    regions = [
+        {
+            "region_id": "REG-S007-01",
+            "semantic_role": "headline",
+            "x": 72,
+            "y": 48,
+            "w": 1112,
+            "h": 120,
+        },
+        *[
+            {
+                "region_id": f"REG-S007-{index + 2:02d}",
+                "semantic_role": "body",
+                "x": 72 + column * 284,
+                "y": 210 + row * 225,
+                "w": 260,
+                "h": 190,
+            }
+            for index, (row, column) in enumerate(
+                ((0, 0), (0, 1), (0, 2), (0, 3), (1, 0), (1, 1), (1, 2))
+            )
+        ],
+    ]
+
+    decorations = _decorations("S-007", "process", visual, regions)
+    lines = [item for item in decorations if item["kind"] == "line"]
+
+    assert lines
+    assert all(float(item["y"]) != 580 for item in lines)
+    assert len({item["decoration_id"] for item in decorations}) == len(decorations)
+    assert not any(
+        _line_crosses_region(line, region)
+        for line in lines
+        for region in regions
+    )

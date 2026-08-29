@@ -193,6 +193,7 @@ def required_paths(root: Path) -> list[Path]:
         root / "audit/M3-round-1-open-issues.md",
         root / "audit/M3-round-2-scorecard.md",
         root / "audit/M3-BUILD_REPORT.md",
+        root / "scripts/validate_m4_exit.py",
         root / "plans/M5-review-repair-loop.md",
         root / "docs/adr/ADR-0020-independent-review-repair-boundary.md",
         root / "audit/M5-round-1-open-issues.md",

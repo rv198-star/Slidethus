@@ -77,6 +77,40 @@ def _jaccard(first: Any, second: Any) -> float:
     return len(left & right) / len(left | right)
 
 
+def _claim_clauses(value: Any) -> list[str]:
+    return [
+        item.strip(" ，,：:。；;!?！？")
+        for item in re.split(
+            r"[。！？!?；;]+|(?<!\d)\.(?!\d)|\s+(?=\d+[.、)]\s*)",
+            _text(value, limit=4000),
+        )
+        if item.strip(" ，,：:。；;!?！？")
+    ]
+
+
+def _semantic_key(value: Any) -> str:
+    text = _text(value, limit=1000).casefold()
+    text = re.sub(
+        r"^(?:决策请求|行动请求|decision request|request|decision)\s*[:：-]?\s*",
+        "",
+        text,
+    )
+    return re.sub(r"[^\w\u3400-\u9fff]+", "", text)
+
+
+def _content_items(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [_text(item, limit=1000) for item in value if _text(item, limit=1000)]
+    if isinstance(value, dict):
+        return [
+            _text(f"{key}: {item}", limit=1000)
+            for key, item in value.items()
+            if _text(item, limit=1000)
+        ]
+    text = _text(value, limit=1000)
+    return [text] if text else []
+
+
 def _issue(
     *,
     code: str,
@@ -273,8 +307,18 @@ class PlanningReviewService:
         self,
         outline: dict[str, Any],
         brief: dict[str, Any],
+        evidence: dict[str, Any],
+        narrative: dict[str, Any],
     ) -> list[dict[str, Any]]:
         issues: list[dict[str, Any]] = []
+        claims_by_id = {
+            str(item["evidence_id"]): item
+            for item in evidence.get("claims", [])
+        }
+        sections_by_id = {
+            str(item["section_id"]): item
+            for item in narrative.get("sections", [])
+        }
         slides = sorted(
             (item for item in outline.get("slides", []) if item.get("status") != "excluded"),
             key=lambda item: int(item.get("ordinal", 0)),
@@ -312,6 +356,80 @@ class PlanningReviewService:
                         repairability="automatic",
                     )
                 )
+            if slide.get("slide_type") not in {"cover", "agenda", "section", "action"}:
+                headline_key = _semantic_key(headline)
+                copied_from = next(
+                    (
+                        (evidence_id, claim)
+                        for evidence_id in slide.get("evidence_ids", [])
+                        if (claim := claims_by_id.get(str(evidence_id))) is not None
+                        and any(
+                            headline_key
+                            and headline_key == _semantic_key(clause)
+                            and (
+                                len(_claim_clauses(claim.get("claim"))) > 1
+                                or _semantic_key(claim.get("claim")) != headline_key
+                            )
+                            for clause in _claim_clauses(claim.get("claim"))
+                        )
+                    ),
+                    None,
+                )
+                if copied_from is not None:
+                    issues.append(
+                        _issue(
+                            code="headline_reuses_source_clause",
+                            severity="major",
+                            artifact_type="deck_outline",
+                            earliest_phase="P4",
+                            slide_id=str(slide["slide_id"]),
+                            evidence_ids=(str(copied_from[0]),),
+                            message=(
+                                "Headline selects one Evidence clause verbatim instead of "
+                                "expressing the full page job as an audience-facing proposition."
+                            ),
+                            suggested_action=(
+                                "Synthesize the proposition from the audience question, page role, "
+                                "and all assigned semantics; keep source clauses in support blocks."
+                            ),
+                            repairability="assisted",
+                        )
+                    )
+            if slide.get("slide_type") == "section":
+                section = sections_by_id.get(str(slide.get("narrative_section_ref")), {})
+                thesis = section.get("thesis")
+                orchestration_values = [
+                    section.get("purpose"),
+                    section.get("transition"),
+                    section.get("audience_shift"),
+                    *section.get("key_questions", []),
+                ]
+                if (
+                    _jaccard(takeaway, thesis) < 0.7
+                    and any(
+                        _jaccard(takeaway, item) >= 0.78
+                        for item in orchestration_values
+                        if _text(item)
+                    )
+                ):
+                    issues.append(
+                        _issue(
+                            code="structural_slide_exposes_orchestration_copy",
+                            severity="major",
+                            artifact_type="deck_outline",
+                            earliest_phase="P4",
+                            slide_id=str(slide["slide_id"]),
+                            message=(
+                                "Structural slide visible copy serializes planning purpose, "
+                                "transition, or audience-question metadata."
+                            ),
+                            suggested_action=(
+                                "Use audience-facing section framing or intentional headline-only "
+                                "minimalism while preserving orchestration facts outside visible blocks."
+                            ),
+                            repairability="assisted",
+                        )
+                    )
         transition_types = {"cover", "agenda", "section", "action"}
         for index, first in enumerate(slides):
             for second in slides[index + 1 :]:
@@ -392,8 +510,17 @@ class PlanningReviewService:
                 )
         return issues
 
-    def _spec_issues(self, specs: dict[str, Any]) -> list[dict[str, Any]]:
+    def _spec_issues(
+        self,
+        specs: dict[str, Any],
+        outline: dict[str, Any],
+    ) -> list[dict[str, Any]]:
         issues: list[dict[str, Any]] = []
+        outline_by_id = {
+            str(item["slide_id"]): item
+            for item in outline.get("slides", [])
+            if item.get("status") != "excluded"
+        }
         for slide in specs.get("slides", []):
             blocks = list(slide.get("content_blocks", []))
             units = sum(planning_content_units(item.get("content")) for item in blocks)
@@ -459,6 +586,42 @@ class PlanningReviewService:
                         repairability="assisted",
                     )
                 )
+            if outline_by_id.get(str(slide["slide_id"]), {}).get("slide_type") == "action":
+                seen: dict[str, dict[str, Any]] = {}
+                duplicate: dict[str, Any] | None = None
+                for block in blocks:
+                    if block.get("semantic_role") == "headline":
+                        continue
+                    for item in _content_items(block.get("content")):
+                        key = _semantic_key(item)
+                        if not key:
+                            continue
+                        if key in seen:
+                            duplicate = block
+                            break
+                        seen[key] = block
+                    if duplicate is not None:
+                        break
+                if duplicate is not None:
+                    issues.append(
+                        _issue(
+                            code="action_block_responsibility_duplication",
+                            severity="major",
+                            artifact_type="slide_specs",
+                            earliest_phase="P5A",
+                            slide_id=str(slide["slide_id"]),
+                            block_id=str(duplicate["block_id"]),
+                            message=(
+                                "Action slide repeats one responsibility across multiple blocks "
+                                "instead of separating decision, owner, timing, and checkpoint duties."
+                            ),
+                            suggested_action=(
+                                "Keep the primary decision once and assign each supporting block a "
+                                "distinct execution responsibility."
+                            ),
+                            repairability="assisted",
+                        )
+                    )
         return issues
 
     def _layout_issues(
@@ -631,8 +794,13 @@ class PlanningReviewService:
         issues = [
             *self._gate_issues(),
             *self._narrative_issues(narrative, brief),
-            *self._outline_issues(outline, brief),
-            *self._spec_issues(specs),
+            *self._outline_issues(
+                outline,
+                brief,
+                graph["evidence_ledger"]["data"],
+                narrative,
+            ),
+            *self._spec_issues(specs, outline),
             *self._layout_issues(layout, specs),
         ]
         issues_by_id: dict[str, dict[str, Any]] = {}

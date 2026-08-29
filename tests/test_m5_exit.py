@@ -106,8 +106,8 @@ def test_m5_exit_rejects_non_monotonic_gate_validation(tmp_path: Path) -> None:
     gates = root / "src/slidethus/gates.py"
     gates.write_text(
         gates.read_text(encoding="utf-8").replace(
-            "def _gate_validation_issues(",
-            "def _removed_gate_validation_issues(",
+            "def _validation_issue_stage(",
+            "def _removed_validation_issue_stage(",
             1,
         ),
         encoding="utf-8",

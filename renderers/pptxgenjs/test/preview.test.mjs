@@ -3,11 +3,12 @@ import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
 
 const execFileAsync = promisify(execFile);
-const previewer = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../preview.mjs");
+const previewer = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../preview.mjs");
 
 test("independent resvg/pdf-lib exporter produces real PNG pages and PDF", async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "slidethus-preview-"));

@@ -77,6 +77,23 @@ def _overlap(left: dict[str, Any], right: dict[str, Any]) -> bool:
     )
 
 
+def _line_crosses_region(line: dict[str, Any], region: dict[str, Any]) -> bool:
+    x1 = float(line["x"])
+    y1 = float(line["y"])
+    x2 = x1 + float(line["w"])
+    y2 = y1 + float(line["h"])
+    left = float(region["x"])
+    right = left + float(region["w"])
+    top = float(region["y"])
+    bottom = top + float(region["h"])
+    tolerance = 0.5
+    if abs(y2 - y1) <= tolerance:
+        return top + tolerance < y1 < bottom - tolerance and max(x1, left) < min(x2, right)
+    if abs(x2 - x1) <= tolerance:
+        return left + tolerance < x1 < right - tolerance and max(y1, top) < min(y2, bottom)
+    return True
+
+
 def _check(
     *,
     code: str,
@@ -113,12 +130,16 @@ class RenderPreflightService:
         renderer_root: Path | None = None,
         node: str | None = None,
         font_match: str | None = None,
+        font_query: str | None = None,
         schema_registry: SchemaRegistry | None = None,
     ) -> None:
         self.workspace = workspace.resolve()
         self.renderer_root = resolve_renderer_root(renderer_root)
         self.node = node
-        self.fonts = FontResolutionService(font_match=font_match)
+        self.fonts = FontResolutionService(
+            font_match=font_match,
+            font_query=font_query,
+        )
         self.schemas = schema_registry or SchemaRegistry()
         self.output_dir = self.workspace / ".slidethus/render/preflight"
 
@@ -135,7 +156,7 @@ class RenderPreflightService:
                 {
                     "capability": "fontconfig",
                     "status": "available",
-                    "detail": "Fontconfig family/file resolution is available.",
+                    "detail": "Fontconfig family/file resolution and glyph coverage are available.",
                 }
             )
         else:
@@ -143,7 +164,7 @@ class RenderPreflightService:
                 {
                     "capability": "fontconfig",
                     "status": "missing",
-                    "detail": "Fontconfig fc-match is unavailable.",
+                    "detail": "Fontconfig fc-match/fc-query coverage capability is unavailable.",
                 }
             )
             checks.append(
@@ -151,7 +172,10 @@ class RenderPreflightService:
                     code="font_resolution_capability_missing",
                     status="fail",
                     severity="major",
-                    message="Production rendering requires font detection/substitution through fc-match.",
+                    message=(
+                        "Production rendering requires font family/file resolution through fc-match "
+                        "and glyph coverage through fc-query."
+                    ),
                 )
             )
         if any(item.startswith("pptxgenjs-") for item in backends):
@@ -237,10 +261,15 @@ class RenderPreflightService:
             include_exports=include_exports,
         )
         visual = read_json(self.workspace / "design/visual_system.json")
+        compiler = RenderCompileService(self.workspace)
+        font_requirements = compiler.required_font_characters()
         resolutions: tuple[FontResolution, ...] = ()
         if self.fonts.available:
             try:
-                resolutions = self.fonts.resolve_visual_system(visual)
+                resolutions = self.fonts.resolve_visual_system(
+                    visual,
+                    required_characters_by_family=font_requirements,
+                )
             except (FontResolutionError, RenderCapabilityError) as exc:
                 checks.append(
                     _check(
@@ -250,7 +279,7 @@ class RenderPreflightService:
                         message=str(exc),
                     )
                 )
-        compiled = RenderCompileService(self.workspace).compile(
+        compiled = compiler.compile(
             font_resolutions=resolutions,
         )
         try:
@@ -352,6 +381,32 @@ class RenderPreflightService:
                                 region_id=str(left["region_id"]),
                             )
                         )
+            for decoration in slide.get("decorations", []):
+                if decoration.get("kind") != "line":
+                    continue
+                crossed = next(
+                    (
+                        region
+                        for region in regions
+                        if _line_crosses_region(decoration, region)
+                    ),
+                    None,
+                )
+                if crossed is not None:
+                    checks.append(
+                        _check(
+                            code="render_decoration_collision",
+                            status="fail",
+                            severity="major",
+                            message=(
+                                f"Decoration {decoration['decoration_id']} crosses approved "
+                                f"region {crossed['region_id']}; derive connectors from region anchors."
+                            ),
+                            slide_id=str(slide["slide_id"]),
+                            block_id=str(crossed["block_id"]),
+                            region_id=str(crossed["region_id"]),
+                        )
+                    )
         failed = [item for item in checks if item["status"] == "fail"]
         report: dict[str, Any] = {
             "schema_version": SCHEMA_VERSION,

@@ -237,6 +237,23 @@ def test_split_creates_new_ids_and_keeps_original_as_excluded_history(tmp_path: 
 
 def test_merge_replaces_contiguous_slides_with_one_new_identity(tmp_path: Path) -> None:
     workspace = _outline_ready_workspace(tmp_path)
+    current = ArtifactRuntime(workspace).show_artifact("deck_outline")
+    action = _active(current)[-1]
+    OutlineChangeService(workspace).insert(
+        {
+            "section_id": action["section_id"],
+            "slide_type": "statement",
+            "headline": "先明确试点边界",
+            "takeaway": "在行动页之前固定范围和停止条件。",
+            "purpose": "为合并测试建立一个不依赖内容密度的相邻页面。",
+            "audience_question": "试点边界如何约束后续行动？",
+            "evidence_ids": [],
+            "evidence_requirement": "none",
+        },
+        position=int(action["ordinal"]),
+        reason="建立可合并且保留结尾行动页的相邻页面",
+        idempotency_key="prepare-adjacent-merge-pair",
+    )
     outline = ArtifactRuntime(workspace).show_artifact("deck_outline")
     active = _active(outline)
     counts = Counter(item["section_id"] for item in active)

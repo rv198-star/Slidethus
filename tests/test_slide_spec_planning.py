@@ -9,7 +9,7 @@ from slidethus.errors import ArtifactConflictError, SlideSpecPlanningError
 from slidethus.gates import evaluate_gate
 from slidethus.planning_provider import DeterministicPlanningProvider
 from slidethus.planning_rules import block_content_hash
-from slidethus.protocols import BriefCompletionHints, PlanningProposal
+from slidethus.protocols import BriefCompletionHints, PlanningLimits, PlanningProposal
 from slidethus.services.brief_completion import BriefCompletionService
 from slidethus.services.evidence_binding import EvidenceBindingService
 from slidethus.services.m2_application import M2ApplicationService
@@ -227,3 +227,52 @@ def test_slide_spec_generation_rejects_stale_snapshot_on_concurrent_writer(
 
     with pytest.raises(ArtifactConflictError, match="Version conflict for slide_specs"):
         service.generate()
+
+
+def test_structural_and_action_blocks_keep_distinct_visible_responsibilities() -> None:
+    specs = DeterministicPlanningProvider().propose(
+        "slide_specs",
+        {
+            "deck_outline": {
+                "slides": [
+                    {
+                        "slide_id": "S-001",
+                        "slide_type": "section",
+                        "headline": "Operating boundary",
+                        "takeaway": "Responsibility follows the control boundary",
+                        "purpose": "Separate policy from execution",
+                        "audience_question": "Where should ownership sit?",
+                        "evidence_ids": [],
+                    },
+                    {
+                        "slide_id": "S-002",
+                        "slide_type": "action",
+                        "headline": "Decision and next step",
+                        "takeaway": "Decision request: authorize the quarterly inventory cycle",
+                        "purpose": "Close with an executable decision",
+                        "audience_question": "What must be authorized now?",
+                        "evidence_ids": [],
+                    },
+                ]
+            },
+            "evidence_ledger": {"claims": []},
+            "project_brief": {"constraints": {"editability_target": "E3"}},
+        },
+        PlanningLimits(),
+    ).content
+    section_specs = [specs["slides"][0]]
+    action = specs["slides"][1]
+
+    assert section_specs
+    assert all(
+        [block["semantic_role"] for block in item["content_blocks"]] == ["headline"]
+        for item in section_specs
+    )
+    non_headline = [
+        block for block in action["content_blocks"] if block["semantic_role"] != "headline"
+    ]
+    decision = next(block for block in non_headline if block["content_type"] == "text")
+    support = next(block for block in non_headline if block["content_type"] == "list")
+    assert decision["content"] not in support["content"]
+    assert len(support["content"]) == 3
+    assert len({item.split(":", 1)[0] for item in support["content"]}) == 3

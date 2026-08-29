@@ -15,6 +15,7 @@ from slidethus.services.m4_application import (
 )
 from slidethus.validation import validate_workspace
 from slidethus.workspace import init_workspace
+from tests.fontconfig_fakes import write_fontconfig_tools
 
 
 def _workspace(tmp_path: Path) -> Path:
@@ -43,13 +44,7 @@ def _workspace(tmp_path: Path) -> Path:
 
 
 def _font_match(tmp_path: Path) -> Path:
-    path = tmp_path / "fc-match"
-    path.write_text(
-        "#!/bin/sh\nprintf '%s\\n/fonts/test.ttf\\n' \"$3\"\n",
-        encoding="utf-8",
-    )
-    path.chmod(0o755)
-    return path
+    return write_fontconfig_tools(tmp_path)
 
 
 def _renderer_root() -> Path | None:

@@ -152,6 +152,211 @@ def _headline_from_claim(value: Any, limit: int = 56) -> str:
     return _shorten(candidate, limit)
 
 
+def _is_cjk(value: str) -> bool:
+    return bool(re.search(r"[\u3400-\u9fff]", value))
+
+
+def _trim_proposition_part(value: Any, limit: int = 28) -> str:
+    text = _text(value, limit=240).strip(" ，,。；;：:!?！？\"'“”‘’")
+    text = re.sub(
+        r"^(?:第一|第二|第三|第四|第五)(?:阶段|步|，|,)?(?:可以|应当|应该|再)?",
+        "",
+        text,
+    )
+    text = re.sub(
+        r"^(?:first|second|third|fourth|fifth)(?:\s+stage|\s+step)?\s*[:,.-]?\s*",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    return _shorten(text, limit)
+
+
+def _contrast_proposition(value: Any, limit: int) -> str | None:
+    text = _text(value, limit=4000)
+    chinese = re.search(
+        r"(?:不应(?:该)?|不要|并非|不是)\s*(.{2,100}?)(?:[，,。；;]|而是|而应).*?"
+        r"(?:真正需要|而是|而应|更应(?:该)?|应该)\s*(.{2,120}?)(?:[。；;]|$)",
+        text,
+    )
+    if chinese:
+        before = _trim_proposition_part(chinese.group(1), 22)
+        after = _trim_proposition_part(chinese.group(2), 26)
+        if before and after:
+            return _shorten(f"重点应从{before}转向{after}", limit)
+    english = re.search(
+        r"\b(?:should\s+not|not)\s+(.{2,100}?)\s+"
+        r"(?:but|rather\s+than|instead\s+of)\s+(.{2,120}?)(?:[.;]|$)",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if english:
+        before = _trim_proposition_part(english.group(1), 28)
+        after = _trim_proposition_part(english.group(2), 32)
+        if before and after:
+            return _shorten(f"Shift the focus from {before} to {after}", limit)
+    return None
+
+
+def _responsibility_proposition(value: Any, limit: int) -> str | None:
+    text = _text(value, limit=4000)
+    pairs = [
+        (_trim_proposition_part(subject, 16), _trim_proposition_part(responsibility, 24))
+        for subject, responsibility in re.findall(
+            r"(?:^|[。；;，,])\s*([^。；;，,]{1,24}?)负责([^。；;，,]{2,80})",
+            text,
+        )
+    ]
+    pairs = [(subject, responsibility) for subject, responsibility in pairs if subject and responsibility]
+    if len(pairs) >= 2:
+        return _shorten(f"{pairs[0][0]}与{pairs[1][0]}应按职责边界分工", limit)
+    english_pairs = [
+        (_trim_proposition_part(subject, 24), _trim_proposition_part(responsibility, 30))
+        for subject, responsibility in re.findall(
+            r"(?:^|[.;])\s*([^.;,]{1,36}?)\s+(?:owns|is responsible for)\s+([^.;]{2,90})",
+            text,
+            flags=re.IGNORECASE,
+        )
+    ]
+    english_pairs = [item for item in english_pairs if all(item)]
+    if len(english_pairs) >= 2:
+        return _shorten(
+            f"{english_pairs[0][0]} and {english_pairs[1][0]} need distinct responsibilities",
+            limit,
+        )
+    return None
+
+
+def _sequence_proposition(value: Any, limit: int) -> str | None:
+    text = _text(value, limit=4000)
+    clauses = [
+        item.strip(" ，,：:。；;!?！？")
+        for item in re.split(
+            r"[。！？!?；;]+|(?<!\d)\.(?!\d)|\s+(?=\d+[.、)]\s*)",
+            text,
+        )
+        if item.strip(" ，,：:。；;!?！？")
+    ]
+    ordered = [
+        clause
+        for clause in clauses
+        if re.match(
+            r"^(?:第一|第二|第三|第四|第五)(?:阶段|步|，|,)|"
+            r"^(?:first|second|third|fourth|fifth)(?:\s+stage|\s+step)?\b",
+            clause,
+            flags=re.IGNORECASE,
+        )
+    ]
+    if len(ordered) < 2:
+        return None
+    labels = [_trim_proposition_part(item, 14 if _is_cjk(text) else 12) for item in ordered[:4]]
+    labels = [item for item in labels if item]
+    if len(labels) < 2:
+        return None
+    if _is_cjk(text):
+        return _shorten(f"从{labels[0]}到{labels[-1]}形成递进路径", limit)
+    return _shorten(f"From {labels[0]} to {labels[-1]}: staged path", limit)
+
+
+def _diagnostic_proposition(value: Any, limit: int) -> str | None:
+    text = _text(value, limit=4000)
+    question_count = text.count("？") + text.count("?")
+    labels = _numbered_labels(text)
+    count = max(question_count, len(labels))
+    if count < 2:
+        return None
+    if _is_cjk(text):
+        return _shorten(f"{count}项可验证条件共同决定方案能否稳定运行", limit)
+    return _shorten(f"{count} verifiable conditions determine operational readiness", limit)
+
+
+def _page_proposition(
+    section: dict[str, Any],
+    question: str,
+    claims: list[dict[str, Any]],
+    *,
+    limit: int = 56,
+) -> str:
+    """Synthesize a page-job proposition from full assigned semantics."""
+
+    texts = [_text(item.get("claim"), limit=4000) for item in claims]
+    combined = "。".join(item for item in texts if item)
+    roles = {_claim_role(item) for item in texts}
+    for builder in (
+        _contrast_proposition,
+        _responsibility_proposition,
+        _diagnostic_proposition if "diagnostic" in roles else lambda value, size: None,
+        _sequence_proposition,
+    ):
+        proposition = builder(combined, limit)
+        if proposition:
+            return proposition
+    if "framework" in roles:
+        framework = _headline_from_claim(combined, limit)
+        if framework:
+            return framework
+    subjects = [
+        _trim_proposition_part(clause.split("，", 1)[0].split(",", 1)[0], 18)
+        for text in texts
+        for clause in _claim_clauses(text)[:1]
+    ]
+    subjects = list(dict.fromkeys(item for item in subjects if item))
+    title = _text(section.get("title"), limit=32)
+    if len(subjects) >= 2:
+        if _is_cjk(combined + question):
+            return _shorten(f"{subjects[0]}与{subjects[1]}共同支撑{title}的判断", limit)
+        return _shorten(f"{subjects[0]} and {subjects[1]} jointly shape {title}", limit)
+    if subjects:
+        if _is_cjk(combined + question):
+            return _shorten(f"{title}的关键在于{subjects[0]}", limit)
+        return _shorten(f"{subjects[0]} is central to {title}", limit)
+    return _shorten(section.get("thesis") or question or title, limit)
+
+
+def _semantic_key(value: Any) -> str:
+    text = _text(value, limit=1000).casefold()
+    text = re.sub(
+        r"^(?:决策请求|行动请求|decision request|request|decision)\s*[:：-]?\s*",
+        "",
+        text,
+    )
+    return re.sub(r"[^\w\u3400-\u9fff]+", "", text)
+
+
+def _action_support_items(primary_cta: str) -> list[str]:
+    candidates = (
+        [
+            "责任：明确一位对结果负责的执行负责人",
+            "时间：确认启动窗口和完成时限",
+            "检查点：约定下一次复盘以及继续、调整或停止的条件",
+        ]
+        if _is_cjk(primary_cta)
+        else [
+            "Owner: name one accountable execution owner",
+            "Timing: confirm the start window and completion deadline",
+            "Checkpoint: agree when to review and the conditions to continue, adjust, or stop",
+        ]
+    )
+    primary_key = _semantic_key(primary_cta)
+    return [
+        item
+        for item in candidates
+        if _semantic_key(item) != primary_key
+        and _semantic_key(item) not in primary_key
+        and primary_key not in _semantic_key(item)
+    ]
+
+
+def _cover_takeaway(brief: dict[str, Any], narrative: dict[str, Any]) -> str:
+    thesis = _text(narrative.get("central_thesis"), limit=180)
+    outcome = _text(brief.get("intent", {}).get("desired_outcome"), limit=120)
+    if not outcome or _semantic_key(outcome) in _semantic_key(thesis):
+        return _shorten(thesis, 180)
+    if _is_cjk(thesis + outcome):
+        return _shorten(f"{thesis}；决策目标：{outcome}", 180)
+    return _shorten(f"{thesis}; decision outcome: {outcome}", 180)
+
+
 def _support_fragments(value: Any, *, max_fragments: int = 8) -> list[str]:
     text = _text(value, limit=4000)
     enumeration = _explicit_enumeration(text)
@@ -411,7 +616,7 @@ class DeterministicPlanningProvider:
     """Provider-neutral, no-network Production planning baseline."""
 
     name = "deterministic-planning-provider"
-    version = "1.1.0"
+    version = "1.2.0"
 
     def propose(
         self,
@@ -585,7 +790,7 @@ class DeterministicPlanningProvider:
                 "section_index": 0,
                 "slide_type": "cover",
                 "headline": _shorten(brief["title"], 80),
-                "takeaway": _shorten(narrative["central_thesis"], 180),
+                "takeaway": _cover_takeaway(brief, narrative),
                 "purpose": "建立主题、核心主张和受众预期。",
                 "evidence_ids": [],
                 "evidence_requirement": "none",
@@ -636,10 +841,7 @@ class DeterministicPlanningProvider:
                 if local_index == 0 and budget > 1:
                     slide_type = "section"
                     headline = _shorten(section["title"], 80)
-                    takeaway = _shorten(
-                        f"进入“{section['title']}”：本节将回答“{question}”",
-                        180,
-                    )
+                    takeaway = headline
                     assigned = []
                 elif assigned_claims:
                     roles = {_claim_role(item.get("claim")) for item in assigned_claims}
@@ -655,7 +857,12 @@ class DeterministicPlanningProvider:
                         claim_text = _text(assigned_claims[0].get("claim"))
                         numeric = bool(re.search(r"\d", claim_text))
                         slide_type = "chart" if numeric and len(assigned_claims) == 1 else "evidence"
-                    headline = _headline_from_claim(assigned_claims[0].get("claim"), 56)
+                    headline = _page_proposition(
+                        section,
+                        question,
+                        assigned_claims,
+                        limit=56,
+                    )
                     takeaway = _takeaway_from_claims(assigned_claims, headline)
                 else:
                     slide_type = (
@@ -804,7 +1011,7 @@ class DeterministicPlanningProvider:
                             "evidence_qualification": _claim_qualification(claim),
                         }
                     )
-            if len(blocks) == 1:
+            if len(blocks) == 1 and slide_type != "section":
                 blocks.append(
                     {
                         "semantic_role": "body",
@@ -818,15 +1025,13 @@ class DeterministicPlanningProvider:
                     }
                 )
             if outline_slide["slide_type"] == "action":
+                primary_cta = _text(outline_slide["takeaway"])
                 blocks.append(
                     {
                         "semantic_role": "body",
                         "content_type": "list",
                         "priority": "secondary",
-                        "content": [
-                            _text(outline_slide["takeaway"]),
-                            "明确责任人、时间点和下一次检查。",
-                        ],
+                        "content": _action_support_items(primary_cta),
                         "evidence_ids": [],
                         "evidence_requirement": "none",
                         "claim_mode": "instruction",

@@ -3,12 +3,13 @@ import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
 import JSZip from "jszip";
 
 const execFileAsync = promisify(execFile);
-const renderer = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../render.mjs");
+const renderer = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../render.mjs");
 
 function style(overrides = {}) {
   return {

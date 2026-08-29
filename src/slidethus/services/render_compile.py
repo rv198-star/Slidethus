@@ -49,13 +49,8 @@ def _style_for(
     visual: dict[str, Any],
     font_map: dict[str, str],
 ) -> dict[str, Any]:
+    text_style = _text_style_for(block, slide_type, visual)
     role = str(block.get("semantic_role", "body"))
-    if role == "headline":
-        text_style = visual["typography"]["display" if slide_type == "cover" else "title"]
-    elif role in {"caption", "footer", "label"}:
-        text_style = visual["typography"]["caption"]
-    else:
-        text_style = visual["typography"]["body"]
     surface = role in {"body", "evidence", "diagram", "table", "chart", "quote"}
     return {
         "font_family": font_map.get(
@@ -72,7 +67,117 @@ def _style_for(
     }
 
 
-def _decorations(slide_id: str, family: str, visual: dict[str, Any]) -> list[dict[str, Any]]:
+def _text_style_for(
+    block: dict[str, Any],
+    slide_type: str,
+    visual: dict[str, Any],
+) -> dict[str, Any]:
+    role = str(block.get("semantic_role", "body"))
+    if role == "headline":
+        return visual["typography"]["display" if slide_type == "cover" else "title"]
+    elif role in {"caption", "footer", "label"}:
+        return visual["typography"]["caption"]
+    return visual["typography"]["body"]
+
+
+def _visible_text(content: Any, content_type: str) -> str:
+    if isinstance(content, list):
+        prefix = "• " if content_type == "list" else ""
+        return "\n".join(prefix + str(item) for item in content)
+    if isinstance(content, dict):
+        return "\n".join(f"{key}: {value}" for key, value in content.items())
+    return str(content or "")
+
+
+def _connector_regions(regions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        (
+            item
+            for item in regions
+            if str(item.get("semantic_role"))
+            not in {"headline", "subhead", "caption", "footer", "label"}
+        ),
+        key=lambda item: (float(item["y"]), float(item["x"]), str(item["region_id"])),
+    )
+
+
+def _connector_lines(
+    slide_id: str,
+    regions: list[dict[str, Any]],
+    stroke: str,
+) -> list[dict[str, Any]]:
+    candidates = _connector_regions(regions)
+    if len(candidates) < 2:
+        return []
+    rows: list[list[dict[str, Any]]] = []
+    for region in candidates:
+        matching = next(
+            (
+                row
+                for row in rows
+                if abs(float(row[0]["y"]) - float(region["y"])) <= 1.0
+            ),
+            None,
+        )
+        if matching is None:
+            rows.append([region])
+        else:
+            matching.append(region)
+    for row in rows:
+        row.sort(key=lambda item: (float(item["x"]), str(item["region_id"])))
+
+    segments: list[tuple[float, float, float, float]] = []
+    for row in rows:
+        for left, right in zip(row, row[1:], strict=False):
+            start_x = float(left["x"]) + float(left["w"])
+            end_x = float(right["x"])
+            overlap_top = max(float(left["y"]), float(right["y"]))
+            overlap_bottom = min(
+                float(left["y"]) + float(left["h"]),
+                float(right["y"]) + float(right["h"]),
+            )
+            if end_x > start_x and overlap_bottom >= overlap_top:
+                anchor_y = (overlap_top + overlap_bottom) / 2
+                segments.append((start_x, anchor_y, end_x - start_x, 0.0))
+    for upper, lower in zip(rows, rows[1:], strict=False):
+        start = upper[-1]
+        end = lower[0]
+        start_x = float(start["x"]) + float(start["w"])
+        start_y = float(start["y"]) + float(start["h"])
+        end_x = float(end["x"])
+        end_y = float(end["y"])
+        if end_y <= start_y:
+            continue
+        turn_y = (start_y + end_y) / 2
+        segments.extend(
+            [
+                (start_x, start_y, 0.0, turn_y - start_y),
+                (min(start_x, end_x), turn_y, abs(end_x - start_x), 0.0),
+                (end_x, turn_y, 0.0, end_y - turn_y),
+            ]
+        )
+    return [
+        {
+            "decoration_id": f"DEC-{slide_id.replace('-', '')}-{index:02d}",
+            "kind": "line",
+            "x": x,
+            "y": y,
+            "w": w,
+            "h": h,
+            "fill": None,
+            "stroke": stroke,
+            "z": 0,
+        }
+        for index, (x, y, w, h) in enumerate(segments, start=2)
+    ]
+
+
+def _decorations(
+    slide_id: str,
+    family: str,
+    visual: dict[str, Any],
+    regions: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     accent = str(visual["colors"]["accent"])
     primary = str(visual["colors"]["primary"])
     output: list[dict[str, Any]] = [
@@ -131,19 +236,7 @@ def _decorations(slide_id: str, family: str, visual: dict[str, Any]) -> list[dic
             }
         )
     elif family in {"process", "timeline"}:
-        output.append(
-            {
-                "decoration_id": f"DEC-{slide_id.replace('-', '')}-02",
-                "kind": "line",
-                "x": 96,
-                "y": 580,
-                "w": 1088,
-                "h": 0,
-                "fill": None,
-                "stroke": primary,
-                "z": 0,
-            }
-        )
+        output.extend(_connector_lines(slide_id, regions, primary))
     return output
 
 
@@ -161,6 +254,51 @@ class RenderCompileService:
         self.runtime = runtime or ArtifactRuntime(self.workspace)
         self.schemas = schema_registry or SchemaRegistry()
         self.output_dir = self.workspace / ".slidethus/render/ir"
+
+    def required_font_characters(self) -> dict[str, str]:
+        """Return visible renderer characters grouped by requested typography family."""
+
+        gate = evaluate_gate(self.workspace, "G6")
+        if not gate.passed:
+            raise RenderCompileError(
+                "Font requirements require current G6: " + "; ".join(gate.reasons)
+            )
+        graph = self.runtime.read_artifact_graph_snapshot(
+            ("deck_outline", "slide_specs", "visual_system")
+        )
+        outline = graph["deck_outline"]["data"]
+        specs = graph["slide_specs"]["data"]
+        visual = graph["visual_system"]["data"]
+        outline_by_id = {
+            str(item["slide_id"]): item
+            for item in outline.get("slides", [])
+            if item.get("status") != "excluded"
+        }
+        characters: dict[str, set[str]] = {}
+        for slide in specs.get("slides", []):
+            slide_id = str(slide["slide_id"])
+            outline_slide = outline_by_id.get(slide_id)
+            if outline_slide is None:
+                continue
+            for block in slide.get("content_blocks", []):
+                text_style = _text_style_for(
+                    block,
+                    str(outline_slide["slide_type"]),
+                    visual,
+                )
+                family = str(text_style["font_family"])
+                visible = _visible_text(
+                    block.get("content"),
+                    str(block.get("content_type")),
+                )
+                qualification = block.get("evidence_qualification")
+                if qualification:
+                    visible += "\n" + str(qualification)
+                characters.setdefault(family, set()).update(visible)
+        return {
+            family: "".join(sorted(values, key=ord))
+            for family, values in sorted(characters.items())
+        }
 
     def compile(
         self,
@@ -271,7 +409,12 @@ class RenderCompileService:
                     "ordinal": ordinal,
                     "layout_family": str(layout["layout_family"]),
                     "regions": sorted(regions, key=lambda item: (item["z"], item["region_id"])),
-                    "decorations": _decorations(slide_id, str(layout["layout_family"]), visual),
+                    "decorations": _decorations(
+                        slide_id,
+                        str(layout["layout_family"]),
+                        visual,
+                        regions,
+                    ),
                 }
             )
 

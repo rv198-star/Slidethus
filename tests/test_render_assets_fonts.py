@@ -6,7 +6,7 @@ import pytest
 from PIL import Image
 
 from slidethus.artifact_runtime import ArtifactRuntime
-from slidethus.errors import RenderAssetError
+from slidethus.errors import FontResolutionError, RenderAssetError
 from slidethus.io_utils import sha256_file
 from slidethus.services.font_resolution import FontResolutionService
 from slidethus.services.render_assets import RenderAssetService, validate_safe_svg
@@ -125,22 +125,66 @@ def test_table_data_asset_loads_bounded_csv_without_formula_execution(tmp_path: 
 
 
 def test_font_resolution_uses_declared_fallback(tmp_path: Path) -> None:
+    primary_font = tmp_path / "primary.ttf"
+    fallback_font = tmp_path / "fallback.ttf"
+    primary_font.write_bytes(b"primary")
+    fallback_font.write_bytes(b"fallback")
     matcher = tmp_path / "fc-match"
     matcher.write_text(
         "#!/bin/sh\n"
         "case \"$3\" in\n"
-        "  Missing*) printf 'DejaVu Sans\\n/fonts/dejavu.ttf\\n' ;;\n"
-        "  Fallback*) printf 'Fallback Sans\\n/fonts/fallback.ttf\\n' ;;\n"
-        "  *) printf 'DejaVu Sans\\n/fonts/dejavu.ttf\\n' ;;\n"
+        f"  Missing*) printf 'DejaVu Sans\\n{primary_font}\\n' ;;\n"
+        f"  Fallback*) printf 'Fallback Sans\\n{fallback_font}\\n' ;;\n"
+        f"  *) printf 'DejaVu Sans\\n{primary_font}\\n' ;;\n"
         "esac\n",
         encoding="utf-8",
     )
     matcher.chmod(0o755)
-    service = FontResolutionService(font_match=str(matcher))
+    query = tmp_path / "fc-query"
+    query.write_text(
+        "#!/bin/sh\n"
+        "case \"$3\" in\n"
+        f"  {fallback_font}) printf '20-7e 400-4ff\\n' ;;\n"
+        "  *) printf '20-7e\\n' ;;\n"
+        "esac\n",
+        encoding="utf-8",
+    )
+    query.chmod(0o755)
+    service = FontResolutionService(
+        font_match=str(matcher),
+        font_query=str(query),
+    )
 
-    resolution = service.resolve_family("Missing Sans", fallbacks=("Fallback Sans",))
+    resolution = service.resolve_family(
+        "Missing Sans",
+        fallbacks=("Fallback Sans",),
+        required_characters="Decision Ж",
+    )
 
     assert resolution.requested == "Missing Sans"
     assert resolution.actual == "Fallback Sans"
     assert resolution.status == "substituted"
-    assert resolution.reason == "fallback_selected:Fallback Sans"
+    assert resolution.reason == "fallback_selected:Fallback Sans:glyph_coverage_verified"
+
+
+def test_font_resolution_blocks_when_no_candidate_covers_required_glyphs(
+    tmp_path: Path,
+) -> None:
+    font = tmp_path / "latin-only.ttf"
+    font.write_bytes(b"latin")
+    matcher = tmp_path / "fc-match"
+    matcher.write_text(
+        f"#!/bin/sh\nprintf '%s\\n{font}\\n' \"$3\"\n",
+        encoding="utf-8",
+    )
+    matcher.chmod(0o755)
+    query = tmp_path / "fc-query"
+    query.write_text("#!/bin/sh\nprintf '20-7e\\n'\n", encoding="utf-8")
+    query.chmod(0o755)
+    service = FontResolutionService(
+        font_match=str(matcher),
+        font_query=str(query),
+    )
+
+    with pytest.raises(FontResolutionError, match=r"U\+4E2D"):
+        service.resolve_family("Latin Only", required_characters="English 中文")

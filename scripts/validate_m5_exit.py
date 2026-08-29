@@ -130,9 +130,17 @@ class _CleanVisualProvider:
 
 
 def _fake_font_match(root: Path) -> Path:
+    font = root / "test.ttf"
+    font.write_bytes(b"fontconfig-test-placeholder")
     path = root / "fc-match"
-    path.write_text("#!/bin/sh\nprintf '%s\\n/fonts/test.ttf\\n' \"$3\"\n", encoding="utf-8")
+    path.write_text(
+        f"#!/bin/sh\nprintf '%s\\n{font}\\n' \"$3\"\n",
+        encoding="utf-8",
+    )
     path.chmod(0o755)
+    query = root / "fc-query"
+    query.write_text("#!/bin/sh\nprintf '20-10ffff\\n'\n", encoding="utf-8")
+    query.chmod(0o755)
     return path
 
 
@@ -345,7 +353,8 @@ def evaluate_m5_exit(root: Path, *, run_runtime_checks: bool = True) -> tuple[Ch
 
     gates_source = _read(root, "src/slidethus/gates.py")
     monotonic_ok = (
-        "_validation_issue_stage" in gates_source
+        "def _validation_issue_stage(" in gates_source
+        and "_validation_issue_stage" in gates_source
         and "_GATE_STAGE[gate_id]" in gates_source
         and "blocking_validation" in gates_source
     )

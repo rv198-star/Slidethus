@@ -14,6 +14,7 @@ from slidethus.services.visual_system import VisualSystemService
 from slidethus.state_machine import Phase
 from slidethus.validation import validate_workspace
 from slidethus.workspace import init_workspace
+from tests.fontconfig_fakes import write_fontconfig_tools
 
 
 def _workspace(tmp_path: Path) -> Path:
@@ -47,13 +48,7 @@ def _workspace(tmp_path: Path) -> Path:
 
 
 def _font_match(tmp_path: Path) -> Path:
-    path = tmp_path / "fc-match"
-    path.write_text(
-        "#!/bin/sh\nprintf '%s\\n/fonts/test.ttf\\n' \"$3\"\n",
-        encoding="utf-8",
-    )
-    path.chmod(0o755)
-    return path
+    return write_fontconfig_tools(tmp_path)
 
 
 def _renderer_root() -> Path | None:
@@ -98,6 +93,25 @@ def test_preflight_tampering_is_detected_by_workspace_validation(tmp_path: Path)
     assert any(
         item.code == "invalid_render_preflight_report"
         for item in validation.issues
+    )
+
+
+def test_preflight_blocks_when_resolved_fonts_miss_visible_deck_glyphs(
+    tmp_path: Path,
+) -> None:
+    workspace = _workspace(tmp_path)
+    matcher = write_fontconfig_tools(tmp_path, charset="20-7e")
+
+    result = RenderPreflightService(
+        workspace,
+        font_match=str(matcher),
+    ).run(("final-svg",), include_exports=False)
+
+    assert result.report["status"] == "blocked"
+    assert any(
+        item["code"] == "font_resolution_failed"
+        and "required deck glyphs" in item["message"]
+        for item in result.report["checks"]
     )
 
 

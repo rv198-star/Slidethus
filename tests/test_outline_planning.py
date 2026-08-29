@@ -7,8 +7,8 @@ import pytest
 from slidethus.artifact_runtime import ArtifactRuntime
 from slidethus.errors import ArtifactConflictError, OutlinePlanningError
 from slidethus.gates import evaluate_gate
-from slidethus.planning_provider import DeterministicPlanningProvider
-from slidethus.protocols import BriefCompletionHints, PlanningProposal
+from slidethus.planning_provider import DeterministicPlanningProvider, _page_proposition
+from slidethus.protocols import BriefCompletionHints, PlanningLimits, PlanningProposal
 from slidethus.services.brief_completion import BriefCompletionService
 from slidethus.services.m2_application import M2ApplicationService
 from slidethus.services.narrative import NarrativePlanningService
@@ -184,3 +184,57 @@ def test_outline_rejects_stale_snapshot_on_concurrent_writer(
 
     with pytest.raises(ArtifactConflictError, match="Version conflict for deck_outline"):
         service.generate()
+
+
+def test_page_proposition_synthesizes_sequence_job_instead_of_selecting_clause() -> None:
+    claims = [
+        {
+            "claim": (
+                "First stage records incoming requests. Second stage routes exceptions "
+                "to an owner. Third stage measures resolution quality."
+            )
+        }
+    ]
+
+    headline = _page_proposition(
+        {"title": "Service operations"},
+        "How should the operating path mature?",
+        claims,
+    )
+
+    clauses = {
+        "First stage records incoming requests",
+        "Second stage routes exceptions to an owner",
+        "Third stage measures resolution quality",
+    }
+    assert headline not in clauses
+    assert headline.startswith("From ")
+    assert "staged path" in headline
+
+
+def test_structural_outline_uses_headline_only_framing_without_navigation_meta_copy(
+    tmp_path: Path,
+) -> None:
+    workspace = _narrative_ready_workspace(tmp_path)
+    runtime = ArtifactRuntime(workspace)
+    narrative = runtime.show_artifact("narrative_blueprint")
+    narrative["sections"][0]["slide_budget"] = 8
+    outline = DeterministicPlanningProvider().propose(
+        "deck_outline",
+        {
+            "project_brief": runtime.show_artifact("project_brief"),
+            "narrative_blueprint": narrative,
+            "evidence_ledger": runtime.show_artifact("evidence_ledger"),
+        },
+        PlanningLimits(),
+    ).content
+    structural = [
+        item
+        for item in outline["slides"]
+        if item.get("status") != "excluded" and item["slide_type"] == "section"
+    ]
+
+    assert structural
+    assert all(item["takeaway"] == item["headline"] for item in structural)
+    assert all("本节将回答" not in item["takeaway"] for item in structural)
+    assert all(not item["takeaway"].startswith("进入") for item in structural)
