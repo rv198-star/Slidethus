@@ -198,6 +198,8 @@ Define deck-wide color, typography, spacing, shape, chart, image, icon, footer, 
 
 Separate style tokens from slide semantics and coordinates.
 
+Before publishing the Visual System, create or reuse one immutable, content-addressed `ArtDirectionPacket`. The provider-neutral Packet binds the current Brief, Outline, Slide Specs, Layout Plans, and Asset Manifest. The bundled Taste Skill is the default art-direction provider resource and is pinned with MIT provenance; translate only static-presentation principles into the Packet. Do not pass frontend framework, DOM, navigation, CTA, or scroll-animation rules into slide rendering. Hosts may inject another `ArtDirectionProvider`, but every proposal must pass the same deterministic admission and G6 hash/lineage checks.
+
 ### P7 Rendering
 
 Select an explicit backend and `target_editability_level`. Produce the Render Manifest, warnings, font substitutions, previews, output hashes, and a separately measured actual `editability_level` after real output exists.

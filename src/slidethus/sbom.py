@@ -135,12 +135,39 @@ def _node_dependencies(root: Path) -> list[dict[str, Any]]:
     return output
 
 
+def _taste_package(root: Path) -> dict[str, Any]:
+    repository = root / ".agents/skills/slidethus/providers/art-direction/taste"
+    installed = root / "skill/providers/art-direction/taste"
+    taste_root = repository if (repository / "PROVENANCE.json").is_file() else installed
+    provenance = read_json(taste_root / "PROVENANCE.json")
+    commit = str(provenance["upstream_commit"])
+    return {
+        "name": "taste-skill",
+        "SPDXID": _spdx_id("GitHub", f"Leonxlnx/taste-skill@{commit}"),
+        "versionInfo": commit,
+        "downloadLocation": str(provenance["upstream_url"]),
+        "filesAnalyzed": False,
+        "licenseConcluded": "MIT",
+        "licenseDeclared": "MIT",
+        "copyrightText": str(provenance["copyright"]),
+        "externalRefs": [
+            {
+                "referenceCategory": "PACKAGE-MANAGER",
+                "referenceType": "purl",
+                "referenceLocator": f"pkg:github/Leonxlnx/taste-skill@{commit}",
+            }
+        ],
+        "comment": "Bundled default art-direction Skill; original MIT license and provenance are preserved.",
+    }
+
+
 def build_sbom(root: Path) -> dict[str, Any]:
     root = root.resolve()
     project_id = "SPDXRef-Package-Slidethus"
     renderer_id = "SPDXRef-Package-Slidethus-Renderer"
     python_packages = _python_dependencies(root)
     node_packages = _node_dependencies(root)
+    taste_package = _taste_package(root)
     packages: list[dict[str, Any]] = [
         {
             "name": "slidethus",
@@ -162,6 +189,7 @@ def build_sbom(root: Path) -> dict[str, Any]:
             "licenseDeclared": "Apache-2.0",
             "copyrightText": "Copyright 2026 Slidethus contributors",
         },
+        taste_package,
         *python_packages,
         *node_packages,
     ]
@@ -170,7 +198,12 @@ def build_sbom(root: Path) -> dict[str, Any]:
             "spdxElementId": project_id,
             "relationshipType": "CONTAINS",
             "relatedSpdxElement": renderer_id,
-        }
+        },
+        {
+            "spdxElementId": project_id,
+            "relationshipType": "CONTAINS",
+            "relatedSpdxElement": taste_package["SPDXID"],
+        },
     ]
     relationships.extend(
         {
@@ -227,4 +260,10 @@ def validate_sbom(root: Path, sbom: dict[str, Any]) -> tuple[str, ...]:
         for item in sbom.get("packages", [])
     ):
         errors.append("SPDX SBOM does not preserve @resvg/resvg-js MPL-2.0 declaration")
+    if not any(
+        item.get("name") == "taste-skill"
+        and item.get("licenseDeclared") == "MIT"
+        for item in sbom.get("packages", [])
+    ):
+        errors.append("SPDX SBOM does not preserve bundled Taste Skill MIT declaration")
     return tuple(errors)

@@ -47,7 +47,7 @@ def test_shared_capacity_estimate_handles_non_latin_lists_and_font_floor() -> No
     ) is None
 
 
-def test_matrix_reserves_full_width_for_one_high_cardinality_list() -> None:
+def test_matrix_reserves_full_height_framework_rail_for_high_cardinality_list() -> None:
     blocks = [
         {
             "block_id": "BLK-S001-01",
@@ -86,5 +86,22 @@ def test_matrix_reserves_full_width_for_one_high_cardinality_list() -> None:
         region for region in plan["regions"] if region["block_id"] == "BLK-S001-03"
     )
 
-    assert list_region["w"] == 1120.0
-    assert list_region["h"] >= 240.0
+    assert list_region["w"] > 500.0
+    assert list_region["h"] == 456.0
+    support_region = next(
+        region for region in plan["regions"] if region["block_id"] == "BLK-S001-02"
+    )
+    assert list_region["x"] > support_region["x"] + support_region["w"]
+
+
+def test_office_point_scale_is_included_in_text_capacity() -> None:
+    height = estimated_text_height(
+        ["数据、流程、规则、工具与权限", "验证标准与人工接管"],
+        "list",
+        width=320,
+        font_size=18,
+        line_height=1.2,
+        qualification="internal",
+    )
+
+    assert height >= 18 * (4 / 3) * 1.2 * 2 + 32 + 24

@@ -35,4 +35,5 @@
 - font and asset availability
 - output/preview page count
 - render input hashes
+- Art Direction Packet schema/hash/provider/input lineage and bundled-provider provenance
 - intended-change vs actual-change regression

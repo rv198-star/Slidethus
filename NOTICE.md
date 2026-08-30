@@ -16,6 +16,8 @@ The project license does **not** grant rights in content that Slidethus does not
 
 See `THIRD_PARTY_NOTICES.md`, `source_material/LICENSE.md`, and `release/rights-policy.json` for the executable distribution boundary.
 
+The default art-direction provider includes the MIT-licensed Taste Skill by Leonxlnx. Its original license and provenance are preserved under `.agents/skills/slidethus/providers/art-direction/taste/` and described in `THIRD_PARTY_NOTICES.md`.
+
 ## Distribution policy
 
 The default Python wheel and Slidethus Plugin bundle do not vendor:

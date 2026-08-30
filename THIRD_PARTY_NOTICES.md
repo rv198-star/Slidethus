@@ -2,6 +2,18 @@
 
 Slidethus project-owned code is licensed under Apache-2.0. Third-party software and source material retain their own licenses and rights.
 
+## Bundled Taste Skill
+
+Slidethus bundles the upstream `design-taste-frontend` Skill as its default art-direction provider resource:
+
+- Source: `https://github.com/Leonxlnx/taste-skill`
+- Pinned commit: `ccbc15639c97057cbfcf32ecebc38ef716e4bb37`
+- License: MIT
+- Copyright: Copyright (c) 2026 Leonxlnx
+- Bundled path: `.agents/skills/slidethus/providers/art-direction/taste/`
+
+The original `SKILL.md` is retained verbatim with its MIT `LICENSE` and machine-readable `PROVENANCE.json`. Slidethus slide-specific adapter code is separately licensed under Apache-2.0. The bundled Skill remains third-party material and is not relicensed by the Slidethus project license.
+
 ## User-provided / third-party source material
 
 The repository retains provenance material derived from a user-provided saved HTML page titled “应该是目前最强的PPT Agent，附上完整思路分享”. Relevant files live under `source_material/`.

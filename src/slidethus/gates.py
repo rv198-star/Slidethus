@@ -300,7 +300,13 @@ def evaluate_gate(workspace: Path, gate_id: str) -> GateResult:
         state = read_json(workspace / "project_state.json")
         path = workspace / "design/visual_system.json"
         visual = read_json(path) if path.exists() else None
-        reasons.extend(visual_system_gate_reasons(state=state, visual_system=visual))
+        reasons.extend(
+            visual_system_gate_reasons(
+                state=state,
+                visual_system=visual,
+                workspace=workspace,
+            )
+        )
     elif gate_id == "G7":
         path = workspace / "renders/render_manifest.json"
         if not path.exists():

@@ -56,6 +56,9 @@ def test_plugin_bundle_is_byte_reproducible_and_manifested(tmp_path: Path) -> No
     with zipfile.ZipFile(first.path) as archive:
         names = set(archive.namelist())
         assert ".agents/skills/slidethus/SKILL.md" in names
+        assert ".agents/skills/slidethus/providers/art-direction/taste/SKILL.md" in names
+        assert ".agents/skills/slidethus/providers/art-direction/taste/LICENSE" in names
+        assert ".agents/skills/slidethus/providers/art-direction/taste/PROVENANCE.json" in names
         assert "renderers/pptxgenjs/package-lock.json" in names
         assert "schemas/project_state.schema.json" in names
         assert "LICENSE" in names
@@ -78,6 +81,10 @@ def test_plugin_bundle_is_byte_reproducible_and_manifested(tmp_path: Path) -> No
         for entry in manifest["files"]:
             assert hashlib.sha256(archive.read(entry["path"])).hexdigest() == entry["sha256"]
         assert manifest["requirements"]["node"] == ">=20"
+        assert manifest["requirements"]["default_art_direction_provider"] == "taste-skill"
+        assert manifest["requirements"]["art_direction_provider_sha256"] == (
+            "aa194351b246b8b4799099d4ed7b033d29eab6e6e3d58d8d2172978be7b3ec89"
+        )
         assert first.file_count == len(names)
 
 
@@ -88,6 +95,8 @@ def test_materialize_skill_is_idempotent_and_refuses_modified_tree(tmp_path: Pat
 
     assert installed == host / ".agents/skills/slidethus"
     assert (installed / "SKILL.md").read_bytes() == (source / "SKILL.md").read_bytes()
+    assert (installed / "providers/art-direction/taste/SKILL.md").is_file()
+    assert (installed / "providers/art-direction/taste/LICENSE").is_file()
     assert materialize_skill(host) == installed
 
     (installed / "SKILL.md").write_text("modified\n", encoding="utf-8")

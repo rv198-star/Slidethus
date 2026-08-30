@@ -327,6 +327,29 @@
         "pattern": "^AST-[0-9]{3}$"
       }
     },
+    "art_direction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["packet_id", "path", "content_hash", "provider"],
+      "properties": {
+        "packet_id": {"type": "string", "pattern": "^ADP-[A-F0-9]{16}$"},
+        "path": {
+          "type": "string",
+          "pattern": "^\\.slidethus/art-direction/packets/[a-f0-9]{64}\\.json$"
+        },
+        "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "provider": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version", "mode"],
+          "properties": {
+            "name": {"type": "string", "minLength": 1},
+            "version": {"type": "string", "minLength": 1},
+            "mode": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
     "render_lineage": {
       "type": "object",
       "additionalProperties": false,

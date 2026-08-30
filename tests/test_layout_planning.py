@@ -219,6 +219,51 @@ def test_layout_geometry_fails_when_content_cannot_fit_font_floor() -> None:
         )
 
 
+def test_relationship_families_have_observably_distinct_primary_geometries() -> None:
+    def block(index: int, role: str, content_type: str = "text") -> dict:
+        return {
+            "block_id": f"BLK-S001-{index:02d}",
+            "semantic_role": role,
+            "content_type": content_type,
+            "content": ["A", "B", "C", "D", "E", "F"] if content_type == "list" else f"Content {index}",
+            "content_hash": "sha256:" + f"{index:x}" * 64,
+        }
+
+    def plan(family: str, blocks: list[dict]) -> dict:
+        return build_layout_plan(
+            {
+                "slide_id": "S-001",
+                "density_budget": {"min_body_pt": 18},
+                "visual_intent": {"relationship": family},
+                "content_blocks": blocks,
+            },
+            family=family,
+            canvas={"width": 1280, "height": 720},
+            safe_area={"top": 60, "right": 80, "bottom": 60, "left": 80},
+        )
+
+    headline = block(1, "headline")
+    timeline = plan("timeline", [headline, *(block(i, "body") for i in range(2, 6))])
+    timeline_body = timeline["regions"][1:]
+    assert len({item["y"] for item in timeline_body}) == 2
+
+    case = plan("case", [headline, *(block(i, "evidence") for i in range(2, 5))])
+    assert case["regions"][1]["h"] > case["regions"][2]["h"]
+    assert case["regions"][1]["w"] > case["regions"][2]["w"]
+
+    process = plan("process", [headline, block(2, "subhead", "list"), block(3, "body", "list")])
+    assert process["regions"][1]["y"] == process["regions"][2]["y"]
+    assert process["regions"][1]["x"] < process["regions"][2]["x"]
+
+    matrix = plan(
+        "matrix",
+        [headline, block(2, "evidence"), block(3, "evidence"), block(4, "evidence", "list")],
+    )
+    list_region = matrix["regions"][3]
+    assert list_region["h"] > matrix["regions"][1]["h"]
+    assert list_region["x"] > matrix["regions"][1]["x"]
+
+
 def test_wireframe_tamper_and_region_collision_fail_g5b(tmp_path: Path) -> None:
     workspace = _specs_ready_workspace(tmp_path)
     result = LayoutPlanningService(workspace).generate()

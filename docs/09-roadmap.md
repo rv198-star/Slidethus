@@ -112,9 +112,9 @@ M5 Review runtime facts 位于 `.slidethus/review/`，Production Quality Report 
 - [x] M6.3 Plugin Packaging；
 - [x] M6.4 Examples & Evaluation；
 - [x] M6.5 License & Third-party Policy；
-- [x] M6.6 v1.0 Preview Hardening & Release Gate：Round 6 same-case Attempt、九阶段 retrospective Review/Synthesis、抽象根修、release validator、可重复 wheel/Plugin 与 repository-wide regression 已完成。
+- [ ] M6.6 v1.0 Preview Hardening & Release Gate：Round 6 PASS 已被真实 Office 视觉证据撤回；Round 7 根修已生成新的实际 PPTX，等待用户视觉评审。
 
-**M6 Exit Gate：PASS（2026-08-30）。v1.0 Release Gate：PASS（2026-08-30）。** 六类 Workflow 共用单一产品编排边界；运行层具备事件/缓存/预算/lease/recovery；wheel/Plugin 可离仓库分发并 bootstrap pinned renderer；评测/兼容矩阵、Apache-2.0、rights policy/NOTICE/SPDX 边界可执行。Round 6 的 `SYN-E17A689D3096E148` 无 Critical/Major systemic candidate；缺少外部 `SemanticReviewProvider` 时继续显式停在 capability boundary。
+**M6 Exit Gate：REOPENED（2026-08-30）。v1.0 Release Gate：DO NOT RELEASE。** `SYN-2F199C4F136F5876` 记录了四个新的 Major systemic candidates；Round 7 证据见 `audit/M6.6-round-7-office-visual-reopen.md`。
 
 ## v0.9 Distribution Candidate
 

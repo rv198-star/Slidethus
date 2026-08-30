@@ -174,6 +174,28 @@ class PlanningLimits:
 
 
 @dataclass(frozen=True)
+class ArtDirectionLimits:
+    """Bound one provider proposal before P6 art-direction admission."""
+
+    max_provider_payload_bytes: int = 256 * 1024
+    max_design_read_chars: int = 600
+    max_tone_terms: int = 12
+    max_forbidden_patterns: int = 48
+    max_component_variants: int = 24
+
+
+@dataclass(frozen=True)
+class ArtDirectionProposal:
+    """Provider-neutral aesthetic proposal before deterministic freezing."""
+
+    design_read: str
+    dials: dict[str, int]
+    direction: dict[str, Any]
+    warnings: tuple[str, ...] = ()
+    assumptions: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class BriefCompletionHints:
     """Explicit user/host hints admitted by deterministic Brief completion."""
 
@@ -265,6 +287,22 @@ class PlanningProvider(Protocol):
         context: dict[str, Any],
         limits: PlanningLimits,
     ) -> PlanningProposal: ...
+
+
+class ArtDirectionProvider(Protocol):
+    """Provider-neutral P6 port for bounded art-direction proposals."""
+
+    name: str
+    version: str
+    mode: str
+
+    def propose(
+        self,
+        context: dict[str, Any],
+        limits: ArtDirectionLimits,
+    ) -> ArtDirectionProposal: ...
+
+    def resource_identity(self) -> dict[str, Any] | None: ...
 
 
 class ChartProvider(Protocol):

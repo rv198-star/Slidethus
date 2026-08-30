@@ -20,14 +20,17 @@ _LAYOUT_FAMILIES = {
     "custom",
 }
 
+_POINT_TO_LOGICAL = 4.0 / 3.0
+
 
 def region_capacity_units(width: float, height: float, font_pt: float) -> int:
     """Estimate readable text units for one logical region."""
 
     if width <= 0 or height <= 0 or font_pt <= 0:
         return 0
-    characters_per_line = max(1, math.floor((width - 28) / (font_pt * 0.72)))
-    line_count = max(1, math.floor((height - 42) / (font_pt * 1.45)))
+    logical_font = font_pt * _POINT_TO_LOGICAL
+    characters_per_line = max(1, math.floor((width - 32) / logical_font))
+    line_count = max(1, math.floor((height - 48) / (logical_font * 1.35)))
     return max(1, characters_per_line * line_count)
 
 
@@ -84,6 +87,7 @@ def _stack_boxes(
 
 
 def _ordered_body_boxes(
+    family: str,
     blocks: list[dict[str, Any]],
     *,
     x: float,
@@ -98,6 +102,32 @@ def _ordered_body_boxes(
         index for index, block in enumerate(blocks)
         if block.get("semantic_role") == "subhead"
     ]
+    if family == "process" and len(blocks) == 2 and len(lead_positions) == 1:
+        lead_position = lead_positions[0]
+        step_position = 1 - lead_position
+        lead_width = width * 0.44
+        boxes = {
+            lead_position: (x, y, lead_width, height),
+            step_position: (
+                x + lead_width + gap,
+                y,
+                width - lead_width - gap,
+                height,
+            ),
+        }
+        return [boxes[index] for index in range(len(blocks))]
+    if family == "timeline" and not lead_positions and len(blocks) > 1:
+        cell_width = (width - gap * (len(blocks) - 1)) / len(blocks)
+        card_height = height * 0.72
+        return [
+            (
+                x + index * (cell_width + gap),
+                y if index % 2 == 0 else y + height - card_height,
+                cell_width,
+                card_height,
+            )
+            for index in range(len(blocks))
+        ]
     boxes: dict[int, tuple[float, float, float, float]] = {}
     step_positions = [index for index in range(len(blocks)) if index not in lead_positions]
     step_y = y
@@ -164,19 +194,29 @@ def _matrix_body_boxes(
         )
     list_position = list_positions[0]
     other_positions = [index for index in range(len(blocks)) if index != list_position]
-    list_height = min(260.0, max(240.0, height * 0.52))
-    upper_height = height - list_height - gap
-    upper_boxes = _grid_boxes(
-        len(other_positions),
-        x=x,
-        y=y,
-        width=width,
-        height=upper_height,
-        columns=min(4, len(other_positions)),
-        gap=gap,
-    )
+    other_width = width * 0.46
+    list_x = x + other_width + gap
+    list_width = width - other_width - gap
+    if len(other_positions) == 3:
+        half_width = (other_width - gap) / 2
+        half_height = (height - gap) / 2
+        upper_boxes = [
+            (x, y, half_width, half_height),
+            (x + half_width + gap, y, half_width, half_height),
+            (x, y + half_height + gap, other_width, half_height),
+        ]
+    else:
+        upper_boxes = _grid_boxes(
+            len(other_positions),
+            x=x,
+            y=y,
+            width=other_width,
+            height=height,
+            columns=2 if len(other_positions) >= 3 else 1,
+            gap=gap,
+        )
     boxes: dict[int, tuple[float, float, float, float]] = {
-        list_position: (x, y + upper_height + gap, width, list_height)
+        list_position: (list_x, y, list_width, height)
     }
     for index, box in zip(other_positions, upper_boxes, strict=True):
         boxes[index] = box
@@ -202,6 +242,7 @@ def _body_boxes(
                 f"{family} layout requires block semantics for ordered topology"
             )
         return _ordered_body_boxes(
+            family,
             blocks,
             x=x,
             y=y,
@@ -254,7 +295,20 @@ def _body_boxes(
             height=height,
             gap=gap,
         )
-    if family in {"architecture", "case", "bento", "custom", "full-bleed"}:
+    if family == "case" and count >= 2:
+        lead_width = width * 0.58
+        return [
+            (x, y, lead_width, height),
+            *_stack_boxes(
+                count - 1,
+                x=x + lead_width + gap,
+                y=y,
+                width=width - lead_width - gap,
+                height=height,
+                gap=gap,
+            ),
+        ]
+    if family in {"architecture", "bento", "custom", "full-bleed"}:
         columns = min(3, max(2, math.ceil(math.sqrt(count)))) if count > 1 else 1
         return _grid_boxes(
             count,
@@ -323,8 +377,10 @@ def build_layout_plan(
     boxes_by_index: dict[int, tuple[float, float, float, float]] = {}
     body_indices = list(range(len(blocks)))
     if headline_index is not None:
+        headline_units = planning_content_units(blocks[headline_index].get("content"))
         header_height = min(
-            content_height * (0.30 if family == "hero" else 0.20),
+            content_height
+            * (0.30 if family == "hero" or headline_units > 42 else 0.20),
             170.0,
         )
         boxes_by_index[headline_index] = (
@@ -353,6 +409,11 @@ def build_layout_plan(
         boxes_by_index[index] = box
 
     regions: list[dict[str, Any]] = []
+    spotlight_index = (
+        body_indices[0]
+        if body_indices and family in {"case", "process"}
+        else None
+    )
     for index, block in enumerate(blocks):
         x, y, region_width, region_height = boxes_by_index[index]
         block_id = str(block["block_id"])
@@ -381,7 +442,7 @@ def build_layout_plan(
                     and family == "hero"
                     else "left"
                 ),
-                "valign": "middle" if family == "hero" else "top",
+                "valign": "middle" if family == "hero" or index == spotlight_index else "top",
                 "overflow_strategy": (
                     "fail"
                     if content_type in {"image", "chart", "table", "diagram"}

@@ -306,11 +306,13 @@ def evaluate_m5_exit(root: Path, *, run_runtime_checks: bool = True) -> tuple[Ch
     readme = _read(root, "README.md")
     skill = _read(root, ".agents/skills/slidethus/SKILL.md")
     release_state_ok = (
-        ("尚未完成" in readme and "不声明 v1.0 发布就绪" in readme)
-        or (
-            "M6 Exit Gate：PASS" in readme
-            and "v1.0 Release Gate：PASS" in readme
-            and "capability boundary" in readme
+        "capability boundary" in readme
+        and (
+            ("尚未完成" in readme and "不声明 v1.0 发布就绪" in readme)
+            or (
+                "M6 Exit Gate：PASS" in readme
+                and "v1.0 Release Gate：PASS" in readme
+            )
         )
     )
     truth_ok = (

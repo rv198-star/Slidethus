@@ -9,6 +9,7 @@
     "project_license",
     "project_owned",
     "excluded_from_project_license",
+    "included_third_party",
     "default_release_excludes",
     "asset_policy",
     "font_policy",
@@ -28,6 +29,11 @@
       "type": "array",
       "minItems": 1,
       "items": {"$ref": "#/$defs/policyItem"}
+    },
+    "included_third_party": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/includedThirdParty"}
     },
     "default_release_excludes": {
       "type": "array",
@@ -58,6 +64,18 @@
       "properties": {
         "default": {"enum": ["exclude", "reference_only", "rights_cleared_only", "external_terms"]},
         "rule": {"type": "string", "minLength": 1}
+      }
+    },
+    "includedThirdParty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "component", "license", "source", "release_default"],
+      "properties": {
+        "scope": {"type": "string", "minLength": 1},
+        "component": {"type": "string", "minLength": 1},
+        "license": {"type": "string", "minLength": 1},
+        "source": {"type": "string", "format": "uri"},
+        "release_default": {"const": "include_with_notice"}
       }
     }
   }

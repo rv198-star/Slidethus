@@ -4,9 +4,11 @@ import copy
 import json
 from pathlib import Path
 
+from slidethus.art_direction import TasteSkillArtDirectionProvider
 from slidethus.artifact_runtime import ArtifactRuntime
 from slidethus.gates import evaluate_gate
-from slidethus.protocols import BriefCompletionHints
+from slidethus.io_utils import read_json, sha256_json
+from slidethus.protocols import ArtDirectionLimits, ArtDirectionProposal, BriefCompletionHints
 from slidethus.render_ir import validate_renderer_ir_data
 from slidethus.services.m3_application import M3ApplicationService
 from slidethus.services.render_compile import RenderCompileService, _decorations
@@ -58,6 +60,20 @@ def test_visual_system_and_renderer_ir_are_idempotent_and_preserve_m3(tmp_path: 
     )
 
     assert first_visual == second_visual
+    assert first_visual["shape_rules"]["page_role_treatments"]["timeline"] == "staggered-progression"
+    assert "numbered-step" in first_visual["shape_rules"]["component_variants"]
+    art_reference = first_visual["art_direction"]
+    art_packet = read_json(workspace / art_reference["path"])
+    assert art_packet["packet_id"] == art_reference["packet_id"]
+    assert f"sha256:{sha256_json(art_packet)}" == art_reference["content_hash"]
+    assert art_packet["provider"]["name"] == "taste-skill"
+    assert art_packet["provider"]["resource"]["license"] == "MIT"
+    assert set(art_packet["dials"]) == {
+        "design_variance",
+        "motion_intensity",
+        "visual_density",
+    }
+    assert all(1 <= int(value) <= 10 for value in art_packet["dials"].values())
     assert visual_entry["version"] == second_visual_entry["version"] == 1
     assert evaluate_gate(workspace, "G6").passed
 
@@ -80,6 +96,53 @@ def test_visual_system_and_renderer_ir_are_idempotent_and_preserve_m3(tmp_path: 
         "visual_system",
     }
     assert _semantic_refs(runtime) == before
+
+
+def test_g6_rejects_tampered_art_direction_packet(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path)
+    visual = VisualSystemService(workspace).compile()
+    packet_path = workspace / visual["art_direction"]["path"]
+    packet = read_json(packet_path)
+    packet["design_read"] += " tampered"
+    packet_path.write_text(json.dumps(packet, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    result = evaluate_gate(workspace, "G6")
+
+    assert result.status == "fail"
+    assert any("Packet content hash mismatch" in reason for reason in result.reasons)
+
+
+class _InjectedArtDirectionProvider:
+    name = "enterprise-design-system"
+    version = "2.4.0"
+    mode = "host-injected"
+
+    def propose(
+        self,
+        context: dict[str, object],
+        limits: ArtDirectionLimits,
+    ) -> ArtDirectionProposal:
+        return TasteSkillArtDirectionProvider().propose(context, limits)
+
+    def resource_identity(self) -> None:
+        return None
+
+
+def test_visual_system_accepts_provider_neutral_art_direction_adapter(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path)
+
+    visual = VisualSystemService(
+        workspace,
+        art_direction_provider=_InjectedArtDirectionProvider(),
+    ).compile()
+    packet = read_json(workspace / visual["art_direction"]["path"])
+
+    assert packet["provider"] == {
+        "name": "enterprise-design-system",
+        "version": "2.4.0",
+        "mode": "host-injected",
+    }
+    assert evaluate_gate(workspace, "G6").passed
 
 
 def test_g6_rejects_visual_system_after_bound_asset_manifest_changes(tmp_path: Path) -> None:

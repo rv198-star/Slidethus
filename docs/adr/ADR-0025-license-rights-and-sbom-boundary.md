@@ -61,12 +61,19 @@ The Plugin builder embeds the generated document as `release/sbom.spdx.json`. `s
 
 Changing a file under `source_material/` requires updating `source_material/manifest.json`. Adding the directory-level rights notice therefore also updates its provenance manifest rather than silently modifying the research corpus.
 
+### 7. Bundled third-party Skills remain separately licensed
+
+An out-of-box provider resource may be included when its redistribution rights are explicit, its original license/copyright text is retained, and its exact source/commit/hash is machine-readable. Such a resource is listed under `included_third_party` in `release/rights-policy.json`, in `THIRD_PARTY_NOTICES.md`, and in the source-distribution SBOM; inclusion does not relicense it under Apache-2.0.
+
+The first such component is the MIT-licensed Taste Skill used by the default art-direction adapter. Its upstream `SKILL.md` is retained verbatim under `.agents/skills/slidethus/providers/art-direction/taste/`; Slidethus-specific translation code remains project-owned Apache-2.0 code.
+
 ## Consequences
 
 - Public release recipients get an explicit project license and NOTICE.
 - Third-party/user rights are not accidentally implied by the repository license.
 - Plugin/wheel default distribution avoids unnecessary binary redistribution obligations.
 - The Node transitive dependency graph is license-visible without vendoring `node_modules`.
+- Bundled provider Skills remain separately licensed, version-pinned and hash-auditable.
 - Release containers or prepared caches need their own artifact-specific compliance pass.
 
 ## Verification

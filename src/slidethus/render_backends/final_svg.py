@@ -4,6 +4,7 @@ import base64
 import html
 import json
 import math
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,7 @@ from slidethus.services.render_compile import RenderCompileResult, RenderCompile
 
 _TEXT_TYPES = {"text", "list", "metric", "quote", "spacer"}
 _PALETTE = ("#154C5A", "#D76745", "#667085", "#84A98C", "#E9C46A", "#7C3AED")
+_POINT_TO_LOGICAL = 4.0 / 3.0
 
 
 def _text_lines(content: Any, content_type: str) -> list[str]:
@@ -54,7 +56,7 @@ def _wrap_line(text: str, max_units: float) -> list[str]:
 
 def _wrap_content(region: dict[str, Any]) -> tuple[list[str], float, float]:
     style = region["style"]
-    font_size = float(style["font_size"])
+    font_size = float(style["font_size"]) * _POINT_TO_LOGICAL
     line_height = font_size * float(style["line_height"])
     max_units = max(1.0, (float(region["w"]) - 32.0) / max(1.0, font_size))
     lines: list[str] = []
@@ -131,7 +133,90 @@ def _qualification_svg(region: dict[str, Any]) -> str | None:
     )
 
 
+def _structured_list_item(value: Any, fallback: int) -> tuple[str, str]:
+    text = str(value).strip()
+    match = re.match(r"^(\d{1,2})[.、]\s*(.*)$", text)
+    if match:
+        return match.group(1), match.group(2)
+    return str(fallback), text
+
+
+def _uses_structured_list(region: dict[str, Any]) -> bool:
+    content = region.get("content")
+    return (
+        region.get("content_type") == "list"
+        and isinstance(content, list)
+        and len(content) >= 6
+        and float(region["w"]) >= 500.0
+    )
+
+
+def _structured_list_region_svg(region: dict[str, Any]) -> list[str]:
+    style = region["style"]
+    x, y, w, h = map(float, (region["x"], region["y"], region["w"], region["h"]))
+    values = list(region.get("content", []))
+    font_size = min(float(style["font_size"]), 18.0) * _POINT_TO_LOGICAL
+    qualification_height = 32.0 if region.get("evidence_qualification") else 0.0
+    inner_x = x + 16.0
+    inner_y = y + 14.0
+    inner_w = w - 32.0
+    inner_h = h - qualification_height - 22.0
+    columns = 2
+    first_column_count = math.ceil(len(values) / columns)
+    second_column_count = len(values) - first_column_count
+    column_gap = 24.0
+    column_width = (inner_w - column_gap) / columns
+    inverse = str(style.get("color", "")).upper() == "#FFFFFF"
+    badge_fill = "#D76745" if inverse else "#154C5A"
+    output = [_group_start(region)]
+    surface = _surface_svg(region)
+    if surface:
+        output.append(surface)
+    for index, value in enumerate(values):
+        column = 1 if index >= first_column_count else 0
+        row = index - first_column_count if column else index
+        row_count = first_column_count if column == 0 else second_column_count
+        row_height = inner_h / max(1, row_count)
+        item_x = inner_x + column * (column_width + column_gap)
+        item_y = inner_y + row * row_height
+        badge, text = _structured_list_item(value, index + 1)
+        badge_size = 24.0
+        text_x = item_x + badge_size + 10.0
+        max_units = max(1.0, (column_width - badge_size - 14.0) / font_size)
+        lines = _wrap_line(text, max_units)
+        line_height = font_size * 1.08
+        if len(lines) * line_height > row_height - 4.0:
+            raise RenderBackendError(
+                f"Final SVG structured list item overflows in {region['region_id']}"
+            )
+        output.extend(
+            [
+                f'<circle cx="{item_x + badge_size / 2}" cy="{item_y + badge_size / 2}" '
+                f'r="{badge_size / 2}" fill="{badge_fill}"/>',
+                f'<text x="{item_x + badge_size / 2}" y="{item_y + 16.5}" '
+                'text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">'
+                f"{html.escape(badge)}</text>",
+                f'<text x="{text_x}" y="{item_y + font_size}" '
+                f'font-family="{html.escape(str(style["font_family"]), quote=True)}" '
+                f'font-size="{font_size}" fill="{html.escape(str(style["color"]), quote=True)}">',
+            ]
+        )
+        for line_index, line in enumerate(lines):
+            output.append(
+                f'<tspan x="{text_x}" dy="{0 if line_index == 0 else line_height}">'
+                f"{html.escape(line)}</tspan>"
+            )
+        output.append("</text>")
+    qualification = _qualification_svg(region)
+    if qualification:
+        output.append(qualification)
+    output.append("</g>")
+    return output
+
+
 def _text_region_svg(region: dict[str, Any]) -> list[str]:
+    if _uses_structured_list(region):
+        return _structured_list_region_svg(region)
     lines, line_height, qualification_height = _wrap_content(region)
     style = region["style"]
     x, y, w, h = map(float, (region["x"], region["y"], region["w"], region["h"]))
@@ -139,7 +224,7 @@ def _text_region_svg(region: dict[str, Any]) -> list[str]:
     surface = _surface_svg(region)
     if surface:
         output.append(surface)
-    font_size = float(style["font_size"])
+    font_size = float(style["font_size"]) * _POINT_TO_LOGICAL
     text_height = len(lines) * line_height
     available_text_height = h - qualification_height - 24.0
     if region["valign"] == "middle":
@@ -508,11 +593,23 @@ def _render_slide(
 def _expected_text(region: dict[str, Any]) -> list[str]:
     content_type = str(region.get("content_type"))
     if content_type in _TEXT_TYPES:
+        if _uses_structured_list(region):
+            style = region["style"]
+            font_size = min(float(style["font_size"]), 18.0) * _POINT_TO_LOGICAL
+            column_width = (float(region["w"]) - 56.0) / 2
+            output: list[str] = []
+            for index, value in enumerate(region.get("content", []), start=1):
+                _badge, text = _structured_list_item(value, index)
+                output.extend(
+                    _wrap_line(text, max(1.0, (column_width - 38.0) / font_size))
+                )
+            return output
         wrapped: list[str] = []
         style = region["style"]
         max_units = max(
             1.0,
-            (float(region["w"]) - 32.0) / max(1.0, float(style["font_size"])),
+            (float(region["w"]) - 32.0)
+            / max(1.0, float(style["font_size"]) * _POINT_TO_LOGICAL),
         )
         for value in _text_lines(region.get("content"), content_type):
             wrapped.extend(_wrap_line(value, max_units))

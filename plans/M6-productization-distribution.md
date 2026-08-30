@@ -37,7 +37,7 @@
 | M6.3 | Plugin Packaging：installable Plugin bundle、schema/skill/workflow packaging、Node sidecar bootstrap/version verification | M6.1–M6.2 | clean install/build/supply-chain tests | complete |
 | M6.4 | Examples & Evaluation：workflow examples、golden/eval corpus、compatibility matrix、release docs | M6.1–M6.3 | executable examples + regression corpus | complete |
 | M6.5 | License & Third-party Policy：project license、dependency/asset/font/model policy、NOTICE/SBOM boundaries | M6.3–M6.4 | package/license audit | complete |
-| M6.6 | v1.0 Preview Hardening & Release Gate：完整 Production Attempt 后的 retrospective Stage AI Review、whole-attempt Review Synthesis/归因、systemic repair promotion、Round A/B、release validator、artifact/package reproducibility、handoff | M6.1–M6.5 | same-case preview regression + abstract-repair audit + Python 3.11 + Node 22 + M2–M5 regression + package/release audit | complete |
+| M6.6 | v1.0 Preview Hardening & Release Gate：完整 Production Attempt 后的 retrospective Stage AI Review、whole-attempt Review Synthesis/归因、systemic repair promotion、Round A/B、release validator、artifact/package reproducibility、handoff | M6.1–M6.5 | same-case preview regression + abstract-repair audit + Python 3.11 + Node 22 + M2–M5 regression + package/release audit | in_progress |
 
 ## 5. M6.1 contract
 
@@ -110,5 +110,6 @@ git diff --check
 - M6.6：Round 4 的五个 systemic candidates 与 Round 5 新归因的 headline closure / planning text-capacity candidates 均完成抽象根修和 unrelated regression；未修改冻结 Source/Brief 或 case-local title。
 - Round 6：`WFR-928E28C10F896F5C` 到达 `DRAFT_RENDERED`，生成 8 页 SVG/PNG/PDF/Native PPTX/Hybrid PPTX；仅在缺少外部 `SemanticReviewProvider` 的声明边界停止。
 - Retrospective：九阶段 SAR 与 `SYN-E17A689D3096E148` 无 Critical/Major systemic candidate；仅保留 case-local Major title identity 与 non-promotable Minor mixed-script wrap。
-- M6 Exit Gate：PASS（2026-08-30）。v1.0 Release Gate：PASS（2026-08-30）。Python 3.11 + Node 22、M2–M5、M6.3–M6.5、可重复 wheel/Plugin 与 Package Audit 全部通过。
+- M6 Exit Gate：REOPENED（2026-08-30）。v1.0 Release Gate：DO NOT RELEASE；Round 7 已生成真实 Office 评审候选，等待用户视觉评审。
+- 相关 ADR：增加 `docs/adr/ADR-0027-office-visual-quality-release-gate.md`。
 - 相关 ADR：`docs/adr/ADR-0021-workflow-productization-boundary.md`、`docs/adr/ADR-0022-workflow-operational-controls.md`、`docs/adr/ADR-0023-plugin-and-renderer-distribution.md`、`docs/adr/ADR-0024-evaluation-and-compatibility-corpus.md`、`docs/adr/ADR-0025-license-rights-and-sbom-boundary.md`。

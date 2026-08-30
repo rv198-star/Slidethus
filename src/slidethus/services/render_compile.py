@@ -49,22 +49,69 @@ def _style_for(
     slide_type: str,
     visual: dict[str, Any],
     font_map: dict[str, str],
+    *,
+    family: str,
+    region_index: int,
 ) -> dict[str, Any]:
     text_style = _text_style_for(block, slide_type, visual)
     role = str(block.get("semantic_role", "body"))
     surface = role in {"body", "evidence", "diagram", "table", "chart", "quote"}
+    colors = visual["colors"]
+    fill = str(colors["surface"]) if surface else None
+    text_color = str(text_style["color"])
+    border_color = str(visual["shape_rules"].get("surface_border", "#D8D2C6")) if surface else None
+    border_width = float(visual["shape_rules"].get("border_width", 1)) if surface else 0
+    if family == "hero":
+        fill = None
+        text_color = str(colors["surface"])
+        border_color = None
+        border_width = 0
+    elif family == "case" and region_index == 1:
+        fill = str(colors["primary"])
+        text_color = str(colors["surface"])
+        border_color = None
+        border_width = 0
+    elif family == "matrix" and str(block.get("content_type")) == "list":
+        fill = str(colors.get("primary_soft", colors["surface"]))
+        border_color = None
+        border_width = 0
+    elif family == "timeline" and surface:
+        fill = str(
+            colors.get(
+                "primary_soft" if region_index % 2 else "accent_soft",
+                colors["surface"],
+            )
+        )
+        border_color = None
+        border_width = 0
+    elif family == "process" and region_index == 1:
+        fill = str(colors["primary"])
+        text_color = str(colors["surface"])
+        border_color = None
+        border_width = 0
+    elif family == "process" and surface:
+        fill = str(colors.get("surface_muted", colors["surface"]))
+        border_color = None
+        border_width = 0
+    font_size = float(text_style["font_size"])
+    if family == "hero" and role == "headline":
+        font_size = max(font_size, 42.0)
+    elif family == "hero" and role == "body":
+        font_size = max(font_size, 22.0)
+    elif family == "case" and region_index == 1:
+        font_size = max(font_size, 24.0)
     return {
         "font_family": font_map.get(
             str(text_style["font_family"]),
             str(text_style["font_family"]),
         ),
-        "font_size": float(text_style["font_size"]),
+        "font_size": font_size,
         "font_weight": int(text_style["font_weight"]),
         "line_height": float(text_style["line_height"]),
-        "color": str(text_style["color"]),
-        "fill": str(visual["colors"]["surface"]) if surface else None,
-        "border_color": str(visual["shape_rules"].get("surface_border", "#D8D2C6")) if surface else None,
-        "border_width": float(visual["shape_rules"].get("border_width", 1)) if surface else 0,
+        "color": text_color,
+        "fill": fill,
+        "border_color": border_color,
+        "border_width": border_width,
     }
 
 
@@ -106,10 +153,44 @@ def _connector_lines(
     slide_id: str,
     regions: list[dict[str, Any]],
     stroke: str,
+    *,
+    family: str,
 ) -> list[dict[str, Any]]:
     candidates = _connector_regions(regions)
     if len(candidates) < 2:
         return []
+    if family == "timeline":
+        candidates = sorted(candidates, key=lambda item: (int(item["z"]), str(item["region_id"])))
+        segments: list[tuple[float, float, float, float]] = []
+        for current, following in zip(candidates, candidates[1:], strict=False):
+            start_x = float(current["x"]) + float(current["w"]) + 2.0
+            start_y = float(current["y"]) + float(current["h"]) / 2
+            end_x = float(following["x"]) - 2.0
+            end_y = float(following["y"]) + float(following["h"]) / 2
+            if end_x <= start_x:
+                continue
+            turn_x = (start_x + end_x) / 2
+            segments.extend(
+                [
+                    (start_x, start_y, turn_x - start_x, 0.0),
+                    (turn_x, min(start_y, end_y), 0.0, abs(end_y - start_y)),
+                    (turn_x, end_y, end_x - turn_x, 0.0),
+                ]
+            )
+        return [
+            {
+                "decoration_id": f"DEC-{slide_id.replace('-', '')}-{index:02d}",
+                "kind": "line",
+                "x": x,
+                "y": y,
+                "w": w,
+                "h": h,
+                "fill": None,
+                "stroke": stroke,
+                "z": 0,
+            }
+            for index, (x, y, w, h) in enumerate(segments, start=2)
+        ]
     rows: list[list[dict[str, Any]]] = []
     for region in candidates:
         matching = next(
@@ -181,34 +262,49 @@ def _decorations(
 ) -> list[dict[str, Any]]:
     accent = str(visual["colors"]["accent"])
     primary = str(visual["colors"]["primary"])
-    output: list[dict[str, Any]] = [
-        {
-            "decoration_id": f"DEC-{slide_id.replace('-', '')}-01",
-            "kind": "rect",
-            "x": 0,
-            "y": 0,
-            "w": 12,
-            "h": 720,
-            "fill": accent,
-            "stroke": None,
-            "z": 0,
-        }
-    ]
+    output: list[dict[str, Any]] = []
     if family == "hero":
+        output.extend(
+            [
+                {
+                    "decoration_id": f"DEC-{slide_id.replace('-', '')}-01",
+                    "kind": "rect",
+                    "x": 0,
+                    "y": 0,
+                    "w": 1280,
+                    "h": 720,
+                    "fill": primary,
+                    "stroke": None,
+                    "z": 0,
+                },
+                {
+                    "decoration_id": f"DEC-{slide_id.replace('-', '')}-02",
+                    "kind": "ellipse",
+                    "x": 1010,
+                    "y": 440,
+                    "w": 420,
+                    "h": 420,
+                    "fill": accent,
+                    "stroke": None,
+                    "z": 0,
+                },
+            ]
+        )
+    else:
         output.append(
             {
-                "decoration_id": f"DEC-{slide_id.replace('-', '')}-02",
-                "kind": "ellipse",
-                "x": 1080,
-                "y": -90,
-                "w": 300,
-                "h": 300,
-                "fill": primary,
+                "decoration_id": f"DEC-{slide_id.replace('-', '')}-01",
+                "kind": "rect",
+                "x": 0,
+                "y": 0,
+                "w": 12,
+                "h": 720,
+                "fill": accent,
                 "stroke": None,
                 "z": 0,
             }
         )
-    elif family == "split":
+    if family == "split":
         output.append(
             {
                 "decoration_id": f"DEC-{slide_id.replace('-', '')}-02",
@@ -222,22 +318,8 @@ def _decorations(
                 "z": 0,
             }
         )
-    elif family == "case":
-        output.append(
-            {
-                "decoration_id": f"DEC-{slide_id.replace('-', '')}-02",
-                "kind": "ellipse",
-                "x": 72,
-                "y": 205,
-                "w": 76,
-                "h": 76,
-                "fill": accent,
-                "stroke": None,
-                "z": 0,
-            }
-        )
     elif family in {"process", "timeline"}:
-        output.extend(_connector_lines(slide_id, regions, primary))
+        output.extend(_connector_lines(slide_id, regions, primary, family=family))
     return output
 
 
@@ -377,6 +459,8 @@ class RenderCompileService:
                     str(outline_slide["slide_type"]),
                     visual,
                     font_map,
+                    family=str(layout["layout_family"]),
+                    region_index=int(region["z"]),
                 )
                 if str(region.get("overflow_strategy")) == "shrink_with_floor":
                     fitted = fitting_font_size(
@@ -389,8 +473,12 @@ class RenderCompileService:
                         line_height=float(style["line_height"]),
                         qualification=block.get("evidence_qualification"),
                     )
-                    if fitted is not None:
-                        style["font_size"] = fitted
+                    if fitted is None:
+                        raise RenderCompileError(
+                            f"Office-conservative text capacity failed for {region['region_id']} "
+                            f"at the approved floor {region.get('min_font_pt', style['font_size'])}pt"
+                        )
+                    style["font_size"] = fitted
                 fonts.add(style["font_family"])
                 block_assets = [str(item) for item in block.get("asset_refs", [])]
                 used_assets.update(block_assets)

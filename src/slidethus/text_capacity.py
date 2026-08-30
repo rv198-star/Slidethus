@@ -4,6 +4,8 @@ import math
 import unicodedata
 from typing import Any
 
+_POINT_TO_LOGICAL = 4.0 / 3.0
+
 
 def visible_text_values(content: Any, content_type: str) -> list[str]:
     """Return independently wrapped text runs visible in one region."""
@@ -42,13 +44,14 @@ def estimated_text_height(
     """Return the deterministic height estimate shared by P5B and P7."""
 
     admitted_size = max(1.0, float(font_size))
-    max_units = max(1.0, (float(width) - 32.0) / admitted_size)
+    logical_size = admitted_size * _POINT_TO_LOGICAL
+    max_units = max(1.0, (float(width) - 32.0) / logical_size)
     lines = sum(
         max(1, math.ceil(glyph_units(value) / max_units))
         for value in visible_text_values(content, content_type)
     )
-    qualification_height = 24.0 if qualification else 0.0
-    return lines * admitted_size * float(line_height) + qualification_height + 24.0
+    qualification_height = 32.0 if qualification else 0.0
+    return lines * logical_size * float(line_height) + qualification_height + 24.0
 
 
 def fitting_font_size(

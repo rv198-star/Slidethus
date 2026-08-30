@@ -81,12 +81,13 @@ function textOptions(region) {
     fontSize: Number(style.font_size),
     bold: Number(style.font_weight) >= 600,
     color: color(style.color),
-    margin: 4,
+    margin: [8, 10, 8, 10],
     breakLine: false,
     valign: region.valign === "middle" ? "mid" : region.valign,
     align: region.align,
     isTextBox: true,
     lineSpacingMultiple: Number(style.line_height),
+    paraSpaceAfterPt: 0,
     transparency: 0,
   };
 }
@@ -96,6 +97,7 @@ function addSurface(slide, pptx, region) {
   if (!style.fill && !style.border_color) {
     return;
   }
+  const isLightSurface = color(style.fill, "FFFFFF") === "FFFFFF";
   slide.addShape(pptx.ShapeType.roundRect, {
     x: x(region.x),
     y: y(region.y),
@@ -111,6 +113,9 @@ function addSurface(slide, pptx, region) {
           width: Math.max(0.25, Number(style.border_width ?? 1)),
         }
       : { color: "FFFFFF", transparency: 100 },
+    shadow: isLightSurface
+      ? { type: "outer", color: "A7B0B8", opacity: 0.13, blur: 1.5, angle: 45, distance: 1 }
+      : undefined,
   });
 }
 
@@ -120,6 +125,7 @@ function addQualification(slide, region, counts) {
   }
   const style = region.style;
   const qualificationHeight = Math.min(0.36, Math.max(0.22, y(region.h) * 0.18));
+  const inverse = color(style.color, "17233C") === "FFFFFF";
   slide.addText(`限定：${region.evidence_qualification}`, {
     x: x(region.x) + 0.12,
     y: y(region.y + region.h) - qualificationHeight - 0.04,
@@ -127,7 +133,8 @@ function addQualification(slide, region, counts) {
     h: qualificationHeight,
     fontFace: style.font_family,
     fontSize: Math.max(9, Math.min(12, Number(style.font_size) * 0.55)),
-    color: "667085",
+    color: inverse ? "FFFFFF" : "667085",
+    transparency: inverse ? 22 : 0,
     italic: true,
     margin: 0,
     breakLine: false,
@@ -135,17 +142,96 @@ function addQualification(slide, region, counts) {
   counts.text += 1;
 }
 
+function numberedListItem(value, fallback) {
+  const text = String(value).trim();
+  const match = text.match(/^(\d{1,2})[.、]\s*(.*)$/u);
+  if (match) {
+    return { badge: match[1], text: match[2] };
+  }
+  return { badge: String(fallback), text };
+}
+
+function addStructuredList(slide, pptx, region, counts) {
+  addSurface(slide, pptx, region);
+  const values = textValues(region.content, region.content_type);
+  const left = x(region.x);
+  const top = y(region.y);
+  const width = x(region.w);
+  const height = y(region.h);
+  const qualificationReserve = region.evidence_qualification ? 0.34 : 0.08;
+  const innerX = left + 0.16;
+  const innerY = top + 0.14;
+  const innerW = Math.max(0.3, width - 0.32);
+  const innerH = Math.max(0.3, height - qualificationReserve - 0.2);
+  const columns = values.length >= 6 && innerW >= 5.4 ? 2 : 1;
+  const firstColumnCount = columns === 2 ? Math.ceil(values.length / 2) : values.length;
+  const secondColumnCount = values.length - firstColumnCount;
+  const columnGap = columns === 2 ? 0.28 : 0;
+  const columnWidth = (innerW - columnGap * (columns - 1)) / columns;
+  const inverse = color(region.style.color, "17233C") === "FFFFFF";
+  const badgeFill = inverse ? "D76745" : "154C5A";
+  const bodySize = Math.min(Number(region.style.font_size), columns === 2 ? 18 : 19);
+  values.forEach((value, index) => {
+    const column = columns === 2 && index >= firstColumnCount ? 1 : 0;
+    const row = column === 0 ? index : index - firstColumnCount;
+    const rowCount = column === 0 ? firstColumnCount : secondColumnCount;
+    const rowHeight = innerH / Math.max(1, rowCount);
+    const itemX = innerX + column * (columnWidth + columnGap);
+    const itemY = innerY + row * rowHeight;
+    const item = numberedListItem(value, index + 1);
+    const badgeSize = Math.min(0.28, Math.max(0.22, rowHeight * 0.32));
+    slide.addShape(pptx.ShapeType.ellipse, {
+      x: itemX,
+      y: itemY + 0.03,
+      w: badgeSize,
+      h: badgeSize,
+      fill: { color: badgeFill },
+      line: { color: badgeFill, transparency: 100 },
+    });
+    slide.addText(item.badge, {
+      x: itemX,
+      y: itemY + 0.03,
+      w: badgeSize,
+      h: badgeSize,
+      fontFace: region.style.font_family,
+      fontSize: 9,
+      bold: true,
+      color: "FFFFFF",
+      align: "center",
+      valign: "mid",
+      margin: 0,
+    });
+    slide.addText(item.text, {
+      x: itemX + badgeSize + 0.10,
+      y: itemY,
+      w: Math.max(0.25, columnWidth - badgeSize - 0.10),
+      h: Math.max(0.26, rowHeight - 0.03),
+      fontFace: region.style.font_family,
+      fontSize: bodySize,
+      color: color(region.style.color),
+      bold: false,
+      margin: 0,
+      valign: "top",
+      lineSpacingMultiple: 1.08,
+      breakLine: false,
+    });
+    counts.shape += 1;
+    counts.text += 2;
+  });
+  addQualification(slide, region, counts);
+}
+
 function addText(slide, region, counts) {
+  if (region.content_type === "list" && Array.isArray(region.content)) {
+    addStructuredList(slide, slide._slidethusPptx, region, counts);
+    return;
+  }
   addSurface(slide, slide._slidethusPptx, region);
   const values = textValues(region.content, region.content_type);
-  const separator = region.content_type === "list" ? "\n• " : "\n";
-  const rendered =
-    region.content_type === "list" && values.length > 0
-      ? `• ${values.join(separator)}`
-      : values.join(separator);
+  const rendered = values.join("\n");
   const options = textOptions(region);
   if (region.evidence_qualification) {
-    options.h = Math.max(0.2, options.h - 0.34);
+    options.h = Math.max(0.2, options.h - 0.42);
   }
   slide.addText(rendered, options);
   counts.text += 1;
@@ -557,6 +643,7 @@ async function main() {
         addRegion(slide, pptx, object.item, mode, assetMap, counts);
       }
     }
+    const inverseFooter = slideIr.layout_family === "hero";
     slide.addText(`${slideIr.slide_id} · ${slideIr.ordinal}`, {
       x: 11.9,
       y: 7.16,
@@ -564,7 +651,8 @@ async function main() {
       h: 0.16,
       fontFace: ir.fonts[0] ?? "Arial",
       fontSize: 8,
-      color: "667085",
+      color: inverseFooter ? "FFFFFF" : "667085",
+      transparency: inverseFooter ? 20 : 0,
       align: "right",
       margin: 0,
     });

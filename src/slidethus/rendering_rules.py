@@ -3,14 +3,91 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from slidethus.art_direction import art_direction_packet_validator
+from slidethus.io_utils import read_json, sha256_json
 from slidethus.render_manifest import production_render_manifest_reference_errors
 from slidethus.schema_registry import SchemaRegistry
+
+
+def _art_direction_reasons(
+    workspace: Path,
+    state: dict[str, Any],
+    visual_system: dict[str, Any],
+) -> tuple[str, ...]:
+    reference = visual_system.get("art_direction")
+    if not isinstance(reference, dict):
+        return ("visual system lacks a frozen Art Direction Packet reference",)
+    raw_path = str(reference.get("path", ""))
+    relative = Path(raw_path)
+    if relative.is_absolute() or ".." in relative.parts:
+        return ("visual system contains an unsafe Art Direction Packet path",)
+    root = workspace.resolve()
+    packet_path = (root / relative).resolve()
+    if packet_path != root and root not in packet_path.parents:
+        return ("visual system Art Direction Packet path escapes the workspace",)
+    if not packet_path.is_file():
+        return ("visual system Art Direction Packet is missing",)
+    try:
+        packet = read_json(packet_path)
+    except Exception as exc:  # noqa: BLE001
+        return (f"visual system Art Direction Packet cannot be read: {exc}",)
+    reasons: list[str] = []
+    actual_hash = f"sha256:{sha256_json(packet)}"
+    if actual_hash != reference.get("content_hash"):
+        reasons.append("visual system Art Direction Packet content hash mismatch")
+    if packet.get("packet_id") != reference.get("packet_id"):
+        reasons.append("visual system Art Direction Packet identity mismatch")
+    packet_provider = packet.get("provider", {})
+    packet_provider_ref = {
+        key: packet_provider.get(key)
+        for key in ("name", "version", "mode")
+    }
+    if packet_provider_ref != reference.get("provider"):
+        reasons.append("visual system Art Direction provider identity mismatch")
+    schema_errors = sorted(
+        art_direction_packet_validator().iter_errors(packet),
+        key=lambda item: list(item.absolute_path),
+    )
+    if schema_errors:
+        reasons.append("visual system Art Direction Packet is schema-invalid")
+        return tuple(reasons)
+    expected_types = {
+        "project_brief",
+        "deck_outline",
+        "slide_specs",
+        "layout_plans",
+        "asset_manifest",
+    }
+    packet_refs = {
+        str(item.get("artifact_type")): item
+        for item in packet.get("input_lineage", [])
+        if isinstance(item, dict)
+    }
+    entries = {
+        str(item.get("artifact_type")): item
+        for item in state.get("artifacts", [])
+    }
+    if set(packet_refs) != expected_types:
+        reasons.append("Art Direction Packet does not bind the complete P6 input set")
+        return tuple(reasons)
+    for artifact_type in sorted(expected_types):
+        entry = entries.get(artifact_type)
+        packet_ref = packet_refs[artifact_type]
+        if entry is None:
+            reasons.append(f"Art Direction Packet input is missing: {artifact_type}")
+            continue
+        if int(packet_ref.get("version", 0)) != int(entry.get("version", -1)):
+            reasons.append(f"Art Direction Packet is stale for {artifact_type}")
+        elif str(packet_ref.get("content_hash")) != str(entry.get("content_hash")):
+            reasons.append(f"Art Direction Packet content hash is stale for {artifact_type}")
+    return tuple(reasons)
 
 
 def visual_system_gate_reasons(
     *,
     state: dict[str, Any],
     visual_system: dict[str, Any] | None,
+    workspace: Path | None = None,
 ) -> tuple[str, ...]:
     """Return G6 reasons for a current Production visual-system artifact."""
 
@@ -56,6 +133,8 @@ def visual_system_gate_reasons(
             continue
         if str(ref.get("content_hash")) != str(entry.get("content_hash")):
             reasons.append(f"visual system content hash is stale for {artifact_type}")
+    if workspace is not None:
+        reasons.extend(_art_direction_reasons(workspace, state, visual_system))
     return tuple(reasons)
 
 

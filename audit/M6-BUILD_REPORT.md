@@ -4,11 +4,11 @@ Date: 2026-08-30
 
 ## Outcome
 
-M6 Exit Gate: PASS
+M6 Exit Gate: REOPENED
 
-v1.0 Release Gate: PASS
+v1.0 Release Gate: DO NOT RELEASE — pending user visual review
 
-Slidethus v1.0.0 completes M6.1–M6.6 as a provider-neutral Agentic Skill and deterministic runtime/distribution boundary. The release decision follows a same-case Preview Attempt, nine retrospective Stage AI Reviews, whole-attempt synthesis, abstract root fixes, repository-wide regressions, and reproducible release artifact checks.
+The PASS recorded by the original report is revoked. Real Office inspection later exposed Major P5A/P5B/P6/P7 defects that the Round 6 evidence did not detect. See `audit/M6.6-round-7-office-visual-reopen.md`.
 
 ## Formal environment
 
@@ -55,4 +55,4 @@ v1.0 provides real deterministic ingestion/evidence/planning baseline, page plan
 
 ## Stable point
 
-M0–M6 are frozen at the v1.0 Release Gate. Further work should add provider adapters and independent evaluation through the existing protocols, or address evidence-backed defects without reopening milestone truth boundaries.
+M0–M5 and M6.1–M6.5 remain frozen. M6.6 is reopened until the Round 7 Office candidate receives user visual approval.

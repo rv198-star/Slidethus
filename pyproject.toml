@@ -65,6 +65,11 @@ slidethus = ["_schemas/*.json"]
   ".agents/skills/slidethus/workflows/rebuild-deck.md",
   ".agents/skills/slidethus/workflows/revise-slide.md",
 ]
+"share/slidethus/skill/providers/art-direction/taste" = [
+  ".agents/skills/slidethus/providers/art-direction/taste/SKILL.md",
+  ".agents/skills/slidethus/providers/art-direction/taste/LICENSE",
+  ".agents/skills/slidethus/providers/art-direction/taste/PROVENANCE.json",
+]
 "share/slidethus/renderer" = [
   "renderers/pptxgenjs/README.md",
   "renderers/pptxgenjs/package.json",

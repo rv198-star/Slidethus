@@ -73,6 +73,8 @@ def evaluate_m6_5(root: Path) -> tuple[Check, ...]:
         and "MPL-2.0" in third
         and "python-pptx" in third
         and "prepared renderer cache" in third
+        and "Taste Skill" in third
+        and "ccbc15639c97057cbfcf32ecebc38ef716e4bb37" in third
     )
     checks.append(
         Check(

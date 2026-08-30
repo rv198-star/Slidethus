@@ -38,7 +38,7 @@ stateDiagram-v2
 | P4 Outline | 每一页承担什么任务 | Narrative | Deck Outline | G4 Outline |
 | P5A Slide Specs | 每页讲什么 | Outline、Evidence | Slide Specs | G5A Specs |
 | P5B Layout | 每页如何组织 | Slide Specs | Layout Plans、wireframes | G5B Layout |
-| P6 Visual | 整套视觉规则是什么 | Brief、参考、Layout | Visual System | G6 Visual |
+| P6 Visual | 整套视觉规则是什么 | Brief、参考、Layout、Assets | immutable Art Direction Packet、Visual System | G6 Visual |
 | P7 Render | 如何变成目标文件 | Specs、Layout、Visual | Render Manifest、draft | G7 Render |
 | P8 Review | 具体哪里有问题 | draft、所有 artifacts | Quality Report、repair plan | G8 Review |
 | P9 Delivery | 交付是否完整 | approved draft | Delivery Manifest | G9 Delivery |

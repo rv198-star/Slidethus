@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 import copy
-import re
 from pathlib import Path
 from typing import Any
 
+from slidethus.art_direction import compile_art_direction
 from slidethus.artifact_runtime import ArtifactRuntime
 from slidethus.constants import SCHEMA_VERSION
 from slidethus.errors import ArtifactError
 from slidethus.gates import evaluate_gate
+from slidethus.io_utils import read_json
+from slidethus.protocols import ArtDirectionProvider
 
 _ENGINE = "deterministic-visual-system"
-_ENGINE_VERSION = "1.0.0"
-_HEX = re.compile(r"#[0-9A-Fa-f]{6}\b")
+_ENGINE_VERSION = "1.1.0"
 
 
 def _artifact_ref(snapshot: dict[str, Any], artifact_type: str) -> dict[str, Any]:
@@ -21,14 +22,6 @@ def _artifact_ref(snapshot: dict[str, Any], artifact_type: str) -> dict[str, Any
         "version": int(snapshot["version"]),
         "content_hash": str(snapshot["content_hash"]),
     }
-
-
-def _pick_brand_color(requirements: list[str]) -> str | None:
-    for requirement in requirements:
-        match = _HEX.search(str(requirement))
-        if match:
-            return match.group(0).upper()
-    return None
 
 
 def _generated_at(runtime: ArtifactRuntime, artifact_types: set[str]) -> str:
@@ -43,9 +36,16 @@ def _generated_at(runtime: ArtifactRuntime, artifact_types: set[str]) -> str:
 class VisualSystemService:
     """Compile a deterministic Production visual system from frozen M3 planning artifacts."""
 
-    def __init__(self, workspace: Path, *, runtime: ArtifactRuntime | None = None) -> None:
+    def __init__(
+        self,
+        workspace: Path,
+        *,
+        runtime: ArtifactRuntime | None = None,
+        art_direction_provider: ArtDirectionProvider | None = None,
+    ) -> None:
         self.workspace = workspace.resolve()
         self.runtime = runtime or ArtifactRuntime(self.workspace)
+        self.art_direction_provider = art_direction_provider
 
     def compile(self) -> dict[str, Any]:
         """Create or reuse the current visual-system artifact without changing M3 semantics."""
@@ -60,20 +60,23 @@ class VisualSystemService:
         outline = graph["deck_outline"]["data"]
         layouts = graph["layout_plans"]["data"]
         assets = graph["asset_manifest"]["data"]
-        language = str(brief.get("language", "en")).lower()
-        brand_requirements = [str(item) for item in brief.get("constraints", {}).get("brand_requirements", [])]
-        primary = _pick_brand_color(brand_requirements) or "#154C5A"
-        accent = "#D76745"
-        background = "#F7F4ED"
-        surface = "#FFFFFF"
-        text_primary = "#17233C"
-        text_secondary = "#667085"
-        if language.startswith("zh"):
-            preferred_font = "Noto Sans CJK SC"
-            fallbacks = ["Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Arial Unicode MS"]
-        else:
-            preferred_font = "Aptos"
-            fallbacks = ["Arial", "Helvetica", "Liberation Sans", "Noto Sans"]
+        compiled_direction = compile_art_direction(
+            graph,
+            provider=self.art_direction_provider,
+            schema_registry=self.runtime.registry,
+        )
+        direction = compiled_direction.packet["direction"]
+        palette = direction["palette"]
+        typography = direction["typography"]
+        composition = direction["composition"]
+        primary = str(palette["primary"])
+        accent = str(palette["accent"])
+        background = str(palette["background"])
+        surface = str(palette["surface"])
+        text_primary = str(palette["text_primary"])
+        text_secondary = str(palette["text_secondary"])
+        preferred_font = str(typography["preferred_font"])
+        fallbacks = [str(item) for item in typography["fallbacks"]]
         page_types = {
             str(item.get("slide_type"))
             for item in outline.get("slides", [])
@@ -100,8 +103,8 @@ class VisualSystemService:
             "schema_version": SCHEMA_VERSION,
             "project_id": str(brief["project_id"]),
             "deck_id": str(outline["deck_id"]),
-            "theme_id": "THEME-PRODUCTION-EDITORIAL",
-            "tone": ["editorial", "clear", "professional", "restrained"],
+            "theme_id": str(direction["theme_id"]),
+            "tone": [str(item) for item in direction["tone"]],
             "canvas": {
                 "background": background,
                 "aspect_ratio": str(brief.get("constraints", {}).get("aspect_ratio", "16:9")),
@@ -113,11 +116,14 @@ class VisualSystemService:
                 "text_secondary": text_secondary,
                 "primary": primary,
                 "accent": accent,
+                "surface_muted": str(palette["surface_muted"]),
+                "primary_soft": str(palette["primary_soft"]),
+                "accent_soft": str(palette["accent_soft"]),
             },
             "typography": {
                 "display": {
                     "font_family": preferred_font,
-                    "font_size": 40,
+                    "font_size": float(typography["display_size"]),
                     "font_weight": 700,
                     "line_height": 1.12,
                     "color": text_primary,
@@ -125,7 +131,7 @@ class VisualSystemService:
                 },
                 "title": {
                     "font_family": preferred_font,
-                    "font_size": 30,
+                    "font_size": float(typography["title_size"]),
                     "font_weight": 700,
                     "line_height": 1.18,
                     "color": text_primary,
@@ -133,7 +139,7 @@ class VisualSystemService:
                 },
                 "body": {
                     "font_family": preferred_font,
-                    "font_size": 20,
+                    "font_size": float(typography["body_size"]),
                     "font_weight": 400,
                     "line_height": 1.28,
                     "color": text_primary,
@@ -141,7 +147,7 @@ class VisualSystemService:
                 },
                 "caption": {
                     "font_family": preferred_font,
-                    "font_size": 12,
+                    "font_size": float(typography["caption_size"]),
                     "font_weight": 400,
                     "line_height": 1.2,
                     "color": text_secondary,
@@ -150,16 +156,20 @@ class VisualSystemService:
             },
             "spacing": {
                 "base": 8,
-                "region_gap": max(20, float(layouts.get("safe_area", {}).get("left", 56)) / 2),
+                "region_gap": float(composition["region_gap"]),
                 "safe_area": copy.deepcopy(layouts["safe_area"]),
             },
             "shape_rules": {
-                "corner_radius": 12,
+                "corner_radius": float(composition["corner_radius"]),
                 "border_width": 1,
                 "surface_border": "#D8D2C6",
                 "accent_bar": "left",
                 "section_marker": "ordinal",
                 "page_types": sorted(page_types),
+                "page_role_treatments": copy.deepcopy(composition["page_role_treatments"]),
+                "component_variants": list(composition["component_variants"]),
+                "deck_rhythm": str(composition["deck_rhythm"]),
+                "variation_rule": str(composition["variation_rule"]),
             },
             "chart_rules": {
                 "axis_color": text_secondary,
@@ -169,9 +179,11 @@ class VisualSystemService:
                 "minimum_label_pt": 12,
             },
             "image_rules": {
-                "fit": "cover",
+                "fit": str(direction["image_direction"]["fit"]),
                 "corner_radius": 10,
-                "missing_asset": "fail",
+                "missing_asset": str(direction["image_direction"]["missing_asset"]),
+                "style": str(direction["image_direction"]["style"]),
+                "prompt_keywords": list(direction["image_direction"].get("prompt_keywords", [])),
             },
             "icon_rules": {
                 "style": "geometric",
@@ -179,18 +191,23 @@ class VisualSystemService:
                 "color": primary,
             },
             "layout_policy": {
-                "max_same_family_consecutive": 3,
-                "max_bento_ratio": 0.35,
-                "min_gap": 20,
+                "max_same_family_consecutive": int(composition["max_same_family_consecutive"]),
+                "max_bento_ratio": float(composition["max_bento_ratio"]),
+                "min_gap": float(composition["min_gap"]),
             },
-            "forbidden_patterns": [
-                "bento-as-default",
-                "body-text-below-planning-floor",
-                "unmanifested-external-asset",
-                "global-font-shrink-to-hide-overflow",
-            ],
+            "forbidden_patterns": list(direction["forbidden_patterns"]),
             "font_fallbacks": {preferred_font: fallbacks},
             "brand_assets": brand_assets,
+            "art_direction": {
+                "packet_id": str(compiled_direction.packet["packet_id"]),
+                "path": compiled_direction.relative_path.as_posix(),
+                "content_hash": compiled_direction.content_hash,
+                "provider": {
+                    "name": str(compiled_direction.packet["provider"]["name"]),
+                    "version": str(compiled_direction.packet["provider"]["version"]),
+                    "mode": str(compiled_direction.packet["provider"]["mode"]),
+                },
+            },
             "render_lineage": {
                 "engine": _ENGINE,
                 "engine_version": _ENGINE_VERSION,
@@ -206,12 +223,19 @@ class VisualSystemService:
         except ArtifactError:
             current = None
             version = 0
-        if current == candidate:
+        fact_path = self.workspace / compiled_direction.relative_path
+        if current == candidate and fact_path.is_file():
+            if read_json(fact_path) != compiled_direction.packet:
+                raise ArtifactError(
+                    f"Immutable Art Direction Packet contains different content: {fact_path}"
+                )
             return copy.deepcopy(candidate)
-        self.runtime.write_artifact(
+        self.runtime.write_artifact_with_runtime_fact(
             "visual_system",
             candidate,
             expected_version=version,
+            fact_path=fact_path,
+            fact_data=compiled_direction.packet,
             status="approved",
             created_by="visual-system-service",
         )

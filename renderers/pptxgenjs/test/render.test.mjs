@@ -176,3 +176,32 @@ test("native backend renders a diagram as editable shapes without embedded media
   );
   assert.equal(media.length, 0);
 });
+
+test("high-cardinality lists render as editable numbered visual units", async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "slidethus-list-"));
+  const ir = fixture(false);
+  ir.slides[0].layout_family = "process";
+  ir.slides[0].regions = [
+    region(
+      1,
+      "list",
+      [
+        "Data foundation",
+        "Knowledge layer",
+        "Process controls",
+        "Policy rules",
+        "Tool access",
+        "Permissions",
+        "Evaluation standard",
+      ],
+      [120, 120, 1040, 480],
+      { style: style({ fill: "#E8EFEE" }) },
+    ),
+  ];
+  const rendered = await runRenderer(directory, "native", ir);
+
+  assert.ok(rendered.report.object_counts.shape >= 8);
+  assert.ok(rendered.report.object_counts.text >= 15);
+  const slideXml = await rendered.zip.file("ppt/slides/slide1.xml").async("string");
+  assert.match(slideXml, /Evaluation standard/);
+});

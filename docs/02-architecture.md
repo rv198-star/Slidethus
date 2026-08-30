@@ -142,6 +142,7 @@ External adapters implement protocols
 │   ├── transactions/
 │   ├── history/
 │   ├── research/runs/
+│   ├── art-direction/packets/
 │   ├── cache/ingestion/
 │   └── cache/research/
 ├── cache/
@@ -163,7 +164,9 @@ flowchart LR
     O -. outline-driven evidence gap .-> E
     O --> SP[Slide Specs]
     SP --> LP[Layout Plans]
-    B --> VS[Visual System]
+    B --> AD[Art Direction Packet]
+    LP --> AD
+    AD --> VS[Visual System]
     LP --> RM[Render Manifest]
     VS --> RM
     RM --> QR[Quality Report]
@@ -186,6 +189,7 @@ flowchart LR
 - `ReasoningProvider`
 - `AssetProvider`
 - `ChartProvider`
+- `ArtDirectionProvider`
 - `RenderBackend`
 - `DocumentRenderer`
 - `VisualReviewProvider`
@@ -338,6 +342,8 @@ M3ApplicationService
 - M3 CLI 不内置模型 SDK 或在线 ResearchProvider。内置 deterministic provider 是真实 contract baseline，不声称通用 LLM 叙事能力。
 
 详细决策见 ADR-0015、ADR-0016、ADR-0017、ADR-0018。
+
+P6 的 `ArtDirectionProvider` 只提交受限视觉方向 proposal。确定性核心将其绑定 Brief、Outline、Slide Specs、Layout Plans、Asset Manifest，校验后冻结为 `.slidethus/art-direction/packets/<sha256>.json`。Visual System 引用 Packet；renderer 不感知 provider。默认 adapter 使用随包分发、固定 commit 与 MIT provenance 的 Taste Skill，也可被人工、企业设计系统或其他 provider 替换。详见 ADR-0028。
 
 ### 7.7 M5 Independent Review / Repair 边界
 

@@ -1,4 +1,4 @@
-# Slidethus v1.0.0 — Evidence-backed Presentation Engineering
+# Slidethus v1.0.0 Release Candidate — Evidence-backed Presentation Engineering
 
 > 面向通用 Agentic Host 的 **Agentic Presentation Engineering Skill**：从本地文本依次产出策划稿、布局诊断、调试稿、设计稿和最终可编辑 PPTX。
 
@@ -30,6 +30,7 @@ Slidethus 不是“输入标题后套模板”的 PPT 生成器，而是一套�
 - M2.7 repository-wide deterministic Exit validator、跨模块对抗审计、双 Python 基线与持久 Package Gate；
 - M3.1 Project Brief 智能补全、最少提问、显式 assumptions/questions 和 `m3 answer` 恢复；
 - M3.2–M3.5 provider-neutral Production Narrative、stable digital sticky-note Outline、Evidence-qualified Slide Specs、Layout Plans 与 immutable wireframes；
+- P6 provider-neutral `ArtDirectionPacket`、内置固定版本 Taste 默认 provider、不可变 hash/lineage 与可替换 adapter；
 - M3.6 Planning Review：密度、重复、节奏、过渡、容量、Bento 过度使用和 current-lineage 审计；
 - M3.6 bounded local Repair、Planning Change/Review/Repair Reports、最小依赖传播和失败检查点；
 - M3.7 单一 `M3ApplicationService`、`m3 run/list/show/gate`、repository Exit validator 与 M4 handoff；
@@ -46,9 +47,9 @@ Slidethus 不是“输入标题后套模板”的 PPT 生成器，而是一套�
 
 ## 这不是什么
 
-Slidethus v1.0 是 provider-neutral 的工程 Skill 与可验证 runtime/distribution boundary；它不是生产级端到端 PPT 产品（此处特指内置全部搜索、模型、图像和审阅供应商的一体化产品）。外部能力缺失时必须显式降级或阻断。
+Slidethus v1.0 是 provider-neutral 的工程 Skill 与可验证 runtime/distribution boundary；它不是生产级端到端 PPT 产品（此处特指内置全部搜索、模型、图像和审阅供应商的一体化产品）。外部能力缺失时必须显式降级或阻断。当前 M6.6 已因真实 Office 视觉证据重开，尚未完成，不声明 v1.0 发布就绪。
 
-当前包已经完成 **M0 Foundation Contract**、**M1 Artifact Runtime**、**MVP0 Planning Proof**、跨 M2–M5 的 **MVP1 完整动作链**、**M2 Production Source/Research/Evidence Boundary**、**M3 Narrative/Planning Production Boundary**、**M4 Production Rendering Boundary**、**M5 Production Review and Repair Boundary**，以及 M6.1–M6.6 的多工作流、运行控制、Plugin 分发、评测/兼容矩阵、许可证/SBOM 和 Preview Hardening。**M2 Exit Gate：PASS（2026-08-27）。M3 Exit Gate：PASS（2026-08-27）。M4 Exit Gate：PASS（2026-08-28）。M5 Exit Gate：PASS（2026-08-29）。M6 Exit Gate：PASS（2026-08-30）。v1.0 Release Gate：PASS（2026-08-30）。** Round 6 使用完全相同的 Source/Brief 生成了真实 8 页 SVG/PNG/PDF/Native PPTX/Hybrid PPTX，并在 Attempt 终止后完成九阶段 retrospective Review + whole-attempt Synthesis；无 Critical、无 Major systemic candidate。以下能力仍属于外部适配或显式 capability boundary：
+当前包已经完成 M0–M5 与 M6.1–M6.5。**M2 Exit Gate：PASS（2026-08-27）。M3 Exit Gate：PASS（2026-08-27）。M4 Exit Gate：PASS（2026-08-28）。M5 Exit Gate：PASS（2026-08-29）。M6 Exit Gate：REOPENED（2026-08-30）。v1.0 Release Gate：DO NOT RELEASE，等待用户对真实 Office PPTX 的视觉评审。** Round 7 已对 P5A/P5B/P6/P7 系统性缺陷完成根修并生成新的 8 页评审候选；历史 Round 6 PASS 已撤回。以下能力仍属于外部适配或显式 capability boundary：
 
 - 内置搜索供应商、LLM/图片生成服务的真实适配；
 - OCR、图片语义理解、音视频解释、公式计算和旧版 OLE/宏文件解析；
@@ -327,7 +328,7 @@ audit/                      本包审计记录与完整性清单
 ## 版本定位
 
 - 包版本：`1.0.0`
-- 成熟度：v1.0 Release（M2–M6 Exit PASS；same-case Preview hardening 已收敛；可重复 wheel/Plugin 与 package/license/SBOM Gate 通过）
+- 成熟度：v1.0 Release Candidate（M6.6 / Release Gate 重开，等待真实 Office 视觉评审）
 - 默认语言：中文
 - 逻辑画布：`1280 × 720`
 - 推荐最终渲染：Hybrid（原生文本/形状 + SVG/图片复杂视觉）
@@ -335,4 +336,4 @@ audit/                      本包审计记录与完整性清单
 
 ## 下一步
 
-下一步保持 v1.0 的既有 artifacts/protocols 和 provider-neutral boundary，优先补充真实搜索、Planning、SemanticReviewProvider、VisualReviewProvider 与图像生成适配器的独立评测。不要把外部模型能力伪装成内置能力，也不要把产品化状态反向侵入 Evidence、Planning、Renderer 或 Review 的事实边界。
+下一步先完成 Round 7 用户视觉评审与 Release 决定；在此之前保持 `DO NOT RELEASE`。随后再补充真实搜索、Planning、SemanticReviewProvider、VisualReviewProvider 与图像生成适配器的独立评测。

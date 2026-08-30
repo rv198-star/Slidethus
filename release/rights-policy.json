@@ -40,6 +40,15 @@
       "release_default": "rights_review"
     }
   ],
+  "included_third_party": [
+    {
+      "scope": ".agents/skills/slidethus/providers/art-direction/taste/",
+      "component": "Taste Skill (design-taste-frontend)",
+      "license": "MIT",
+      "source": "https://github.com/Leonxlnx/taste-skill",
+      "release_default": "include_with_notice"
+    }
+  ],
   "default_release_excludes": [
     "source_material/",
     "node_modules/",

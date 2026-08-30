@@ -26,6 +26,7 @@ For Skill behavior, also read `.agents/skills/slidethus/SKILL.md` and only the r
 - Keep semantic artifacts independent from render backends.
 - Never pass long unstructured prose between phases when a schema-backed artifact exists.
 - Do not skip the page-planning layer between content and final design.
+- When PPTX is a delivery target, a release decision requires inspection of the real Office-rendered pages. SVG/IR structure, successful export, or object counts do not substitute for visual approval; visible overflow, collision, monotonous composition, or missing hierarchy is release-blocking.
 - Treat Bento Grid as one layout family, not a universal default.
 - Keep model, search, image, chart, and render providers replaceable behind protocols.
 - Never invent citations, evidence, source locations, or completed capabilities.
@@ -70,12 +71,16 @@ A change is done only when:
 - failure and degraded paths are covered;
 - the diff has been reviewed for factual, architectural, and regression risks;
 - no major or critical known issue is hidden behind a score.
+- the actual deliverable has been visually reviewed in its target renderer, not only validated structurally.
 
 ## Work discipline
 
 - Start complex work with an execution plan based on `PLANS.md`.
 - Make small coherent changes and keep the tree runnable.
 - Record decisions, assumptions, and remaining risks.
+- When a deck is visually complete but still below the requested aesthetic bar, allow an explicitly isolated art-direction lab before further PPTX iteration. The lab may use a native visual medium such as HTML/CSS plus generated assets, but it must not update project state, satisfy gates, or count as release evidence.
+- Call an artifact "Taste-generated" only when Taste drives a native visual prototype. Applying Taste rules directly while authoring PowerPoint is "Taste-informed" and must not be represented as the same thing.
+- After a lab direction is approved, translate its palette, typography, spatial rhythm, imagery, and composition grammar back into the formal page-planning and design artifacts, then rebuild and inspect the real Office-rendered PPTX.
 - Do not mark roadmap tasks complete because only interfaces or placeholders exist.
 - Do not call a workflow an MVP unless every claimed action has a distinct, inspectable output and acceptance check. Serializing a planning artifact into another file format is not a new completed stage.
 - When the user corrects a recurring project rule, update this file or the closest applicable nested `AGENTS.md`.

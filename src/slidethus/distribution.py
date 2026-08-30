@@ -32,6 +32,7 @@ _RENDERER_DEPENDENCIES = {
     "pptxgenjs": "4.0.1",
 }
 _FIXED_ZIP_TIME = (1980, 1, 1, 0, 0, 0)
+_TASTE_SKILL_PATH = Path("providers/art-direction/taste/SKILL.md")
 
 
 class DistributionError(SlidethusError):
@@ -79,6 +80,38 @@ def skill_source_root() -> Path:
     if not (root / "SKILL.md").is_file():
         raise DistributionError(f"Slidethus Skill assets are unavailable: {root}")
     return root
+
+
+def taste_skill_identity(source_root: Path | None = None) -> dict[str, Any]:
+    """Return and verify the bundled default art-direction provider identity."""
+
+    root = (source_root or skill_source_root()).resolve()
+    skill_path = root / _TASTE_SKILL_PATH
+    provenance_path = skill_path.parent / "PROVENANCE.json"
+    license_path = skill_path.parent / "LICENSE"
+    missing = [
+        path.relative_to(root).as_posix()
+        for path in (skill_path, provenance_path, license_path)
+        if not path.is_file()
+    ]
+    if missing:
+        raise DistributionError("Bundled Taste Skill is incomplete: " + ", ".join(missing))
+    provenance = read_json(provenance_path)
+    skill_sha = sha256_file(skill_path)
+    license_sha = sha256_file(license_path)
+    if provenance.get("files", {}).get("SKILL.md") != f"sha256:{skill_sha}":
+        raise DistributionError("Bundled Taste Skill hash does not match provenance")
+    if provenance.get("files", {}).get("LICENSE") != f"sha256:{license_sha}":
+        raise DistributionError("Bundled Taste License hash does not match provenance")
+    if provenance.get("license") != "MIT":
+        raise DistributionError("Bundled Taste Skill must preserve its MIT license")
+    return {
+        "provider": "taste-skill",
+        "version": str(provenance.get("upstream_commit", "")),
+        "sha256": skill_sha,
+        "license": "MIT",
+        "path": _TASTE_SKILL_PATH.as_posix(),
+    }
 
 
 def renderer_source_root() -> Path:
@@ -454,6 +487,7 @@ def build_plugin_bundle(output_path: Path) -> PluginBundleResult:
     """Build one deterministic Plugin zip from canonical/installed distribution assets."""
 
     skill = skill_source_root()
+    taste = taste_skill_identity(skill)
     renderer = renderer_source_root()
     schemas = SchemaRegistry().schema_dir
     files: dict[str, bytes] = {}
@@ -478,6 +512,8 @@ def build_plugin_bundle(output_path: Path) -> PluginBundleResult:
             "node": ">=20",
             "renderer_lock_sha256": renderer_lock_sha256(renderer),
             "renderer_source_sha256": renderer_source_sha256(renderer),
+            "default_art_direction_provider": taste["provider"],
+            "art_direction_provider_sha256": taste["sha256"],
         },
         "files": [
             {"path": name, "sha256": hashlib.sha256(payload).hexdigest()}
@@ -509,11 +545,13 @@ def build_plugin_bundle(output_path: Path) -> PluginBundleResult:
 
 def distribution_status() -> dict[str, Any]:
     skill = skill_source_root()
+    taste = taste_skill_identity(skill)
     renderer = renderer_source_root()
     prepared = prepared_renderer_root()
     return {
         "version": __version__,
         "skill_root": str(skill),
+        "default_art_direction_provider": taste,
         "renderer_source_root": str(renderer),
         "renderer_lock_sha256": renderer_lock_sha256(renderer),
         "renderer_source_sha256": renderer_source_sha256(renderer),

@@ -1,0 +1,15 @@
+{
+  "schema_version": "0.1.0",
+  "component": "taste-skill",
+  "install_name": "design-taste-frontend",
+  "upstream_url": "https://github.com/Leonxlnx/taste-skill",
+  "upstream_commit": "ccbc15639c97057cbfcf32ecebc38ef716e4bb37",
+  "upstream_track": "v2-experimental",
+  "license": "MIT",
+  "copyright": "Copyright (c) 2026 Leonxlnx",
+  "files": {
+    "SKILL.md": "sha256:aa194351b246b8b4799099d4ed7b033d29eab6e6e3d58d8d2172978be7b3ec89",
+    "LICENSE": "sha256:4575a543ab88dad12ccea7d97e563d0bce5b448b06072e65d3264497dad326df"
+  },
+  "adaptation_boundary": "Vendored verbatim. Slidethus slide-specific translation lives in Apache-2.0 provider code and does not modify this upstream copy."
+}

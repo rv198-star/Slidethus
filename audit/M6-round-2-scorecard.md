@@ -2,9 +2,11 @@
 
 Date: 2026-08-30
 
+Historical decision: REVOKED by later Office visual evidence
+
 Critical open issues: 0
 
-Major systemic open issues: 0
+Major systemic open issues at the time: 0; later Round 7 synthesis found 4
 
 Case-local Major observations: 1
 
@@ -33,8 +35,8 @@ Minor systemic observations: 1, not promotion-eligible
 
 ## Gate decision
 
-M6 Exit Gate: PASS
+M6 Exit Gate: REOPENED
 
-v1.0 Release Gate: PASS
+v1.0 Release Gate: DO NOT RELEASE
 
 The PASS is a repository/distribution readiness decision, not a claim that Slidethus embeds search, general Planning intelligence, semantic review, visual review, or image-generation providers. Missing providers must continue to produce explicit capability facts and must never be represented as completed review.

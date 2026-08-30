@@ -175,6 +175,8 @@ Quality Report 可以用于前置规划审计，但最终 P8 Review 必须生成
 
 页面职责/节奏问题回 P4，内容容量问题回 P5A，空间关系问题回 P5B，视觉 token 问题才回 P6；不能只换皮肤。
 
+P6 还必须校验 Art Direction Packet 的存在性、schema、内容 hash、provider identity 与完整输入 lineage。默认 Taste provider 的 Skill 文件 hash 或 MIT provenance 漂移属于 release-blocking capability/rights defect。Packet 只提高视觉方向基础，不替代真实 Office-rendered 页面评审；单凭 Packet、Visual System 或导出成功不能通过最终视觉 Gate。
+
 ## 9. Stage AI Review 与统一修复
 
 Stage AI Review 不插入生产过程。一次 Production Attempt 先按现有确定性合同完整执行，直到正常完成，或命中既有的安全、证据、能力、几何、输出完整性等硬阻断。AI Review 本身既不新增中途 Gate，也不为了继续试跑而当场修改任何 Production Artifact。

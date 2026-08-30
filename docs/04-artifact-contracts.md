@@ -226,6 +226,19 @@ M3 Production Layout 还绑定 current Slide Specs semantic hashes、stable `REG
 - forbidden patterns；
 - brand asset refs。
 
+#### 4.8.1 Art Direction Packet
+
+`ArtDirectionPacket` 是 P6 中位于 provider proposal 与 Visual System 之间的不可变运行事实，不是 renderer 输入替代品。它必须记录：
+
+- `ADP-*` stable identity、provider name/version/mode；
+- design read 与 variance/motion/density dials；
+- palette、typography、composition、image direction 与 forbidden patterns；
+- Brief、Outline、Slide Specs、Layout Plans、Asset Manifest 的完整 version/content-hash lineage；
+- bundled Skill 的 path/hash/upstream commit/license（若 provider 使用随包资源）；
+- warnings、assumptions 与 deterministic timestamp。
+
+Packet 写入 `.slidethus/art-direction/packets/<sha256>.json` 后不可覆盖。Visual System 只引用 Packet ID/path/hash 和 provider identity，并把已准入方向编译为正式 tokens。Taste 是默认 provider，但 Packet schema 不出现供应商专属字段。
+
 ### 4.9 Asset Manifest
 
 回答：图片、图标、字体、图表和模板资产从哪里来、能否使用。

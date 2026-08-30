@@ -15,11 +15,11 @@
 - **M3 Exit Gate: PASS（2026-08-27）**。
 - **M4 Exit Gate: PASS（2026-08-28）**。
 - **M5 Exit Gate: PASS（2026-08-29）**。
-- **M6 Exit Gate: PASS（2026-08-30）**。
-- **v1.0 Release Gate: PASS（2026-08-30）**。
+- **M6 Exit Gate: REOPENED（2026-08-30）**。
+- **v1.0 Release Gate: DO NOT RELEASE，等待 Round 7 用户视觉评审**。
 - M2 Source/Research/Evidence、M3 Narrative/Planning、M4 Production Rendering 与 M5 Production Review/Repair boundaries 均已冻结，无 waiver。
 - M5 使用 independent DVR/SVR/SCR/VVR review facts、phase-correct Repair Plan/Report、cross-deck Regression、Production Quality Report/G8、Golden baseline 与 M5 Application/CLI。
-- M6 Productization and Distribution 已冻结；缺少外部 Planning/Semantic/Visual providers 时继续按 capability boundary 显式降级或阻断。
+- M6.1–M6.5 保持冻结；M6.6 因真实 Office 视觉缺陷重开。缺少外部 Planning/Semantic/Visual providers 时继续按 capability boundary 显式降级或阻断。
 
 ## 接手动作
 

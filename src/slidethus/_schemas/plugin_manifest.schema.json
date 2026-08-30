@@ -13,12 +13,21 @@
     "requirements": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["python", "node", "renderer_lock_sha256", "renderer_source_sha256"],
+      "required": [
+        "python",
+        "node",
+        "renderer_lock_sha256",
+        "renderer_source_sha256",
+        "default_art_direction_provider",
+        "art_direction_provider_sha256"
+      ],
       "properties": {
         "python": {"type": "string", "minLength": 1},
         "node": {"type": "string", "minLength": 1},
         "renderer_lock_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-        "renderer_source_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+        "renderer_source_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "default_art_direction_provider": {"const": "taste-skill"},
+        "art_direction_provider_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
       }
     },
     "files": {

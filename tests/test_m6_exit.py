@@ -43,13 +43,14 @@ def _checks(root: Path) -> dict[str, object]:
     return {item.name: item for item in evaluate_m6_exit(root, run_runtime_checks=False)}
 
 
-def test_repository_m6_exit_contract_passes() -> None:
+def test_repository_m6_exit_contract_is_truthfully_reopened() -> None:
     checks = evaluate_m6_exit(find_repository_root(), run_runtime_checks=False)
 
     assert checks
-    assert all(item.ok for item in checks), "\n".join(
-        f"{item.name}: {item.detail}" for item in checks if not item.ok
-    )
+    by_name = {item.name: item for item in checks}
+    assert not by_name["master_plan_complete"].ok
+    assert not by_name["release_document_truth"].ok
+    assert not by_name["release_audit_evidence"].ok
 
 
 def test_m6_exit_rejects_version_drift(tmp_path: Path) -> None:

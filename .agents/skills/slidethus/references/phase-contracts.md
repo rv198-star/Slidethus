@@ -9,7 +9,7 @@
 | P4 | narrative/evidence | Deck Outline | stable slide IDs, page target, unique messages, no major repetition |
 | P5A | outline/evidence | Slide Specs | one spec per slide; blocks and evidence complete |
 | P5B | slide specs | Layout Plans/wireframes | every block mapped; readable geometry; layout rationale |
-| P6 | brief/layout/brand refs | Visual System | tokens and diversity/forbidden rules complete |
+| P6 | brief/layout/assets/brand refs | immutable Art Direction Packet + Visual System | Packet hash/provider/input lineage valid; tokens and diversity/forbidden rules complete |
 | P7 | specs/layout/visual/assets | rendered draft/manifest | file valid; preview generated; warnings recorded; actual editability measured |
 | P8 | draft/all artifacts | Quality Report/repair plan | Critical=0, Major=0, regression pass |
 | P9 | approved versions | Delivery Manifest | requested formats, hashes, limitations, target and actual editability declared |
