@@ -77,6 +77,7 @@ A change is done only when:
 
 ## Work discipline
 
+- Keep public presentation examples under `examples/decks/<case>/`, not in the repository root. Keep engineering fixtures in `examples/minimal_project` / `examples/workflows`, README preview images in `docs/showcase`, and temporary case workspaces/build outputs in ignored `dist/` / `build/`. Moving an example must preserve its bytes and update current links; historical execution paths remain historical records.
 - Start complex work with an execution plan based on `PLANS.md`.
 - Make small coherent changes and keep the tree runnable.
 - Record decisions, assumptions, and remaining risks.

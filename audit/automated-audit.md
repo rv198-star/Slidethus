@@ -6,7 +6,7 @@
 - **PASS — skill_frontmatter:** complete suite has name, description and UI metadata
 - **PASS — schemas:** 49 valid (16 catalog artifacts)
 - **PASS — packaged_schema_mirror:** matches repository schemas
-- **PASS — instruction_budget:** 18924 bytes across AGENTS, entry/compat skills and shared contract
+- **PASS — instruction_budget:** 19410 bytes across AGENTS, entry/compat skills and shared contract
 - **PASS — raw_browser_html_omitted:** no browser-session HTML in package
 - **PASS — state_contract_alignment:** blocked is modeled as status, not phase
 - **PASS — minimal_project:** PASS: no validation issues

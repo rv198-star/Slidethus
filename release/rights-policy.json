@@ -42,6 +42,13 @@
   ],
   "included_third_party": [
     {
+      "scope": ".agents/skills/slidethus/references/design-library/cards/",
+      "component": "Open Kimi PPT design reference adaptations (cards; not the runtime Skill)",
+      "license": "MIT",
+      "source": "https://github.com/acnlie/open-kimi-ppt-skill",
+      "release_default": "include_with_notice"
+    },
+    {
       "scope": ".agents/skills/slidethus/providers/art-direction/taste/",
       "component": "Taste Skill (design-taste-frontend)",
       "license": "MIT",

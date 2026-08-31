@@ -1,0 +1,95 @@
+{
+  "schema_version": "0.1.0",
+  "component": "open-kimi-ppt-design-references",
+  "library_revision": "2026-08-31.1",
+  "upstream_url": "https://github.com/acnlie/open-kimi-ppt-skill",
+  "upstream_commit": "c32890fe0985bdf668f2722fed30f1010bdf24c9",
+  "license": "MIT",
+  "copyright": "Copyright (c) 2026 Binaryify Zhuang",
+  "adaptation_boundary": "Eight selected descriptions adapted into non-binding, industry-neutral design cards. Selection policy and index are Slidethus-authored Apache-2.0; cards retain the upstream MIT notice. Originals are verbatim in repository-only source_material/source-preserved/open-kimi-ppt-skill. No upstream image, font, renderer or skill executable is bundled. Preview links are optional reference-only resources, not output-asset permissions.",
+  "files": {
+    "LICENSE": "sha256:ad8a028292fda7e019f061107092b84c85dcc0351f47e7fb2370114bbc8fe5c5"
+  },
+  "references": [
+    {
+      "id": "indigo-due-diligence",
+      "card_path": "cards/indigo-due-diligence.md",
+      "upstream_path": "skills/open-kimi-ppt/reference/design_system/consulting/indigo-due-diligence/design.md",
+      "source_sha256": "34ac9b1cdda0f344aaa1a36c5dca3ba5daad148295fc86642a4bdff96e948557",
+      "source_git_blob": "12be6287a8066ae1d314cda22c250666832b537e",
+      "preserved_path": "source_material/source-preserved/open-kimi-ppt-skill/indigo-due-diligence/design.md",
+      "preview_url": "https://raw.githubusercontent.com/acnlie/open-kimi-ppt-skill/c32890fe0985bdf668f2722fed30f1010bdf24c9/docs/themes/consulting/indigo-due-diligence.jpg",
+      "preview_git_blob": "5d5818bd7b0fe4341145b5858f0889cb1d29d831"
+    },
+    {
+      "id": "black-gold-ledger",
+      "card_path": "cards/black-gold-ledger.md",
+      "upstream_path": "skills/open-kimi-ppt/reference/design_system/finance/black-gold-ledger/design.md",
+      "source_sha256": "03e708f0b2a347f3de053b98081daffb875a51fe6570761234cfbacf32ca805b",
+      "source_git_blob": "747985cf4f093ebd9435829a3ff6ccd3668792af",
+      "preserved_path": "source_material/source-preserved/open-kimi-ppt-skill/black-gold-ledger/design.md",
+      "preview_url": "https://raw.githubusercontent.com/acnlie/open-kimi-ppt-skill/c32890fe0985bdf668f2722fed30f1010bdf24c9/docs/themes/finance/black-gold-ledger.jpg",
+      "preview_git_blob": "3116ee5c3c24f713978ea32560ff65cbfccb5fec"
+    },
+    {
+      "id": "moon-white-imagery",
+      "card_path": "cards/moon-white-imagery.md",
+      "upstream_path": "skills/open-kimi-ppt/reference/design_system/work/moon-white-imagery/design.md",
+      "source_sha256": "30e29b39a01630a1fa91b915731a5529b559fcec42a32def2c071be3f0c9dfcd",
+      "source_git_blob": "58cab624b15606e31f52c15cae94b04d7452023a",
+      "preserved_path": "source_material/source-preserved/open-kimi-ppt-skill/moon-white-imagery/design.md",
+      "preview_url": "https://raw.githubusercontent.com/acnlie/open-kimi-ppt-skill/c32890fe0985bdf668f2722fed30f1010bdf24c9/docs/themes/work/moon-white-imagery.jpg",
+      "preview_git_blob": "a012184a94795f0987e6cad6b9267c7da307bca3"
+    },
+    {
+      "id": "warm-clay-works",
+      "card_path": "cards/warm-clay-works.md",
+      "upstream_path": "skills/open-kimi-ppt/reference/design_system/work/warm-clay-works/design.md",
+      "source_sha256": "8c4db65126cbb7a2e80c444a5ee7e6d07e219c2dd4d604f1392dc704398bd856",
+      "source_git_blob": "51aa8d26a5659b9d028556a4ebff1516a2138163",
+      "preserved_path": "source_material/source-preserved/open-kimi-ppt-skill/warm-clay-works/design.md",
+      "preview_url": "https://raw.githubusercontent.com/acnlie/open-kimi-ppt-skill/c32890fe0985bdf668f2722fed30f1010bdf24c9/docs/themes/work/warm-clay-works.jpg",
+      "preview_git_blob": "521296c0e6e7c99d7c814776f401de2217f65b4e"
+    },
+    {
+      "id": "cream-collage",
+      "card_path": "cards/cream-collage.md",
+      "upstream_path": "skills/open-kimi-ppt/reference/design_system/promotion/cream-collage/design.md",
+      "source_sha256": "9f8cfef54ff28d9ee8a9d998325b97e90bdd4f45703cc7f20d2a9cd40ba9b2ce",
+      "source_git_blob": "27598fa3678c6eff7a58b886d869e0ae936c89c9",
+      "preserved_path": "source_material/source-preserved/open-kimi-ppt-skill/cream-collage/design.md",
+      "preview_url": "https://raw.githubusercontent.com/acnlie/open-kimi-ppt-skill/c32890fe0985bdf668f2722fed30f1010bdf24c9/docs/themes/promotion/cream-collage.jpg",
+      "preview_git_blob": "d80cd7228b8dc26801d83cc134241a1d538d906c"
+    },
+    {
+      "id": "silk-yellow-magazine",
+      "card_path": "cards/silk-yellow-magazine.md",
+      "upstream_path": "skills/open-kimi-ppt/reference/design_system/promotion/silk-yellow-magazine/design.md",
+      "source_sha256": "935291996cc74934c6980fddfceb7eeeda96b98cae573e379d657e22ed47ea90",
+      "source_git_blob": "dfd1f585a71cb64d3980fa34f9326f210bcb2cd6",
+      "preserved_path": "source_material/source-preserved/open-kimi-ppt-skill/silk-yellow-magazine/design.md",
+      "preview_url": "https://raw.githubusercontent.com/acnlie/open-kimi-ppt-skill/c32890fe0985bdf668f2722fed30f1010bdf24c9/docs/themes/promotion/silk-yellow-magazine.jpg",
+      "preview_git_blob": "be9b4aa171ed0422762881ecbc22743c327fc6ea"
+    },
+    {
+      "id": "silver-gray-luxury-magazine",
+      "card_path": "cards/silver-gray-luxury-magazine.md",
+      "upstream_path": "skills/open-kimi-ppt/reference/design_system/promotion/silver-gray-luxury-magazine/design.md",
+      "source_sha256": "883ca1821b3cfcf0d3b5282296168a8cbb361e675611709fccbc8fc40dc69ed1",
+      "source_git_blob": "44ba7e7cc58a3785fd54b641e42b49afff7140c2",
+      "preserved_path": "source_material/source-preserved/open-kimi-ppt-skill/silver-gray-luxury-magazine/design.md",
+      "preview_url": "https://raw.githubusercontent.com/acnlie/open-kimi-ppt-skill/c32890fe0985bdf668f2722fed30f1010bdf24c9/docs/themes/promotion/silver-gray-luxury-magazine.jpg",
+      "preview_git_blob": "a034a7d1e015f730d7a79e33145243beaac47a13"
+    },
+    {
+      "id": "pastel-derivation",
+      "card_path": "cards/pastel-derivation.md",
+      "upstream_path": "skills/open-kimi-ppt/reference/design_system/academic/pastel-derivation/design.md",
+      "source_sha256": "8c959783f95073be9c7f1df7382a987640e1f7b43ca23ae9e95b0211860ab83a",
+      "source_git_blob": "6f9b532f75a7fc472c3f173560f73054d53f22b6",
+      "preserved_path": "source_material/source-preserved/open-kimi-ppt-skill/pastel-derivation/design.md",
+      "preview_url": "https://raw.githubusercontent.com/acnlie/open-kimi-ppt-skill/c32890fe0985bdf668f2722fed30f1010bdf24c9/docs/themes/academic/pastel-derivation.jpg",
+      "preview_git_blob": "870ee05d92cfe59491268754056a0cdefae686fd"
+    }
+  ]
+}

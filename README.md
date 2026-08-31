@@ -24,6 +24,8 @@
 
 ![FDE 案例中的 AI 生产落地：任务、团队、指标与回流闭环](docs/showcase/fde-ai-delivery.png)
 
+[下载 FDE 中国 2026 现状调研报告 PPTX](examples/decks/fde-china-2026/FDE中国2026现状调研报告.pptx) · [浏览示例目录](examples/README.md)
+
 案例来自不同阶段的真实任务，并非同一版本的统一验收集。[案例说明与素材出处](docs/showcase/README.md)
 
 ## 开始使用
@@ -45,6 +47,8 @@ slidethus plugin install-skill /absolute/path/to/project
 
 <details>
 <summary>版本与能力边界</summary>
+
+历史模块工程验收：M2 Exit Gate：PASS；M3 Exit Gate：PASS；M4 Exit Gate：PASS。当前仍不是生产级端到端 PPT 产品，不能据此免除宿主能力与真实 Office 验收。
 
 M5 Exit Gate：PASS（工程边界）；M6.6 尚未完成，不声明 v1.0 发布就绪。外部工具依赖（capability boundary）与 Office 验收限制见[发布说明](release/v0.8.1.md)。
 

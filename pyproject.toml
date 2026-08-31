@@ -59,6 +59,22 @@ slidethus = ["_schemas/*.json"]
   ".agents/skills/slidethus/references/source-integrity.md",
   ".agents/skills/slidethus/references/host-create.md",
   ".agents/skills/slidethus/references/shared-contract.md",
+  ".agents/skills/slidethus/references/design-reference-selection.md",
+]
+"share/slidethus/skills/slidethus/references/design-library" = [
+  ".agents/skills/slidethus/references/design-library/index.md",
+  ".agents/skills/slidethus/references/design-library/LICENSE",
+  ".agents/skills/slidethus/references/design-library/PROVENANCE.json",
+]
+"share/slidethus/skills/slidethus/references/design-library/cards" = [
+  ".agents/skills/slidethus/references/design-library/cards/indigo-due-diligence.md",
+  ".agents/skills/slidethus/references/design-library/cards/black-gold-ledger.md",
+  ".agents/skills/slidethus/references/design-library/cards/moon-white-imagery.md",
+  ".agents/skills/slidethus/references/design-library/cards/warm-clay-works.md",
+  ".agents/skills/slidethus/references/design-library/cards/cream-collage.md",
+  ".agents/skills/slidethus/references/design-library/cards/silk-yellow-magazine.md",
+  ".agents/skills/slidethus/references/design-library/cards/silver-gray-luxury-magazine.md",
+  ".agents/skills/slidethus/references/design-library/cards/pastel-derivation.md",
 ]
 "share/slidethus/skills/slidethus/workflows" = [
   ".agents/skills/slidethus/workflows/audit-deck.md",

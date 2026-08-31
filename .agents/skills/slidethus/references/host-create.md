@@ -46,6 +46,8 @@ After approval, explicitly revise existing planning with `--revise-stage narrati
 
 ## Native design and assets
 
+At `art_direction_seed`, read the design skill and its [bounded reference selection policy](design-reference-selection.md) before proposing a new direction. Reuse/none are valid; optional search reads the index, then normally 1–3 adapted cards and only necessary preview images. Record actual reference use and trade-offs in existing `design_read`/`assumptions`, and preserve them in the final Packet. This adds no response fields, provider requirement or fallback route.
+
 Read `providers/art-direction/taste/SKILL.md` completely before using it. Use static presentation-relevant principles, not automatic web UI constraints. Native prototypes remain isolated and never satisfy PPTX/release gates, but their file path and SHA-256 are machine-verified as the designed Create Seed's provenance. A fixed token proposal or a post-hoc PPTX is not a native prototype. Translate actual approved composition back into formal plans; if geometry changes, revise Layout before submitting the new P6 response.
 
 Source/generate assets only after planning their role and crop. Add local files to Asset Manifest with truthful source/license/status. Missing, forbidden, remote or unsupported assets fail; no invisible placeholder substitution. Numerical charts need factual Evidence or clearly labeled synthetic/assumption data. Consider whether a chart clarifies comparison/trend rather than requiring one on every slide.

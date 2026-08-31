@@ -1,5 +1,9 @@
 # Slidethus Build Roadmap
 
+## 设计参考库（当前实现）
+
+[Issue #1](https://github.com/rv198-star/Slidethus/issues/1)：设计阶段自主、分层查阅精选参考，不让用户选主题，不按行业套模板。计划见 `plans/design-reference-library.md`；不新增状态机、渲染器或美学验收声明，不改变 v0.8.1 / M6.6 发布边界。
+
 ## v0.8.1 视觉基础能力发布
 
 在 v0.8.0 上收敛前置 ArtDirectionSeed、Taste 原生样板出处和 P5A/P5B/P6 视觉决策传播。用户认可 YU7 案例；其真实 Office 验收仍未完成，不伪造最终交付 Gate。仅单 Python 3.11 发布验证，不扩展行业或重开审美优化。

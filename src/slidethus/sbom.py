@@ -166,6 +166,31 @@ def _taste_package(root: Path) -> dict[str, Any]:
     }
 
 
+def _design_reference_package(root: Path) -> dict[str, Any]:
+    candidates = (
+        root / ".agents/skills/slidethus/references/design-library",
+        root / "skills/slidethus/references/design-library",
+        root / "skill/references/design-library",
+    )
+    library = next((path for path in candidates if (path / "PROVENANCE.json").is_file()), None)
+    if library is None:
+        raise FileNotFoundError(f"Cannot locate bundled design reference provenance under {root}")
+    provenance = read_json(library / "PROVENANCE.json")
+    commit = str(provenance["upstream_commit"])
+    revision = str(provenance["library_revision"])
+    return {
+        "name": str(provenance["component"]),
+        "SPDXID": _spdx_id("DesignReferences", f"{commit}:{revision}"),
+        "versionInfo": f"{commit}+slidethus.{revision}",
+        "downloadLocation": str(provenance["upstream_url"]),
+        "filesAnalyzed": False,
+        "licenseConcluded": str(provenance["license"]),
+        "licenseDeclared": str(provenance["license"]),
+        "copyrightText": str(provenance["copyright"]),
+        "comment": str(provenance["adaptation_boundary"]),
+    }
+
+
 def build_sbom(root: Path) -> dict[str, Any]:
     root = root.resolve()
     project_id = "SPDXRef-Package-Slidethus"
@@ -173,6 +198,7 @@ def build_sbom(root: Path) -> dict[str, Any]:
     python_packages = _python_dependencies(root)
     node_packages = _node_dependencies(root)
     taste_package = _taste_package(root)
+    reference_package = _design_reference_package(root)
     packages: list[dict[str, Any]] = [
         {
             "name": "slidethus",
@@ -195,6 +221,7 @@ def build_sbom(root: Path) -> dict[str, Any]:
             "copyrightText": "Copyright 2026 Slidethus contributors",
         },
         taste_package,
+        reference_package,
         *python_packages,
         *node_packages,
     ]
@@ -208,6 +235,11 @@ def build_sbom(root: Path) -> dict[str, Any]:
             "spdxElementId": project_id,
             "relationshipType": "CONTAINS",
             "relatedSpdxElement": taste_package["SPDXID"],
+        },
+        {
+            "spdxElementId": project_id,
+            "relationshipType": "CONTAINS",
+            "relatedSpdxElement": reference_package["SPDXID"],
         },
     ]
     relationships.extend(

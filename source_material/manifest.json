@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_on": "2026-08-26",
+  "generated_on": "2026-08-31",
   "files": [
     {
       "path": "source_material/LICENSE.md",
@@ -46,6 +46,56 @@
       "path": "source_material/source-preserved/bento-grid-source.md",
       "sha256": "f0be5f9c4f8c19e1ca14fe3a4eee73a2b682942d17203976b1a697761b81464d",
       "bytes": 1587
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/LICENSE",
+      "sha256": "ad8a028292fda7e019f061107092b84c85dcc0351f47e7fb2370114bbc8fe5c5",
+      "bytes": 1073
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/black-gold-ledger/design.md",
+      "sha256": "03e708f0b2a347f3de053b98081daffb875a51fe6570761234cfbacf32ca805b",
+      "bytes": 15611
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/cream-collage/design.md",
+      "sha256": "9f8cfef54ff28d9ee8a9d998325b97e90bdd4f45703cc7f20d2a9cd40ba9b2ce",
+      "bytes": 12937
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/indigo-due-diligence/design.md",
+      "sha256": "34ac9b1cdda0f344aaa1a36c5dca3ba5daad148295fc86642a4bdff96e948557",
+      "bytes": 12056
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/moon-white-imagery/design.md",
+      "sha256": "30e29b39a01630a1fa91b915731a5529b559fcec42a32def2c071be3f0c9dfcd",
+      "bytes": 13833
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/pastel-derivation/design.md",
+      "sha256": "8c959783f95073be9c7f1df7382a987640e1f7b43ca23ae9e95b0211860ab83a",
+      "bytes": 14971
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/silk-yellow-magazine/design.md",
+      "sha256": "935291996cc74934c6980fddfceb7eeeda96b98cae573e379d657e22ed47ea90",
+      "bytes": 13578
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/silver-gray-luxury-magazine/design.md",
+      "sha256": "883ca1821b3cfcf0d3b5282296168a8cbb361e675611709fccbc8fc40dc69ed1",
+      "bytes": 14171
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/theme.md",
+      "sha256": "3340346558c197e1de2dbcdba27a305e73d1ba742399d98517513fcbf088f71f",
+      "bytes": 18176
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/warm-clay-works/design.md",
+      "sha256": "8c4db65126cbb7a2e80c444a5ee7e6d07e219c2dd4d604f1392dc704398bd856",
+      "bytes": 13808
     },
     {
       "path": "source_material/source-preserved/outline-architect-source.md",
