@@ -4,9 +4,10 @@ import copy
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from slidethus.art_direction_seed import validate_seed_reference_for_graph
 from slidethus.artifact_runtime import ArtifactRuntime, utc_now
 from slidethus.constants import SCHEMA_VERSION
-from slidethus.errors import PlanningError, SlideSpecPlanningError
+from slidethus.errors import ArtifactError, PlanningError, SlideSpecPlanningError
 from slidethus.gates import evaluate_gate
 from slidethus.planning_limits import (
     admit_planning_proposal,
@@ -27,7 +28,7 @@ from slidethus.planning_rules import (
     slide_specs_gate_reasons,
     usable_evidence_map,
 )
-from slidethus.protocols import PlanningLimits, PlanningProvider
+from slidethus.protocols import PlanningLimits, PlanningProvider, PreLayoutArtDirection
 
 
 @dataclass(frozen=True)
@@ -100,6 +101,25 @@ class SlideSpecPlanningService:
             artifact_type="slide_specs",
             limits=limits,
         )
+
+    def _pre_layout_art_direction(
+        self,
+        context: dict[str, Any],
+        limits: PlanningLimits,
+    ) -> PreLayoutArtDirection | None:
+        """Request an optional provider-neutral Seed before semantic page planning."""
+
+        prepare = getattr(self.provider, "prepare_art_direction_seed", None)
+        if not callable(prepare):
+            return None
+        result = prepare(copy.deepcopy(context), limits)
+        if result is None:
+            return None
+        if not isinstance(result, PreLayoutArtDirection):
+            raise SlideSpecPlanningError(
+                "Pre-layout art-direction provider must return PreLayoutArtDirection"
+            )
+        return result
 
     def _admit_block(
         self,
@@ -216,6 +236,7 @@ class SlideSpecPlanningService:
         warnings: tuple[str, ...],
         assumptions: tuple[str, ...],
         limits: PlanningLimits,
+        art_direction_seed: dict[str, Any] | None,
     ) -> dict[str, Any]:
         brief = graph["project_brief"]["data"]
         outline = graph["deck_outline"]["data"]
@@ -358,7 +379,14 @@ class SlideSpecPlanningService:
             lineage_inputs,
             provider_name=self.provider_name,
             provider_version=self.provider_version,
-            proposal=copy.deepcopy(proposal_content),
+            proposal={
+                **copy.deepcopy(proposal_content),
+                **(
+                    {"_pre_layout_art_direction": copy.deepcopy(art_direction_seed)}
+                    if art_direction_seed is not None
+                    else {}
+                ),
+            },
             policy={"service": "slide_specs", "limits": asdict(limits)},
             generated_at=_generated_at(lineage_inputs),
             warnings=warnings,
@@ -376,6 +404,11 @@ class SlideSpecPlanningService:
             "deck_id": str(outline["deck_id"]),
             "status": "approved",
             "repair_ids": list(existing.get("repair_ids", [])) if existing else [],
+            **(
+                {"art_direction_seed": copy.deepcopy(art_direction_seed)}
+                if art_direction_seed is not None
+                else {}
+            ),
             "planning_lineage": lineage,
             "slides": slides,
         }
@@ -405,6 +438,30 @@ class SlideSpecPlanningService:
             ),
             optional_artifact_types=("slide_specs",),
         )
+        context = {
+            "project_brief": copy.deepcopy(graph["project_brief"]["data"]),
+            "evidence_ledger": copy.deepcopy(graph["evidence_ledger"]["data"]),
+            "deck_outline": copy.deepcopy(graph["deck_outline"]["data"]),
+        }
+        pre_layout = self._pre_layout_art_direction(context, admitted_limits)
+        if pre_layout is not None:
+            try:
+                seed = validate_seed_reference_for_graph(
+                    self.workspace,
+                    pre_layout.reference,
+                    {
+                        "project_brief": graph["project_brief"],
+                        "deck_outline": graph["deck_outline"],
+                    },
+                    schema_registry=self.runtime.registry,
+                )
+            except ArtifactError as exc:
+                raise SlideSpecPlanningError(str(exc)) from exc
+            if seed != pre_layout.seed:
+                raise SlideSpecPlanningError(
+                    "Pre-layout Art Direction Seed data differs from its frozen reference"
+                )
+            context["art_direction_seed"] = copy.deepcopy(seed)
         existing = graph.get("slide_specs")
         current_policy = {"service": "slide_specs", "limits": asdict(admitted_limits)}
         if (
@@ -418,6 +475,10 @@ class SlideSpecPlanningService:
                 provider_version=self.provider_version,
                 policy=current_policy,
             )
+            and (
+                existing["data"].get("art_direction_seed")
+                == (pre_layout.reference if pre_layout is not None else None)
+            )
         ):
             reasons = slide_specs_gate_reasons(
                 brief=graph["project_brief"]["data"],
@@ -425,6 +486,7 @@ class SlideSpecPlanningService:
                 outline=graph["deck_outline"]["data"],
                 slide_specs=existing["data"],
                 graph=graph,
+                workspace=self.workspace,
             )
             if not reasons:
                 return SlideSpecPlanningResult(
@@ -433,18 +495,20 @@ class SlideSpecPlanningService:
                     version=int(existing["version"]),
                     gate_reasons=(),
                 )
-        context = {
-            "project_brief": copy.deepcopy(graph["project_brief"]["data"]),
-            "evidence_ledger": copy.deepcopy(graph["evidence_ledger"]["data"]),
-            "deck_outline": copy.deepcopy(graph["deck_outline"]["data"]),
-        }
         proposal = self._proposal(context, admitted_limits)
+        if proposal.art_direction_seed != (
+            pre_layout.reference if pre_layout is not None else None
+        ):
+            raise SlideSpecPlanningError(
+                "Slide Specs proposal did not preserve the prepared Art Direction Seed reference"
+            )
         candidate = self._admit(
             proposal.content,
             graph=graph,
             warnings=proposal.warnings,
             assumptions=proposal.assumptions,
             limits=admitted_limits,
+            art_direction_seed=proposal.art_direction_seed,
         )
         reasons = slide_specs_gate_reasons(
             brief=graph["project_brief"]["data"],
@@ -452,6 +516,7 @@ class SlideSpecPlanningService:
             outline=graph["deck_outline"]["data"],
             slide_specs=candidate,
             graph=graph,
+            workspace=self.workspace,
         )
         if reasons:
             raise SlideSpecPlanningError(
@@ -493,4 +558,5 @@ class SlideSpecPlanningService:
             outline=graph["deck_outline"]["data"],
             slide_specs=graph["slide_specs"]["data"],
             graph=graph,
+            workspace=self.workspace,
         )

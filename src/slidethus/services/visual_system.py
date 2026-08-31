@@ -72,6 +72,7 @@ class VisualSystemService:
             graph,
             provider=self.art_direction_provider,
             schema_registry=self.runtime.registry,
+            workspace=self.workspace,
         )
         direction = compiled_direction.packet["direction"]
         if "page_designs" in direction:
@@ -217,6 +218,11 @@ class VisualSystemService:
                     "version": str(compiled_direction.packet["provider"]["version"]),
                     "mode": str(compiled_direction.packet["provider"]["mode"]),
                 },
+                **(
+                    {"pre_layout_seed": compiled_direction.packet["pre_layout_seed"]}
+                    if "pre_layout_seed" in compiled_direction.packet
+                    else {}
+                ),
             },
             "render_lineage": {
                 "engine": _ENGINE,

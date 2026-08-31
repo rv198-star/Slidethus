@@ -196,6 +196,26 @@ class ArtDirectionProposal:
 
 
 @dataclass(frozen=True)
+class ArtDirectionSeedProposal:
+    """Pre-layout visual direction proposed before Slide Specs own semantic Blocks."""
+
+    design_read: str
+    dials: dict[str, int]
+    foundation: dict[str, Any]
+    direction: dict[str, Any]
+    warnings: tuple[str, ...] = ()
+    assumptions: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class PreLayoutArtDirection:
+    """One frozen Seed reference plus bounded data for a planning-provider request."""
+
+    reference: dict[str, Any]
+    seed: dict[str, Any]
+
+
+@dataclass(frozen=True)
 class BriefCompletionHints:
     """Explicit user/host hints admitted by deterministic Brief completion."""
 
@@ -226,6 +246,7 @@ class PlanningProposal:
     content: dict[str, Any]
     warnings: tuple[str, ...] = ()
     assumptions: tuple[str, ...] = ()
+    art_direction_seed: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -295,6 +316,12 @@ class ArtDirectionProvider(Protocol):
     name: str
     version: str
     mode: str
+
+    def propose_seed(
+        self,
+        context: dict[str, Any],
+        limits: ArtDirectionLimits,
+    ) -> ArtDirectionSeedProposal: ...
 
     def propose(
         self,

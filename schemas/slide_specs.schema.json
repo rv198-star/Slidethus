@@ -29,6 +29,7 @@
       "uniqueItems": true,
       "items": {"type": "string", "pattern": "^PRP-[A-F0-9]{16}$"}
     },
+    "art_direction_seed": {"$ref": "#/$defs/artDirectionSeedRef"},
     "planning_lineage": {"$ref": "#/$defs/planningLineage"},
     "slides": {
       "type": "array",
@@ -269,6 +270,26 @@
     }
   },
   "$defs": {
+    "artDirectionSeedRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seed_id", "path", "content_hash", "provider"],
+      "properties": {
+        "seed_id": {"type": "string", "pattern": "^ADS-[A-F0-9]{16}$"},
+        "path": {"type": "string", "pattern": "^\\.slidethus/art-direction/seeds/[a-f0-9]{64}\\.json$"},
+        "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "provider": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version", "mode"],
+          "properties": {
+            "name": {"type": "string", "minLength": 1, "maxLength": 128},
+            "version": {"type": "string", "minLength": 1, "maxLength": 128},
+            "mode": {"type": "string", "minLength": 1, "maxLength": 128}
+          }
+        }
+      }
+    },
     "artifactRef": {
       "type": "object",
       "additionalProperties": false,

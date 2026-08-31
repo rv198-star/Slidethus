@@ -175,7 +175,7 @@ Quality Report 可以用于前置规划审计，但最终 P8 Review 必须生成
 
 页面职责/节奏问题回 P4，内容容量问题回 P5A，空间关系问题回 P5B，视觉 token 问题才回 P6；不能只换皮肤。
 
-P6 还必须校验 Art Direction Packet 的存在性、schema、内容 hash、provider identity 与完整输入 lineage。默认 Taste provider 的 Skill 文件 hash 或 MIT provenance 漂移属于 release-blocking capability/rights defect。Packet 只提高视觉方向基础，不替代真实 Office-rendered 页面评审；单凭 Packet、Visual System 或导出成功不能通过最终视觉 Gate。
+P6 还必须校验 Art Direction Packet 的存在性、schema、内容 hash、provider identity 与完整输入 lineage。若存在 pre-layout Art Direction Seed，还要校验其 Brief/Outline lineage、原生样板路径/hash、required carrier 的 Block/Region 兑现，以及最终页面的表面节奏：`field` 有真实 field treatment、`image-led` 有 image Block、`tonal` 不塌缩回全局 plain background。默认 Taste provider 的 Skill 文件 hash 或 MIT provenance 漂移属于 release-blocking capability/rights defect。Packet 只提高视觉方向基础，不替代真实 Office-rendered 页面评审；单凭 Packet、Visual System 或导出成功不能通过最终视觉 Gate。
 
 ## 9. Stage AI Review 与统一修复
 
@@ -189,6 +189,8 @@ Stage AI Review 不插入生产过程。一次 Production Attempt 先按现有�
 
 1. **修抽象范式，不修具体样例**：移除当前主题、原句、页码和业务场景后，修复仍必须成立；否则只能作为 case-local 处理，不能进入生产规则。
 2. **抓大放小**：Critical/Major 通用缺陷优先；Minor 只有跨页、跨 artifact 或跨 case 重复时才晋升；Suggestion 默认不进入代码修复。每轮只推动少量 systemic fixes，不追求把所有审美偏好规则化。
+
+`Taste-generated` 仅是可核验的制作路径：它说明 Taste 驱动了并被保留为原生视觉样板，不能证明配色统一、布局关系成立或成片具备审美质量。系统 Gate 只验证这类可观察的 lineage 与既定的结构承诺；真实 PowerPoint 的全篇视觉审阅必须独立检查配色体系、构图、信息层级和节奏。
 
 推荐闭环：
 

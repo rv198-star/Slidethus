@@ -30,7 +30,14 @@ class HostCreateService:
     ) -> None:
         self.workspace = workspace.resolve()
         self.bridge = HostDesignBridge(self.workspace)
-        self.planning = HostPlanningProvider(self.bridge)
+        self.art_direction = HostArtDirectionProvider(
+            self.bridge,
+            require_taste_generated=True,
+        )
+        self.planning = HostPlanningProvider(
+            self.bridge,
+            art_direction_provider=self.art_direction,
+        )
         self.backend = ArtifactToolRenderBackend(node=node, modules=modules)
         self.font_match = font_match
 
@@ -80,7 +87,7 @@ class HostCreateService:
                         "release_approved": False,
                     }
             visual = VisualSystemService(
-                self.workspace, art_direction_provider=HostArtDirectionProvider(self.bridge)
+                self.workspace, art_direction_provider=self.art_direction
             ).compile()
             state = runtime.show_artifact("project_state")
             runtime.record_gate(

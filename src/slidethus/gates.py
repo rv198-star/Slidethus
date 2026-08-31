@@ -260,6 +260,7 @@ def evaluate_gate(workspace: Path, gate_id: str) -> GateResult:
                     outline=graph["deck_outline"]["data"],
                     slide_specs=slide_specs,
                     graph=graph,
+                    workspace=workspace,
                 )
             )
         state = read_json(workspace / "project_state.json")

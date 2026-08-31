@@ -7,9 +7,10 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
+from slidethus.art_direction_seed import validate_seed_reference_for_graph
 from slidethus.artifact_runtime import ArtifactRuntime, utc_now
 from slidethus.constants import SCHEMA_VERSION
-from slidethus.errors import LayoutPlanningError, PlanningError
+from slidethus.errors import ArtifactError, LayoutPlanningError, PlanningError
 from slidethus.gates import evaluate_gate
 from slidethus.io_utils import (
     atomic_create_bytes,
@@ -338,6 +339,20 @@ class LayoutPlanningService:
             "deck_outline": copy.deepcopy(graph["deck_outline"]["data"]),
             "slide_specs": copy.deepcopy(graph["slide_specs"]["data"]),
         }
+        seed_ref = graph["slide_specs"]["data"].get("art_direction_seed")
+        if seed_ref is not None:
+            try:
+                context["art_direction_seed"] = validate_seed_reference_for_graph(
+                    self.workspace,
+                    seed_ref,
+                    {
+                        "project_brief": graph["project_brief"],
+                        "deck_outline": graph["deck_outline"],
+                    },
+                    schema_registry=self.runtime.registry,
+                )
+            except ArtifactError as exc:
+                raise LayoutPlanningError(str(exc)) from exc
         proposal = self._proposal(context, admitted_limits)
         candidate, wireframe_paths = self._admit(
             proposal.content,

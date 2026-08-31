@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Any
 
 from slidethus.art_direction import art_direction_packet_validator
+from slidethus.art_direction_seed import validate_seed_reference_for_graph
+from slidethus.errors import ArtifactError
 from slidethus.io_utils import read_json, sha256_json
 from slidethus.render_manifest import production_render_manifest_reference_errors
 from slidethus.schema_registry import SchemaRegistry
@@ -53,6 +55,31 @@ def _art_direction_reasons(
         return tuple(reasons)
     if visual_system.get("page_designs") != packet["direction"].get("page_designs"):
         reasons.append("visual system page appearance differs from admitted Art Direction Packet")
+    packet_seed = packet.get("pre_layout_seed")
+    visual_seed = reference.get("pre_layout_seed")
+    if packet_seed != visual_seed:
+        reasons.append("visual system pre-layout Art Direction Seed differs from admitted Packet")
+    if packet_seed is not None:
+        try:
+            paths = {
+                "project_brief": workspace / "brief/project_brief.json",
+                "deck_outline": workspace / "outline/deck_outline.json",
+            }
+            state_entries = {
+                str(item.get("artifact_type")): item
+                for item in state.get("artifacts", [])
+            }
+            graph = {
+                artifact_type: {
+                    "data": read_json(path),
+                    "version": int(state_entries[artifact_type]["version"]),
+                    "content_hash": f"sha256:{sha256_json(read_json(path))}",
+                }
+                for artifact_type, path in paths.items()
+            }
+            validate_seed_reference_for_graph(workspace, packet_seed, graph)
+        except (ArtifactError, KeyError, OSError, ValueError) as exc:
+            reasons.append(f"visual system pre-layout Art Direction Seed is invalid: {exc}")
     expected_types = {
         "project_brief",
         "deck_outline",

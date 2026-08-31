@@ -5,8 +5,12 @@ import re
 from pathlib import Path
 from typing import Any
 
+from slidethus.art_direction_seed import (
+    validate_seed_fulfillment,
+    validate_seed_reference_for_graph,
+)
 from slidethus.brief_completion import is_unresolved
-from slidethus.errors import WorkspaceError
+from slidethus.errors import ArtifactError, WorkspaceError
 from slidethus.io_utils import ensure_within, sha256_file, sha256_json
 from slidethus.planning_lineage import planning_lineage_reference_errors
 from slidethus.text_capacity import estimated_text_height
@@ -312,6 +316,7 @@ def slide_specs_gate_reasons(
     outline: dict[str, Any],
     slide_specs: dict[str, Any],
     graph: dict[str, dict[str, Any]],
+    workspace: Path | None = None,
 ) -> tuple[str, ...]:
     """Return deterministic intrinsic G5A reasons for Production Slide Specs."""
 
@@ -408,6 +413,16 @@ def slide_specs_gate_reasons(
             reasons.append(f"Slide Spec {slide_id} does not carry all required slide Evidence")
     if max_words > int(brief.get("constraints", {}).get("page_count", {}).get("max", 9999)) * 100:
         reasons.append("Slide Specs contain implausible aggregate density")
+    seed_ref = slide_specs.get("art_direction_seed")
+    if seed_ref is not None:
+        if workspace is None:
+            reasons.append("Slide Specs Art Direction Seed cannot be verified without workspace")
+        else:
+            try:
+                seed = validate_seed_reference_for_graph(workspace, seed_ref, graph)
+                validate_seed_fulfillment(seed, slide_specs, None)
+            except ArtifactError as exc:
+                reasons.append(f"Slide Specs Art Direction Seed is invalid: {exc}")
     lineage = slide_specs.get("planning_lineage")
     if lineage is None:
         reasons.append("Production Slide Specs planning lineage is missing")

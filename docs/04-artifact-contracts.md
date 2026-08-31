@@ -237,7 +237,9 @@ M3 Production Layout 还绑定 current Slide Specs semantic hashes、stable `REG
 - bundled Skill 的 path/hash/upstream commit/license（若 provider 使用随包资源）；
 - warnings、assumptions 与 deterministic timestamp。
 
-Packet 写入 `.slidethus/art-direction/packets/<sha256>.json` 后不可覆盖。Visual System 只引用 Packet ID/path/hash 和 provider identity，并把已准入方向编译为正式 tokens。Taste 是默认 provider，但 Packet schema 不出现供应商专属字段。
+若 designed Host Create 使用原生视觉样板，P5A 前还会冻结 supporting runtime fact `ArtDirectionSeed`：`.slidethus/art-direction/seeds/<sha256>.json`。它绑定 Brief/Outline，逐页声明 `image`、`chart`、`diagram`、`table`、`typographic` 或 `textual` 载体及 `plain`、`tonal`、`field`、`image-led` 表面节奏。它不拥有内容、Evidence、资产或 Region。`taste-generated` 必须带 workspace 内原生样板的相对路径、媒介和 SHA-256；资源随包或固定 token 只能标为 `resource-only` / `taste-informed`。Slide Specs 与最终 Packet 只保存同一 immutable Seed reference。
+
+Packet 写入 `.slidethus/art-direction/packets/<sha256>.json` 后不可覆盖。Visual System 只引用 Packet ID/path/hash、provider identity 和（若有）Seed reference，并把已准入方向编译为正式 tokens/page designs。Taste 是默认 provider，但 Packet schema 不出现供应商专属字段。
 
 ### 4.9 Asset Manifest
 

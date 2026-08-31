@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import os
+import shutil
 from dataclasses import asdict
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -10,9 +11,11 @@ from zipfile import ZipFile
 import pytest
 
 from slidethus.art_direction import TasteSkillArtDirectionProvider
+from slidethus.art_direction_seed import compile_art_direction_seed
 from slidethus.artifact_runtime import ArtifactRuntime
 from slidethus.cli import main
 from slidethus.errors import ArtifactError, PlanningError, RenderBackendError, RenderCapabilityError
+from slidethus.gates import evaluate_gate
 from slidethus.host_design import (
     HostArtDirectionProvider,
     HostDesignBridge,
@@ -23,7 +26,12 @@ from slidethus.io_utils import atomic_create_json, read_json, sha256_file
 from slidethus.layout_geometry import admit_authored_layout
 from slidethus.page_design import validate_page_designs
 from slidethus.planning_provider import DeterministicPlanningProvider
-from slidethus.protocols import ArtDirectionLimits, BriefCompletionHints, PlanningLimits
+from slidethus.protocols import (
+    ArtDirectionLimits,
+    ArtDirectionSeedProposal,
+    BriefCompletionHints,
+    PlanningLimits,
+)
 from slidethus.render_backends.artifact_tool import ArtifactToolRenderBackend
 from slidethus.services.host_create import HostCreateService
 from slidethus.services.render_compile import RenderCompileService
@@ -68,16 +76,19 @@ def test_legacy_create_requires_explicit_baseline(tmp_path: Path, capsys) -> Non
     ("narrative_blueprint", {"content": {"value": float("nan")}}),
     ("layout_plans", {"content": {"plans": [None]}}),
     ("layout_plans", {"content": {"plans": {"regions": []}}}),
+    ("art_direction_seed", {"design_read": "invalid fixture", "dials": {}, "foundation": None, "direction": None}),
     ("art_direction", {"design_read": "invalid fixture", "dials": {}, "direction": None}),
 ])
 def test_malformed_host_proposals_fail_explicitly(tmp_path: Path, stage: str, proposal: dict) -> None:
     bridge = HostDesignBridge(tmp_path)
-    limits = ArtDirectionLimits() if stage == "art_direction" else PlanningLimits()
+    limits = ArtDirectionLimits() if stage in {"art_direction_seed", "art_direction"} else PlanningLimits()
     with pytest.raises(HostDesignRequired):
         bridge.exchange(stage, {}, limits)
     _respond(bridge.pending, proposal)
     with pytest.raises(PlanningError):
-        if stage == "art_direction":
+        if stage == "art_direction_seed":
+            HostArtDirectionProvider(bridge).propose_seed({}, limits)
+        elif stage == "art_direction":
             HostArtDirectionProvider(bridge).propose({}, limits)
         else:
             HostPlanningProvider(bridge).propose(stage, {}, limits)
@@ -88,12 +99,148 @@ def test_artifact_tool_missing_capability_does_not_install_or_fallback(tmp_path:
         ArtifactToolRenderBackend(node=str(tmp_path / "no-node"), modules=tmp_path).check_available()
 
 
-def _fixture_proposal(stage: str, context: dict, limits: dict) -> dict:
+def test_deterministic_taste_seed_is_never_claimed_as_taste_generated() -> None:
+    proposal = TasteSkillArtDirectionProvider().propose_seed(
+        {
+            "project_brief": {"title": "Fixture", "intent": {"presentation_mode": "both"}},
+            "deck_outline": {
+                "slides": [
+                    {"slide_id": "S-001", "slide_type": "cover", "status": "approved"},
+                    {"slide_id": "S-002", "slide_type": "evidence", "status": "approved"},
+                ]
+            },
+        },
+        ArtDirectionLimits(),
+    )
+
+    assert proposal.foundation == {"kind": "taste-informed"}
+    assert all(item["requirement"] == "optional" for item in proposal.direction["carriers"])
+
+
+def test_designed_host_seed_rejects_taste_informed_fallback(tmp_path: Path) -> None:
+    bridge = HostDesignBridge(tmp_path)
+    provider = HostArtDirectionProvider(bridge, require_taste_generated=True)
+    with pytest.raises(HostDesignRequired):
+        provider.propose_seed({}, ArtDirectionLimits())
+    _respond(
+        bridge.pending,
+        {
+            "design_read": "Fallback is not sufficient for designed Create.",
+            "dials": {"design_variance": 6, "motion_intensity": 2, "visual_density": 6},
+            "foundation": {"kind": "taste-informed"},
+            "direction": {
+                "carriers": [],
+                "image_direction": {},
+                "deck_rhythm": "fixture",
+                "surface_rhythm": {"max_consecutive_plain": 0},
+                "forbidden_patterns": ["fixture"],
+            },
+        },
+    )
+
+    with pytest.raises(PlanningError, match="Taste-generated"):
+        provider.propose_seed({}, ArtDirectionLimits())
+
+
+def test_taste_generated_seed_rejects_missing_native_prototype(authored_workspace: Path) -> None:
+    class MissingPrototypeProvider:
+        name = "fixture-art-direction"
+        version = "1.0.0"
+        mode = "fixture"
+
+        def resource_identity(self):
+            return None
+
+        def propose_seed(self, context, limits):
+            carriers = [
+                {
+                    "slide_id": item["slide_id"],
+                    "kind": "textual",
+                    "requirement": "optional",
+                    "surface_treatment": "tonal",
+                    "rationale": "Fixture only.",
+                }
+                for item in context["deck_outline"]["slides"]
+                if item.get("status") != "excluded"
+            ]
+            return ArtDirectionSeedProposal(
+                design_read="Fixture with a missing native prototype.",
+                dials={"design_variance": 6, "motion_intensity": 2, "visual_density": 6},
+                foundation={
+                    "kind": "taste-generated",
+                    "prototype": {
+                        "medium": "html-css",
+                        "path": "design/prototypes/missing.html",
+                        "content_hash": "sha256:" + "0" * 64,
+                    },
+                },
+                direction={
+                    "carriers": carriers,
+                    "image_direction": {"style": "fixture", "fit": "cover", "missing_asset": "replan", "prompt_keywords": ["fixture"]},
+                    "deck_rhythm": "fixture",
+                    "surface_rhythm": {"max_consecutive_plain": 0},
+                    "forbidden_patterns": ["fixture"],
+                },
+            )
+
+    graph = ArtifactRuntime(authored_workspace).read_artifact_graph_snapshot(
+        ("project_brief", "deck_outline")
+    )
+    with pytest.raises(ArtifactError, match="prototype is missing"):
+        compile_art_direction_seed(
+            authored_workspace,
+            graph,
+            provider=MissingPrototypeProvider(),
+        )
+
+
+def _fixture_proposal(
+    stage: str,
+    context: dict,
+    limits: dict,
+    *,
+    prototype: dict | None = None,
+) -> dict:
     """Synthetic test host only; never used by the production entry."""
+    if stage == "art_direction_seed":
+        if prototype is None:
+            raise AssertionError("Taste-generated fixture requires a native prototype")
+        carriers = []
+        for index, slide in enumerate(context["deck_outline"]["slides"]):
+            if slide.get("status") == "excluded":
+                continue
+            kind = {0: "typographic", 1: "chart", 2: "image"}.get(index, "textual")
+            carriers.append(
+                {
+                    "slide_id": slide["slide_id"],
+                    "kind": kind,
+                    "requirement": "required" if kind in {"chart", "image"} else "optional",
+                    "surface_treatment": "image-led" if kind == "image" else "field",
+                    "rationale": "Synthetic propagation fixture uses a declared carrier, never a deck template.",
+                }
+            )
+        return {
+            "design_read": "Synthetic Taste-generated propagation fixture, not a visual acceptance case.",
+            "dials": {"design_variance": 7, "motion_intensity": 2, "visual_density": 6},
+            "foundation": {"kind": "taste-generated", "prototype": prototype},
+            "direction": {
+                "carriers": carriers,
+                "image_direction": {"style": "fixture editorial", "fit": "cover", "missing_asset": "replan", "prompt_keywords": ["fixture"]},
+                "deck_rhythm": "vary surfaces by semantic carrier",
+                "surface_rhythm": {"max_consecutive_plain": 0},
+                "forbidden_patterns": ["bento-as-default"],
+            },
+            "warnings": [],
+            "assumptions": [],
+        }
     if stage == "art_direction":
         proposal = asdict(TasteSkillArtDirectionProvider().propose(context, ArtDirectionLimits(**limits)))
-        proposal["design_read"] = "Synthetic propagation fixture, not Taste-generated or a visual acceptance case."
+        proposal["design_read"] = "Synthetic propagation fixture bound to a Taste-generated Seed, not a visual acceptance case."
         proposal["direction"]["typography"]["preferred_font"] = "Arial"
+        carrier_by_slide = {
+            item["slide_id"]: item
+            for item in context["art_direction_seed"]["direction"]["carriers"]
+        }
         pages = []
         for plan in context["layout_plans"]["plans"]:
             rows = []
@@ -104,7 +251,15 @@ def _fixture_proposal(stage: str, context: dict, limits: dict) -> dict:
                     "border_color": None, "border_width": 0,
                     "image_fit": "contain", "chart_colors": ["#7A3355"],
                 }})
-            pages.append({"slide_id": plan["slide_id"], "background": "#EFF2F8", "regions": rows, "decorations": []})
+            treatment = carrier_by_slide[plan["slide_id"]]["surface_treatment"]
+            decorations = []
+            if treatment == "field":
+                decorations = [{
+                    "decoration_id": f"DEC-{plan['slide_id'].replace('-', '')}-01",
+                    "kind": "rect", "x": 60, "y": 44, "w": 42, "h": 4,
+                    "fill": "#7A3355", "stroke": None, "z": 0,
+                }]
+            pages.append({"slide_id": plan["slide_id"], "surface_treatment": treatment, "background": "#EFF2F8", "regions": rows, "decorations": decorations})
         proposal["direction"]["page_designs"] = pages
         return proposal
     if stage == "layout_plans":
@@ -120,6 +275,7 @@ def _fixture_proposal(stage: str, context: dict, limits: dict) -> dict:
         return {"content": {"plans": plans}, "warnings": [], "assumptions": []}
     proposal = asdict(DeterministicPlanningProvider().propose(stage, context, PlanningLimits(**limits)))
     proposal.pop("artifact_type")
+    proposal.pop("art_direction_seed")
     if stage == "slide_specs":
         for index, slide in enumerate(proposal["content"]["slides"]):
             slide["visual_intent"]["suggested_layout_families"] = ["custom"]
@@ -162,11 +318,26 @@ def authored_workspace(tmp_path_factory) -> Path:
         pending = result["pending"]
         visited.append(pending["stage"])
         request = read_json(Path(pending["request_path"]))
-        _respond(pending, _fixture_proposal(request["stage"], request["context"], request["limits"]))
+        prototype = None
+        if pending["stage"] == "art_direction_seed":
+            prototype_path = workspace / "design/prototypes/fixture.html"
+            prototype_path.parent.mkdir(parents=True, exist_ok=True)
+            prototype_path.write_text("<main>fixture visual prototype</main>\n", encoding="utf-8")
+            prototype = {
+                "medium": "html-css",
+                "path": "design/prototypes/fixture.html",
+                "content_hash": f"sha256:{sha256_file(prototype_path)}",
+            }
+        _respond(
+            pending,
+            _fixture_proposal(
+                request["stage"], request["context"], request["limits"], prototype=prototype
+            ),
+        )
         result = service.run((source,), hints=hints)
         if result["status"] == "design_ready":
             break
-    assert visited == ["narrative_blueprint", "deck_outline", "slide_specs", "layout_plans", "art_direction"]
+    assert visited == ["narrative_blueprint", "deck_outline", "art_direction_seed", "slide_specs", "layout_plans", "art_direction"]
     assert result["status"] == "design_ready", result
     return workspace
 
@@ -174,12 +345,16 @@ def authored_workspace(tmp_path_factory) -> Path:
 def test_host_decisions_reach_ir_without_family_restyling(authored_workspace: Path) -> None:
     runtime = ArtifactRuntime(authored_workspace)
     ir = RenderCompileService(authored_workspace).compile().ir
+    visual = runtime.show_artifact("visual_system")
+    page_by_id = {page["slide_id"]: page for page in visual["page_designs"]}
     for slide in ir["slides"]:
         assert slide["background"] == "#EFF2F8"
-        assert slide["decorations"] == []
+        assert slide["decorations"] == page_by_id[slide["slide_id"]]["decorations"]
         assert all(r["x"] == 95 and r["style"]["color"] == "#123456" for r in slide["regions"])
-    visual = runtime.show_artifact("visual_system")
     specs = runtime.show_artifact("slide_specs")
+    seed = read_json(authored_workspace / specs["art_direction_seed"]["path"])
+    assert seed["foundation"]["kind"] == "taste-generated"
+    assert visual["art_direction"]["pre_layout_seed"] == specs["art_direction_seed"]
     layouts = runtime.show_artifact("layout_plans")
     broken = copy.deepcopy(visual["page_designs"])
     broken[0]["regions"].pop()
@@ -189,6 +364,23 @@ def test_host_decisions_reach_ir_without_family_restyling(authored_workspace: Pa
     raw["regions"][0]["w"] = -1
     with pytest.raises(PlanningError, match="geometry"):
         admit_authored_layout(specs["slides"][0], raw)
+
+
+def test_tampered_taste_prototype_invalidates_the_final_visual_system(
+    authored_workspace: Path,
+    tmp_path: Path,
+) -> None:
+    """Provenance remains a current input to G6, without becoming an aesthetic score."""
+
+    workspace = tmp_path / "tampered-prototype"
+    shutil.copytree(authored_workspace, workspace)
+    prototype = workspace / "design/prototypes/fixture.html"
+    prototype.write_text("<main>tampered prototype</main>\n", encoding="utf-8")
+
+    gate = evaluate_gate(workspace, "G6")
+
+    assert not gate.passed
+    assert any("prototype hash mismatch" in reason for reason in gate.reasons)
 
 
 @pytest.mark.skipif(not os.environ.get("RUNTIME_NODE_MODULES"), reason="optional host Artifact Tool runtime")

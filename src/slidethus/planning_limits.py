@@ -74,11 +74,20 @@ def admit_planning_proposal(
 
     warnings = normalize_messages(proposal.warnings, "warnings")
     assumptions = normalize_messages(proposal.assumptions, "assumptions")
+    seed = proposal.art_direction_seed
+    if seed is not None:
+        required_seed_fields = {"seed_id", "path", "content_hash", "provider"}
+        if not isinstance(seed, dict) or set(seed) != required_seed_fields:
+            raise PlanningLimitError("Planning proposal Art Direction Seed reference is invalid")
+        provider = seed.get("provider")
+        if not isinstance(provider, dict) or set(provider) != {"name", "version", "mode"}:
+            raise PlanningLimitError("Planning proposal Art Direction Seed provider is invalid")
     admitted = PlanningProposal(
         artifact_type=proposal.artifact_type,
         content=proposal.content,
         warnings=warnings,
         assumptions=assumptions,
+        art_direction_seed=seed,
     )
     try:
         payload_size = len(
@@ -88,6 +97,7 @@ def admit_planning_proposal(
                     "content": admitted.content,
                     "warnings": admitted.warnings,
                     "assumptions": admitted.assumptions,
+                    "art_direction_seed": admitted.art_direction_seed,
                 }
             )
         )

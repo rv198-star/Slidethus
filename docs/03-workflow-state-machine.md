@@ -36,9 +36,9 @@ stateDiagram-v2
 | P2 Evidence | 哪些声明有依据 | Sources、方向性研究、逐页定向研究 | Evidence Ledger | G2 Evidence；P5A 前再次确认 |
 | P3 Narrative | 整套演示如何说服 | Brief、Evidence | Narrative Blueprint | G3 Narrative |
 | P4 Outline | 每一页承担什么任务 | Narrative | Deck Outline | G4 Outline |
-| P5A Slide Specs | 每页讲什么 | Outline、Evidence | Slide Specs | G5A Specs |
+| P5A Slide Specs | 每页讲什么及何时需要视觉载体 | Outline、Evidence、（designed Create 时）冻结 Art Direction Seed | Slide Specs | G5A Specs |
 | P5B Layout | 每页如何组织 | Slide Specs | Layout Plans、wireframes | G5B Layout |
-| P6 Visual | 整套视觉规则是什么 | Brief、参考、Layout、Assets | immutable Art Direction Packet、Visual System | G6 Visual |
+| P6 Visual | 整套视觉规则是什么 | Brief、参考、Layout、Assets、（如存在）同一 Art Direction Seed | immutable Art Direction Packet、Visual System | G6 Visual |
 | P7 Render | 如何变成目标文件 | Specs、Layout、Visual | Render Manifest、draft | G7 Render |
 | P8 Review | 具体哪里有问题 | draft、所有 artifacts | Quality Report、repair plan | G8 Review |
 | P9 Delivery | 交付是否完整 | approved draft | Delivery Manifest | G9 Delivery |

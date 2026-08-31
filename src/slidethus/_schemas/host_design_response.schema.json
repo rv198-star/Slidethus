@@ -8,7 +8,7 @@
   "properties": {
     "schema_version": {"const": "0.1.0"},
     "request_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
-    "stage": {"enum": ["narrative_blueprint", "deck_outline", "slide_specs", "layout_plans", "art_direction"]},
+    "stage": {"enum": ["narrative_blueprint", "deck_outline", "art_direction_seed", "slide_specs", "layout_plans", "art_direction"]},
     "proposal": {"type": "object"}
   }
 }

@@ -1,5 +1,11 @@
 # Slidethus Build Roadmap
 
+## v0.8.1 视觉基础能力发布
+
+在 v0.8.0 上收敛前置 ArtDirectionSeed、Taste 原生样板出处和 P5A/P5B/P6 视觉决策传播。用户认可 YU7 案例；其真实 Office 验收仍未完成，不伪造最终交付 Gate。仅单 Python 3.11 发布验证，不扩展行业或重开审美优化。
+
+发布范围、检查与已知边界见 `plans/v0.8.1-release.md` 和 `release/v0.8.1.md`。M6.6 / v1.0 状态不变。
+
 ## v0.8.0 能力发布
 
 发布当前宿主设计链路与模块化技能套件，保持 provider-neutral、单一主编排器和既有阶段合同。只用 Python 3.11 做本轮验证，不做多版本审计，不新增行业案例或重开优化。

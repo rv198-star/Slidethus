@@ -33,9 +33,10 @@ Requests bind context and limits. Old responses do not apply to changed context.
 |---|---|
 | narrative_blueprint | `content`: central_thesis, story_arc, sections; each section has title, purpose, key_questions, evidence_ids, transition, thesis, audience_shift, slide_budget. Use existing Evidence, not new claims. |
 | deck_outline | `content.slides`: section_index (zero-based), slide_type, headline, takeaway, purpose, audience_question, evidence_ids, evidence_requirement. Code assigns stable slide IDs. |
+| art_direction_seed | No `content` wrapper: design_read, dials, foundation, direction, warnings, assumptions. Designed Create requires `foundation.kind: taste-generated` plus a workspace-local, hash-bound `prototype` (`html-css`, `svg` or image). `direction` supplies one ordered carrier for every active slide (`kind`, `required`/`optional`/`none`, `surface_treatment`, rationale), image treatment, deck rhythm, maximum consecutive `plain` surfaces and forbidden patterns. This is requested after Outline and before Slide Specs. |
 | slide_specs | `content.slides`: current slide_id, content_blocks, visual_intent (relationship, suggested_layout_families, avoid), density_budget, speaker_notes, editability_target. Blocks contain semantic_role, content_type, priority, content, claim_mode, evidence_ids, evidence_requirement, asset_refs, notes. Code assigns stable Block IDs. |
 | layout_plans | `content.plans`: current slide_id, layout_family, rationale, regions. Each region has exactly block_id, x, y, w, h, z, align, valign, overflow_strategy. Array order is reading order. Optional `content.safe_area` has top/right/bottom/left. Canvas remains 1280×720. Code derives Region IDs, bindings and diagnostics. |
-| art_direction | No `content` wrapper: design_read, dials, direction, warnings, assumptions. `direction` follows `art_direction_packet.schema.json` and must include `page_designs`. |
+| art_direction | No `content` wrapper: design_read, dials, direction, warnings, assumptions. `direction` follows `art_direction_packet.schema.json` and must include `page_designs`. Each page must carry the same `surface_treatment` frozen in the Seed; an `image-led` surface needs an image Block and a `field` surface needs a visible field via a Block fill/border or decoration. |
 
 For the first three stages consult the matching artifact schema for field enums/required semantic fields. Version/lineage/approval/generated IDs are assigned by admission, not submitted by the host. A rejected proposal should be corrected, not bypassed by writing final artifacts by hand.
 
@@ -45,7 +46,7 @@ After approval, explicitly revise existing planning with `--revise-stage narrati
 
 ## Native design and assets
 
-Read `providers/art-direction/taste/SKILL.md` completely before using it. Use static presentation-relevant principles, not automatic web UI constraints. Native prototypes remain isolated and never satisfy gates. Translate actual approved composition back into formal plans; if geometry changes, revise Layout before submitting the new P6 response. Record the prototype/approval reference in proposal assumptions without claiming it is machine-verified Office evidence.
+Read `providers/art-direction/taste/SKILL.md` completely before using it. Use static presentation-relevant principles, not automatic web UI constraints. Native prototypes remain isolated and never satisfy PPTX/release gates, but their file path and SHA-256 are machine-verified as the designed Create Seed's provenance. A fixed token proposal or a post-hoc PPTX is not a native prototype. Translate actual approved composition back into formal plans; if geometry changes, revise Layout before submitting the new P6 response.
 
 Source/generate assets only after planning their role and crop. Add local files to Asset Manifest with truthful source/license/status. Missing, forbidden, remote or unsupported assets fail; no invisible placeholder substitution. Numerical charts need factual Evidence or clearly labeled synthetic/assumption data. Consider whether a chart clarifies comparison/trend rather than requiring one on every slide.
 

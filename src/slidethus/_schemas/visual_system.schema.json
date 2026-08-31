@@ -38,6 +38,9 @@
             "type": "string",
             "pattern": "^S-[0-9]{3}$"
           },
+          "surface_treatment": {
+            "enum": ["plain", "tonal", "field", "image-led"]
+          },
           "background": {
             "type": "string",
             "pattern": "^#[a-fA-F0-9]{6}$"
@@ -526,6 +529,26 @@
             "name": {"type": "string", "minLength": 1},
             "version": {"type": "string", "minLength": 1},
             "mode": {"type": "string", "minLength": 1}
+          }
+        },
+        "pre_layout_seed": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["seed_id", "path", "content_hash", "provider"],
+          "properties": {
+            "seed_id": {"type": "string", "pattern": "^ADS-[A-F0-9]{16}$"},
+            "path": {"type": "string", "pattern": "^\\.slidethus/art-direction/seeds/[a-f0-9]{64}\\.json$"},
+            "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+            "provider": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "version", "mode"],
+              "properties": {
+                "name": {"type": "string", "minLength": 1, "maxLength": 128},
+                "version": {"type": "string", "minLength": 1, "maxLength": 128},
+                "mode": {"type": "string", "minLength": 1, "maxLength": 128}
+              }
+            }
           }
         }
       }

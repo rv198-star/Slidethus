@@ -1,4 +1,4 @@
-# Slidethus v0.8.0 — Evidence-backed Presentation Engineering
+# Slidethus v0.8.1 — Evidence-backed Presentation Engineering
 
 > 面向通用 Agentic Host 的 **Agentic Presentation Engineering Skill**：从本地文本依次产出策划稿、布局诊断、调试稿、设计稿和最终可编辑 PPTX。
 
@@ -30,7 +30,7 @@ Slidethus 不是“输入标题后套模板”的 PPT 生成器，而是一套�
 - M2.7 repository-wide deterministic Exit validator、跨模块对抗审计、双 Python 基线与持久 Package Gate；
 - M3.1 Project Brief 智能补全、最少提问、显式 assumptions/questions 和 `m3 answer` 恢复；
 - M3.2–M3.5 provider-neutral Production Narrative、stable digital sticky-note Outline、Evidence-qualified Slide Specs、Layout Plans 与 immutable wireframes；
-- P6 provider-neutral `ArtDirectionPacket`、内置固定版本 Taste 默认 provider、不可变 hash/lineage 与可替换 adapter；
+- designed Create 的 pre-layout `ArtDirectionSeed`（视觉载体、表面节奏、Taste-native 原型出处）与 P6 provider-neutral `ArtDirectionPacket`；内置固定版本 Taste 默认 provider、不可变 hash/lineage 与可替换 adapter；
 - M3.6 Planning Review：密度、重复、节奏、过渡、容量、Bento 过度使用和 current-lineage 审计；
 - M3.6 bounded local Repair、Planning Change/Review/Repair Reports、最小依赖传播和失败检查点；
 - M3.7 单一 `M3ApplicationService`、`m3 run/list/show/gate`、repository Exit validator 与 M4 handoff；
@@ -47,9 +47,9 @@ Slidethus 不是“输入标题后套模板”的 PPT 生成器，而是一套�
 
 ## 这不是什么
 
-Slidethus v0.8.0 是 provider-neutral 的工程 Skill 与可验证 runtime/distribution boundary；它不是生产级端到端 PPT 产品（此处特指内置全部搜索、模型、图像和审阅供应商的一体化产品）。外部能力缺失时必须显式降级或阻断。当前 M6.6 已因真实 Office 视觉证据重开，尚未完成，不声明 v1.0 发布就绪。
+Slidethus v0.8.1 是 provider-neutral 的工程 Skill 与可验证 runtime/distribution boundary；它不是生产级端到端 PPT 产品（此处特指内置全部搜索、模型、图像和审阅供应商的一体化产品）。外部能力缺失时必须显式降级或阻断。当前 M6.6 已因真实 Office 视觉证据重开，尚未完成，不声明 v1.0 发布就绪。
 
-当前包已经完成 M0–M5 与 M6.1–M6.5 的工程边界。**M6 Exit Gate：REOPENED。v1.0 Release Gate：DO NOT RELEASE（2026-08-31）。** v0.8.0 在恢复基线 `e34b62a` 上整理宿主设计入口、候选产出与模块化技能套件，发布当前可用能力，不等同于 v1.0 验收通过。参见 [v0.8.0 发布说明](release/v0.8.0.md) 与 [发布执行记录](plans/v0.8.0-release.md)；历史 Round/RC 记录不作为本次发布依据。以下能力仍属于外部适配或显式 capability boundary：
+当前包已经完成 M0–M5 与 M6.1–M6.5 的工程边界。**M6 Exit Gate：REOPENED。v1.0 Release Gate：DO NOT RELEASE（2026-08-31）。** v0.8.1 在 v0.8.0 宿主入口与模块化套件基础上，增加前置视觉 Seed、Taste 原生样板出处及页面视觉载体/表面节奏的传播校验，不等同于审美认证或 v1.0 验收通过。参见 [v0.8.1 发布说明](release/v0.8.1.md) 与 [发布执行记录](plans/v0.8.1-release.md)；历史 Round/RC 记录不作为本次发布依据。以下能力仍属于外部适配或显式 capability boundary：
 
 - 内置搜索供应商、LLM/图片生成服务的真实适配；
 - OCR、图片语义理解、音视频解释、公式计算和旧版 OLE/宏文件解析；
@@ -362,7 +362,7 @@ audit/                      本包审计记录与完整性清单
 
 ## 版本定位
 
-- 包版本：`0.8.0`
+- 包版本：`0.8.1`
 - 成熟度：0.x 能力发布；M6.6 / v1.0 验收仍未完成
 - 本轮验证：单一 Python 3.11；不做多 Python 版本审计，不把历史兼容矩阵当作本轮验证结果
 - 默认语言：中文
@@ -372,4 +372,4 @@ audit/                      本包审计记录与完整性清单
 
 ## 下一步
 
-用后续真实任务继续检验样板到全篇的风格贯穿、图表与图片策划；扩大行业/场景验证仍列后续待办，不作为 v0.8.0 的追加范围。v1.0 按 [最后优化与重新发布计划](plans/M6.6-final-optimization-and-rerelease.md) 单独验收，其 Release Gate 继续保持 `DO NOT RELEASE`。
+用后续真实任务继续检验样板到全篇的风格贯穿、图表与图片策划；扩大行业/场景验证仍列后续待办，不作为 v0.8.1 的追加范围。v1.0 按 [最后优化与重新发布计划](plans/M6.6-final-optimization-and-rerelease.md) 单独验收，其 Release Gate 继续保持 `DO NOT RELEASE`。

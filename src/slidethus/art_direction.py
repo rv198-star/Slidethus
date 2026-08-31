@@ -7,6 +7,10 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
+from slidethus.art_direction_seed import (
+    validate_seed_fulfillment,
+    validate_seed_reference_for_graph,
+)
 from slidethus.constants import SCHEMA_VERSION
 from slidethus.distribution import skill_source_root
 from slidethus.errors import ArtifactError
@@ -15,6 +19,7 @@ from slidethus.protocols import (
     ArtDirectionLimits,
     ArtDirectionProposal,
     ArtDirectionProvider,
+    ArtDirectionSeedProposal,
 )
 from slidethus.schema_registry import SchemaRegistry
 
@@ -118,6 +123,82 @@ class TasteSkillArtDirectionProvider:
             "upstream_commit": _TASTE_COMMIT,
             "license": "MIT",
         }
+
+    def propose_seed(
+        self,
+        context: dict[str, Any],
+        limits: ArtDirectionLimits,
+    ) -> ArtDirectionSeedProposal:
+        """Provide an explicit, bounded Taste-informed fallback before page planning.
+
+        The bundled resource is a fixed instructional dependency, not a model-backed native
+        prototype generator.  This proposal is therefore deliberately marked
+        ``taste-informed`` and makes no claim of Taste-generated visual work.
+        """
+
+        self.resource_identity()
+        brief = context["project_brief"]
+        outline = context["deck_outline"]
+        intent = brief.get("intent", {})
+        mode = str(intent.get("presentation_mode", "both"))
+        purpose = str(intent.get("purpose") or brief.get("title") or "decision support")
+        active = [
+            slide for slide in outline.get("slides", []) if slide.get("status") != "excluded"
+        ]
+        density = {"live": 4, "read": 7, "both": 6}.get(mode, 6)
+        carriers = []
+        for slide in active:
+            slide_type = str(slide.get("slide_type", "statement"))
+            kind = "typographic" if slide_type in {"cover", "section", "statement"} else "textual"
+            treatment = "field" if slide_type in {"cover", "section"} else "tonal"
+            carriers.append(
+                {
+                    "slide_id": str(slide["slide_id"]),
+                    "kind": kind,
+                    "requirement": "optional",
+                    "surface_treatment": treatment,
+                    "rationale": "A deterministic fallback records a visual option but does not invent media or data.",
+                }
+            )
+        return ArtDirectionSeedProposal(
+            design_read=(
+                f"Taste-informed fallback for a {mode} presentation supporting {purpose}; "
+                "requires explicit host reasoning before it may be called Taste-generated."
+            )[: limits.max_design_read_chars],
+            dials={
+                "design_variance": 7 if len(active) >= 6 else 6,
+                "motion_intensity": 2,
+                "visual_density": density,
+            },
+            foundation={"kind": "taste-informed"},
+            direction={
+                "carriers": carriers,
+                "image_direction": {
+                    "style": "editorial, evidence-led, restrained, no decorative filler",
+                    "fit": "cover",
+                    "missing_asset": "replan",
+                    "prompt_keywords": [
+                        "editorial composition",
+                        "clear focal hierarchy",
+                        "presentation-safe negative space",
+                    ],
+                },
+                "deck_rhythm": "alternate field, tonal and content-led surfaces by page role",
+                "surface_rhythm": {"max_consecutive_plain": 0},
+                "forbidden_patterns": [
+                    "bento-as-default",
+                    "same-layout-family-over-three-consecutive-slides",
+                    "unmanifested-external-asset",
+                    "global-font-shrink-to-hide-overflow",
+                ],
+            },
+            warnings=(
+                "This is Taste-informed deterministic guidance, not a Taste-generated native visual prototype.",
+            ),
+            assumptions=(
+                "No host-authored visual foundation was supplied; media and chart carriers remain optional.",
+            ),
+        )
 
     def propose(
         self,
@@ -271,6 +352,7 @@ def compile_art_direction(
     provider: ArtDirectionProvider | None = None,
     limits: ArtDirectionLimits | None = None,
     schema_registry: SchemaRegistry | None = None,
+    workspace: Path | None = None,
 ) -> CompiledArtDirection:
     """Admit one provider proposal into an immutable, schema-backed packet."""
 
@@ -288,6 +370,18 @@ def compile_art_direction(
         artifact_type: graph[artifact_type]["data"]
         for artifact_type in _INPUT_TYPES
     }
+    pre_layout_seed = context["slide_specs"].get("art_direction_seed")
+    seed = None
+    if pre_layout_seed is not None:
+        if workspace is None:
+            raise ArtifactError("Art Direction Seed requires a workspace for validation")
+        seed = validate_seed_reference_for_graph(
+            workspace,
+            pre_layout_seed,
+            graph,
+            schema_registry=schema_registry,
+        )
+        context["art_direction_seed"] = seed
     proposal = active_provider.propose(context, active_limits)
     proposal_payload = {
         "design_read": proposal.design_read,
@@ -316,6 +410,7 @@ def compile_art_direction(
         "status": "frozen",
         "provider": provider_identity,
         **proposal_payload,
+        **({"pre_layout_seed": pre_layout_seed} if pre_layout_seed is not None else {}),
         "input_lineage": [
             _artifact_ref(graph[artifact_type], artifact_type)
             for artifact_type in _INPUT_TYPES
@@ -336,6 +431,14 @@ def compile_art_direction(
     lineage_types = [item["artifact_type"] for item in packet["input_lineage"]]
     if tuple(lineage_types) != _INPUT_TYPES:
         raise ArtifactError("Art Direction Packet input lineage order is invalid")
+    if seed is not None:
+        page_designs = packet["direction"].get("page_designs")
+        validate_seed_fulfillment(
+            seed,
+            context["slide_specs"],
+            page_designs,
+            base_background=packet["direction"]["palette"]["background"],
+        )
     digest = sha256_json(packet)
     return CompiledArtDirection(
         packet=packet,
