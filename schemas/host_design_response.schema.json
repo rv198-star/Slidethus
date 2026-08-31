@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/host-design-response.schema.json",
+  "title": "Host design response envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_hash", "stage", "proposal"],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "request_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "stage": {"enum": ["narrative_blueprint", "deck_outline", "slide_specs", "layout_plans", "art_direction"]},
+    "proposal": {"type": "object"}
+  }
+}

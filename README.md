@@ -1,4 +1,4 @@
-# Slidethus v1.0.0 Release Candidate — Evidence-backed Presentation Engineering
+# Slidethus v0.8.0 — Evidence-backed Presentation Engineering
 
 > 面向通用 Agentic Host 的 **Agentic Presentation Engineering Skill**：从本地文本依次产出策划稿、布局诊断、调试稿、设计稿和最终可编辑 PPTX。
 
@@ -8,7 +8,7 @@ Slidethus 不是“输入标题后套模板”的 PPT 生成器，而是一套�
 
 当前版本已经提供：
 
-- 可被 Codex 自动发现的仓库级 Skill：`.agents/skills/slidethus/`；
+- 可被 Codex 自动发现的技能套件：`using-slidethus` 总入口、七个阶段子技能和兼容入口 `slidethus`；
 - 根目录 `AGENTS.md`、Codex 启动指令、执行计划模板和分阶段任务清单；
 - 需求、来源、证据、叙事、页面规格、布局、视觉系统、审计与交付的 JSON Schema；
 - 一个可运行的 Python 核心与真实纵向 MVP；
@@ -47,14 +47,16 @@ Slidethus 不是“输入标题后套模板”的 PPT 生成器，而是一套�
 
 ## 这不是什么
 
-Slidethus v1.0 是 provider-neutral 的工程 Skill 与可验证 runtime/distribution boundary；它不是生产级端到端 PPT 产品（此处特指内置全部搜索、模型、图像和审阅供应商的一体化产品）。外部能力缺失时必须显式降级或阻断。当前 M6.6 已因真实 Office 视觉证据重开，尚未完成，不声明 v1.0 发布就绪。
+Slidethus v0.8.0 是 provider-neutral 的工程 Skill 与可验证 runtime/distribution boundary；它不是生产级端到端 PPT 产品（此处特指内置全部搜索、模型、图像和审阅供应商的一体化产品）。外部能力缺失时必须显式降级或阻断。当前 M6.6 已因真实 Office 视觉证据重开，尚未完成，不声明 v1.0 发布就绪。
 
-当前包已经完成 M0–M5 与 M6.1–M6.5。**M2 Exit Gate：PASS（2026-08-27）。M3 Exit Gate：PASS（2026-08-27）。M4 Exit Gate：PASS（2026-08-28）。M5 Exit Gate：PASS（2026-08-29）。M6 Exit Gate：REOPENED（2026-08-30）。v1.0 Release Gate：DO NOT RELEASE，等待用户对真实 Office PPTX 的视觉评审。** Round 7 已对 P5A/P5B/P6/P7 系统性缺陷完成根修并生成新的 8 页评审候选；历史 Round 6 PASS 已撤回。以下能力仍属于外部适配或显式 capability boundary：
+当前包已经完成 M0–M5 与 M6.1–M6.5 的工程边界。**M6 Exit Gate：REOPENED。v1.0 Release Gate：DO NOT RELEASE（2026-08-31）。** v0.8.0 在恢复基线 `e34b62a` 上整理宿主设计入口、候选产出与模块化技能套件，发布当前可用能力，不等同于 v1.0 验收通过。参见 [v0.8.0 发布说明](release/v0.8.0.md) 与 [发布执行记录](plans/v0.8.0-release.md)；历史 Round/RC 记录不作为本次发布依据。以下能力仍属于外部适配或显式 capability boundary：
 
 - 内置搜索供应商、LLM/图片生成服务的真实适配；
 - OCR、图片语义理解、音视频解释、公式计算和旧版 OLE/宏文件解析；
 - 真实 LLM PlanningProvider、SemanticReviewProvider、VisualReviewProvider 适配及其独立模型评测；
 - GUI、云端服务、多租户和商业化能力。
+
+既有工程验收记录保持：M2 Exit Gate：PASS（2026-08-27）；M3 Exit Gate：PASS（2026-08-27）；M4 Exit Gate：PASS（2026-08-28）；M5 Exit Gate：PASS（2026-08-29）。这些子模块验收不替代当前 M6.6 的真实 PPTX 发布验收。
 
 MVP1 的 MinimalImpl 仍只是跨里程碑回归切片。M2.2 的 `partial` 来源只提供已记录文本/元数据，Research Result 仍不是事实；M3 的确定性 PlanningProvider 是真实 Production contract baseline，但不声称具备通用 LLM 叙事智能。M4 已提供真实多后端渲染与输出完整性，M5 已提供独立 deterministic/semantic/visual review、severity-first scorecard、Repair Plan、cross-deck regression、Production Quality/G8 和 Golden baseline；没有注入语义/视觉 reviewer provider 时仍会显式停在 capability boundary，不伪造质量判断。
 
@@ -86,6 +88,37 @@ flowchart LR
 6. **确定性任务交给脚本，模型负责理解、判断和生成。**
 
 ## 本地启动
+
+### 技能入口与分阶段使用
+
+直接说“用 `$using-slidethus` 根据这些材料完成一份 PPT”，主 Agent 就会按需执行整条链路，不需要用户逐个调用技能。已有审批模式、用户指定的样页停点和能力限制仍然有效；一步到位不代表跳过证据、布局或真实 PowerPoint 验收。
+
+| 技能 | 边界 |
+|---|---|
+| [using-slidethus](.agents/skills/using-slidethus/SKILL.md) | 总入口、六类工作流路由、端到端执行/续跑 |
+| [slidethus-brief](.agents/skills/slidethus-brief/SKILL.md) | 需求、受众、场景、约束和假设 |
+| [slidethus-research](.agents/skills/slidethus-research/SKILL.md) | 来源、两轮调研、证据与图表数据 |
+| [slidethus-story](.agents/skills/slidethus-story/SKILL.md) | 叙事、论证与稳定页面大纲 |
+| [slidethus-plan](.agents/skills/slidethus-plan/SKILL.md) | 内容块、图片/图表考虑、布局和线框 |
+| [slidethus-design](.agents/skills/slidethus-design/SKILL.md) | Taste 默认设计路径、素材、全篇风格与节奏 |
+| [slidethus-render](.agents/skills/slidethus-render/SKILL.md) | 同一链路生产样页/全篇候选及导出检查 |
+| [slidethus-review](.agents/skills/slidethus-review/SKILL.md) | 审校、根因归属、授权修复复验与交付 |
+
+例如“用 `$slidethus-plan` 只完成页面策划，不生成 PPT”，就停在 Specs/Layout/wireframe；“用 `$slidethus-review` 看看哪里不对”只审计，不擅自修改。
+
+旧 `$slidethus` 保留兼容并转入总入口。子技能是同一 Agent 按需读取的工作模块，不是多 Agent 链。共用原有工件、脚本和 Taste，不改变已恢复的渲染器，也没有行业专用规则。
+
+向其他工作区安装时使用 `slidethus plugin install-skill <host-root>`，会完整安装上述套件和兼容目录；不要只复制入口文件夹。已有目标文件不同会拒绝覆盖，请保留定制并选择干净目标或显式合并。Wheel 内使用 `share/slidethus/skills/<name>/` 同级布局，Plugin 同时包含全部技能及共享资源。详见 [技能模块化计划](plans/skill-suite-modularization.md)。
+
+### 设计型生成链路
+
+当前设计型 Create 入口为 `slidethus create <workspace> --source <file> --request "<需求>"`。
+宿主逐阶段提交绑定当前上下文的规划/设计提案；明确的 Block 布局与逐页外观进入正式工件。
+`--render --slide-id S-001` 与 `--render` 使用同一 IR/Artifact Tool 适配器，分别生成样板或全篇候选。
+缺失设计、素材或宿主渲染能力会停止，不回填固定模板。旧 `workflow run create` 仅在显式
+`--deterministic-baseline` 下运行。详见 [宿主入口](.agents/skills/slidethus/references/host-create.md)。
+
+本轮仅落地职责边界和统一生成入口。完整生成包固化、新案例及真实 PowerPoint 美学验收由用户后续推进；候选文件不代表发布通过。执行记录见 [本轮收敛计划](plans/host-design-entry-stabilization.md)。
 
 ### 1. 解压并进入项目
 
@@ -310,7 +343,9 @@ MVP0 命令当前要求目标 workspace 为空；Artifact Runtime 的事务恢�
 
 ```text
 SLIDETHUS_FOUNDATION_PLAN.md  总体详细方案
-.agents/skills/slidethus/   Codex/ChatGPT 可发现的 Skill
+.agents/skills/using-slidethus/ 总入口
+.agents/skills/slidethus-*/  七个阶段子技能
+.agents/skills/slidethus/    兼容入口与共享工作流、参考、Taste、脚本
 src/slidethus/              确定性核心与 CLI
 schemas/                    结构化中间产物合同
 examples/minimal_project/   可验证的最小项目
@@ -327,13 +362,14 @@ audit/                      本包审计记录与完整性清单
 
 ## 版本定位
 
-- 包版本：`1.0.0`
-- 成熟度：v1.0 Release Candidate（M6.6 / Release Gate 重开，等待真实 Office 视觉评审）
+- 包版本：`0.8.0`
+- 成熟度：0.x 能力发布；M6.6 / v1.0 验收仍未完成
+- 本轮验证：单一 Python 3.11；不做多 Python 版本审计，不把历史兼容矩阵当作本轮验证结果
 - 默认语言：中文
 - 逻辑画布：`1280 × 720`
-- 推荐最终渲染：Hybrid（原生文本/形状 + SVG/图片复杂视觉）
+- 设计型 Create 候选渲染：宿主提供的 Artifact Tool；Legacy Hybrid 保留为显式工程基线，不自动替代已确认设计
 - 项目许可证：Apache-2.0；`source_material/`、用户输入、第三方依赖/素材/字体/模型输出不因项目主许可证自动获得再许可，详见 `NOTICE.md`、`THIRD_PARTY_NOTICES.md` 与 `release/rights-policy.json`
 
 ## 下一步
 
-下一步先完成 Round 7 用户视觉评审与 Release 决定；在此之前保持 `DO NOT RELEASE`。随后再补充真实搜索、Planning、SemanticReviewProvider、VisualReviewProvider 与图像生成适配器的独立评测。
+用后续真实任务继续检验样板到全篇的风格贯穿、图表与图片策划；扩大行业/场景验证仍列后续待办，不作为 v0.8.0 的追加范围。v1.0 按 [最后优化与重新发布计划](plans/M6.6-final-optimization-and-rerelease.md) 单独验收，其 Release Gate 继续保持 `DO NOT RELEASE`。

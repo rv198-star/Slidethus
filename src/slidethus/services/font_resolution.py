@@ -260,7 +260,7 @@ class FontResolutionService:
                 str(style.get("font_family", "")).strip()
                 for style in visual_system.get("typography", {}).values()
                 if str(style.get("font_family", "")).strip()
-            }
+            } | set(requirements)
         )
         return tuple(
             self.resolve_family(

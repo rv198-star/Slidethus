@@ -1,0 +1,6 @@
+interface:
+  display_name: "Using Slidethus"
+  short_description: "One entry for complete or scoped presentation work"
+  default_prompt: "Use $using-slidethus to complete my presentation from this topic and material, continuing through the necessary phases and reporting any genuine blocker."
+policy:
+  allow_implicit_invocation: true

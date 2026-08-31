@@ -136,9 +136,14 @@ def _node_dependencies(root: Path) -> list[dict[str, Any]]:
 
 
 def _taste_package(root: Path) -> dict[str, Any]:
-    repository = root / ".agents/skills/slidethus/providers/art-direction/taste"
-    installed = root / "skill/providers/art-direction/taste"
-    taste_root = repository if (repository / "PROVENANCE.json").is_file() else installed
+    candidates = (
+        root / ".agents/skills/slidethus/providers/art-direction/taste",
+        root / "skills/slidethus/providers/art-direction/taste",
+        root / "skill/providers/art-direction/taste",
+    )
+    taste_root = next((path for path in candidates if (path / "PROVENANCE.json").is_file()), None)
+    if taste_root is None:
+        raise FileNotFoundError(f"Cannot locate bundled Taste provenance under {root}")
     provenance = read_json(taste_root / "PROVENANCE.json")
     commit = str(provenance["upstream_commit"])
     return {

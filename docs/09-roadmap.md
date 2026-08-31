@@ -112,9 +112,9 @@ M5 Review runtime facts 位于 `.slidethus/review/`，Production Quality Report 
 - [x] M6.3 Plugin Packaging；
 - [x] M6.4 Examples & Evaluation；
 - [x] M6.5 License & Third-party Policy；
-- [ ] M6.6 v1.0 Preview Hardening & Release Gate：Round 6 PASS 已被真实 Office 视觉证据撤回；Round 7 根修已生成新的实际 PPTX，等待用户视觉评审。
+- [ ] M6.6 v1.0 Preview Hardening & Release Gate：恢复 `e34b62a` 基线后，重新验证真实设计判断到正式 Create 产物的闭环；未批准新的发布候选。
 
-**M6 Exit Gate：REOPENED（2026-08-30）。v1.0 Release Gate：DO NOT RELEASE。** `SYN-2F199C4F136F5876` 记录了四个新的 Major systemic candidates；Round 7 证据见 `audit/M6.6-round-7-office-visual-reopen.md`。
+**M6 Exit Gate：REOPENED（2026-08-31）。v1.0 Release Gate：DO NOT RELEASE。** 当前计划见 `plans/M6.6-final-optimization-and-rerelease.md`；历史 Round/RC 结论不替代新的正式路径与 PowerPoint 实页验收。
 
 ## v0.9 Distribution Candidate
 

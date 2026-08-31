@@ -52,6 +52,7 @@ from slidethus.schema_registry import SchemaRegistry
 from slidethus.services.brief_completion import BriefCompletionService
 from slidethus.services.evidence import EvidenceEngine
 from slidethus.services.evidence_binding import EvidenceBindingService
+from slidethus.services.host_create import HostCreateService
 from slidethus.services.m2_application import (
     M2ApplicationLimits,
     M2ApplicationService,
@@ -105,6 +106,18 @@ def _parser() -> argparse.ArgumentParser:
     init.add_argument("--title", required=True)
     init.add_argument("--language", default="zh-CN")
     init.add_argument("--force", action="store_true")
+
+    create = sub.add_parser("create", help="host-led design entry; missing decisions pause, never fall back")
+    create.add_argument("workspace", type=Path)
+    create.add_argument("--source", action="append", dest="sources", type=Path)
+    create.add_argument("--title", default="Slidethus Create")
+    create.add_argument("--request", default="")
+    create.add_argument("--render", action="store_true", help="export a candidate, not release approval")
+    create.add_argument("--slide-id", action="append", dest="slide_ids", help="sample from the same full-deck IR")
+    create.add_argument("--revise-stage", choices=["narrative_blueprint", "deck_outline", "slide_specs", "layout_plans"])
+    create.add_argument("--node")
+    create.add_argument("--node-modules", type=Path)
+    create.add_argument("--font-match")
 
     validate = sub.add_parser("validate", help="validate a workspace")
     validate.add_argument("workspace", type=Path)
@@ -481,6 +494,7 @@ def _parser() -> argparse.ArgumentParser:
     workflow_run.add_argument("--node")
     workflow_run.add_argument("--font-match")
     workflow_run.add_argument("--no-auto-repair", action="store_true")
+    workflow_run.add_argument("--deterministic-baseline", action="store_true", help="explicit engineering baseline, not host-designed Create")
 
     workflow_list = workflow_sub.add_parser("list", help="list verified Workflow Application Reports")
     workflow_list.add_argument("workspace", type=Path)
@@ -520,7 +534,7 @@ def _parser() -> argparse.ArgumentParser:
     plugin_build = plugin_sub.add_parser("build", help="build a deterministic Slidethus Plugin zip")
     plugin_build.add_argument("output", type=Path)
 
-    plugin_skill = plugin_sub.add_parser("install-skill", help="materialize the Skill under one host root")
+    plugin_skill = plugin_sub.add_parser("install-skill", help="materialize the complete Skill suite under one host root")
     plugin_skill.add_argument("destination", type=Path)
 
     plugin_renderer = plugin_sub.add_parser(
@@ -576,6 +590,16 @@ def _doctor() -> int:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
+        if args.command == "create":
+            result = HostCreateService(
+                args.workspace, node=args.node, modules=args.node_modules, font_match=args.font_match,
+            ).run(
+                tuple(args.sources or ()), title=args.title,
+                hints=BriefCompletionHints(request_text=args.request) if args.request else None,
+                render=args.render, slide_ids=tuple(args.slide_ids or ()), revise_stage=args.revise_stage,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0 if result["status"] in {"design_ready", "candidate_office_review_pending"} else 1
         if args.command == "init":
             path = init_workspace(args.workspace, title=args.title, language=args.language, force=args.force)
             print(path)
@@ -1104,6 +1128,11 @@ def main(argv: list[str] | None = None) -> int:
                 return 0 if result["status"] == "pass" else 1
         if args.command == "workflow":
             if args.workflow_command == "run":
+                if args.workflow_type == "create" and not args.deterministic_baseline:
+                    raise ValueError(
+                        "Designed Create uses `slidethus create`. For an engineering baseline only, "
+                        "explicitly pass --deterministic-baseline; it is not host/Taste-designed output."
+                    )
                 slide_updates = None
                 if args.slide_updates_json is not None:
                     slide_updates = read_json(args.slide_updates_json)
@@ -1254,7 +1283,10 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
             if args.plugin_command == "install-skill":
                 path = materialize_skill(args.destination)
-                print(json.dumps({"skill_root": str(path)}, ensure_ascii=False, indent=2))
+                print(json.dumps({
+                    "skill_root": str(path),
+                    "entry_skill_root": str(path.parent / "using-slidethus"),
+                }, ensure_ascii=False, indent=2))
                 return 0
             if args.plugin_command == "bootstrap-renderer":
                 result = bootstrap_renderer(

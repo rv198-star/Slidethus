@@ -10,6 +10,7 @@ from slidethus.constants import SCHEMA_VERSION
 from slidethus.errors import ArtifactError
 from slidethus.gates import evaluate_gate
 from slidethus.io_utils import read_json
+from slidethus.page_design import validate_page_designs
 from slidethus.protocols import ArtDirectionProvider
 
 _ENGINE = "deterministic-visual-system"
@@ -60,12 +61,21 @@ class VisualSystemService:
         outline = graph["deck_outline"]["data"]
         layouts = graph["layout_plans"]["data"]
         assets = graph["asset_manifest"]["data"]
+        if self.art_direction_provider is None:
+            try:
+                prior = self.runtime.show_artifact("visual_system")
+            except ArtifactError:
+                prior = {}
+            if prior.get("page_designs"):
+                raise ArtifactError("An authored Visual System cannot be replaced by the default baseline provider")
         compiled_direction = compile_art_direction(
             graph,
             provider=self.art_direction_provider,
             schema_registry=self.runtime.registry,
         )
         direction = compiled_direction.packet["direction"]
+        if "page_designs" in direction:
+            validate_page_designs(direction["page_designs"], graph["slide_specs"]["data"], layouts)
         palette = direction["palette"]
         typography = direction["typography"]
         composition = direction["composition"]
@@ -218,6 +228,8 @@ class VisualSystemService:
                 "inputs": inputs,
             },
         }
+        if "page_designs" in direction:
+            candidate["page_designs"] = copy.deepcopy(direction["page_designs"])
         try:
             current, version = self.runtime.read_artifact_snapshot("visual_system")
         except ArtifactError:

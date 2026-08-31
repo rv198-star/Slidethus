@@ -262,7 +262,7 @@ def evaluate_m3_exit(
     )
 
     readme = _read(root, "README.md")
-    skill = _read(root, ".agents/skills/slidethus/SKILL.md")
+    skill = _read(root, ".agents/skills/slidethus/references/shared-contract.md")
     truth_ok = (
         "M3 Exit Gate：PASS" in readme
         and "不是生产级端到端 PPT 产品" in readme

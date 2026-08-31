@@ -1,5 +1,11 @@
 # Slidethus Build Roadmap
 
+## v0.8.0 能力发布
+
+发布当前宿主设计链路与模块化技能套件，保持 provider-neutral、单一主编排器和既有阶段合同。只用 Python 3.11 做本轮验证，不做多版本审计，不新增行业案例或重开优化。
+
+执行与结果见 `plans/v0.8.0-release.md`，用户说明见 `release/v0.8.0.md`。这是 0.x 能力发布，不改变下文 M6.6 / v1.0 的未完成状态。
+
 ## 当前基线
 
 本包已经完成 **M0 — Foundation Contract** 与 **M1 — Artifact Runtime**：
@@ -121,13 +127,17 @@ M0 只代表基础合同成立，不代表端到端 PPT 生成完成。
 - [x] **M6.3 Plugin Packaging**：Plugin bundle、Schema/Skill/workflow 打包、Node sidecar bootstrap/version verification
 - [x] **M6.4 Examples & Evaluation**：六 workflow 示例、评测集、兼容矩阵与发布文档
 - [x] **M6.5 License & Third-party Policy**：项目许可证、依赖/素材/字体/模型分发策略、NOTICE/SBOM 边界
-- [ ] **M6.6 v1.0 Preview Hardening & Release Gate**：真实 Office 预览推翻 Round 6 PASS；Round 7 已根修 P5A/P5B/P6/P7 并生成新评审候选，等待用户视觉评审。
+- [ ] **M6.6 v1.0 Preview Hardening & Release Gate**：已恢复酒店低奢统一版对应代码检查点 `e34b62a`；正在复核视觉判断、正式生产路径与发布证据，尚未重新验证发布候选。
 
 执行计划：`plans/M6-productization-distribution.md`。架构边界：`docs/adr/ADR-0021-workflow-productization-boundary.md`。
 
-**M6 Exit Gate：REOPENED（2026-08-30）。v1.0 Release Gate：DO NOT RELEASE。** 当前证据见 `audit/M6.6-round-7-office-visual-reopen.md`。
+**M6 Exit Gate：REOPENED（2026-08-31）。v1.0 Release Gate：DO NOT RELEASE。** 当前范围与历史依据见 `plans/M6.6-final-optimization-and-rerelease.md`。旧跨案例/收敛计划和审计仅为历史记录，不自动恢复撤回实现；更多行业/场景验证仍为后续待办。
 
 ## 实施纪律
+
+本轮技能模块化已完成：`plans/skill-suite-modularization.md`（`using-slidethus` 入口、七个阶段子技能及完整分发验证；全量测试 365 passed / 43 skipped）。未改生产渲染链路、未扩大行业案例、未改变 Release Gate。
+
+当前限定执行项：`plans/host-design-entry-stabilization.md`（用户指定的第 1、2 项：职责与真实宿主生成入口）。第 3 项完整生成包固化、第 4 项新案例/Office 视觉验收明确延期，不影响本轮工程收敛，也不被计为完成。
 
 - 每个里程碑单独建立执行计划和 ADR。
 - Gate 未通过，不进入依赖该 Gate 的里程碑。

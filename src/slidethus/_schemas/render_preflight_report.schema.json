@@ -28,7 +28,7 @@
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "items": {"enum": ["final-svg", "pptxgenjs-native", "pptxgenjs-hybrid"]}
+      "items": {"enum": ["final-svg", "pptxgenjs-native", "pptxgenjs-hybrid", "artifact-tool"]}
     },
     "capabilities": {
       "type": "array",

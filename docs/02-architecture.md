@@ -39,6 +39,8 @@ flowchart TB
 
 该层不保存事实真相。事实必须写入结构化 artifacts。
 
+`using-slidethus` 为统一入口；brief/research/story/plan/design/render/review 七个阶段 Skill 由同一主 Agent 按需读取，分别覆盖 P0、P1/P2、P3/P4、P5A/P5B、P6、P7、P8/P9。完整任务自动继续，单阶段调用停在其请求边界。旧 `slidethus` 为兼容入口及共享资源目录，不构成第二编排器。Repo/Plugin/Wheel 一起分发全部技能，见 [ADR-0030](adr/ADR-0030-modular-skill-suite.md)。
+
 ### 2.2 Artifact & Application Layer
 
 职责：

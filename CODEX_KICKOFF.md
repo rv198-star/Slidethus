@@ -15,15 +15,17 @@
 - **M3 Exit Gate: PASS（2026-08-27）**。
 - **M4 Exit Gate: PASS（2026-08-28）**。
 - **M5 Exit Gate: PASS（2026-08-29）**。
-- **M6 Exit Gate: REOPENED（2026-08-30）**。
-- **v1.0 Release Gate: DO NOT RELEASE，等待 Round 7 用户视觉评审**。
+- **M6 Exit Gate: REOPENED（2026-08-31）**。
+- **当前包版本 v0.8.0：在 `e34b62a` 恢复基线上整理宿主设计入口与技能套件；v1.0 Release Gate: DO NOT RELEASE，不是已验收的 v1.0 RC**。
+- 本次发布范围与验证记录：`plans/v0.8.0-release.md`、`release/v0.8.0.md`。
+- 当前复核与下一实现范围：`plans/M6.6-final-optimization-and-rerelease.md`。历史跨案例计划/审计只作依据，不能据此整体恢复撤回代码。
 - M2 Source/Research/Evidence、M3 Narrative/Planning、M4 Production Rendering 与 M5 Production Review/Repair boundaries 均已冻结，无 waiver。
 - M5 使用 independent DVR/SVR/SCR/VVR review facts、phase-correct Repair Plan/Report、cross-deck Regression、Production Quality Report/G8、Golden baseline 与 M5 Application/CLI。
 - M6.1–M6.5 保持冻结；M6.6 因真实 Office 视觉缺陷重开。缺少外部 Planning/Semantic/Visual providers 时继续按 capability boundary 显式降级或阻断。
 
 ## 接手动作
 
-1. 先读取根目录 `AGENTS.md`，并按其中顺序读取核心文档、`TASKS.md`、适用 ADR 和 `.agents/skills/slidethus/SKILL.md`。
+1. 先读取根目录 `AGENTS.md`，并按其中顺序读取核心文档、`TASKS.md`、适用 ADR 和 `.agents/skills/using-slidethus/SKILL.md`；阶段技能按需读取，旧 `slidethus` 仅为兼容入口。
 2. 运行当前冻结基线：
    - `python -m compileall -q src tests scripts`
    - `ruff check src tests scripts`
@@ -57,7 +59,7 @@
 6. M6 不得把产品化需求反向塞入 Evidence、Planning、Renderer 或 Review 的私有状态；Production boundaries 继续通过已有 artifacts/protocols 交互。
 7. 保持单一主编排器。只对独立只读审计、测试分析或代码探索使用子代理；重叠代码由一个 writer 修改。
 8. 做根因修复，直接替换错误逻辑；架构变化同步 ADR、Schema、示例、文档和测试。
-9. 不需要为每个子模块重复跑多个 Python minor 版本。选择一个正式支持环境做完整冻结回归，并保留必要的兼容/发布级矩阵即可。
+9. 不需要为每个子模块重复跑多个 Python minor 版本。v0.8.0 按用户要求只用 Python 3.11，CI 同样保持单一基线，不扩展多版本审计。
 10. 每个 M6 子模块继续采用 Open Issue Mining → 根修 → Scorecard/Gate，不允许评分掩盖 Critical/Major。
 
 最终汇报必须包含：变更清单、关键设计决策、测试结果、审计结果、仍存风险、下一稳定点，并引用具体文件路径。

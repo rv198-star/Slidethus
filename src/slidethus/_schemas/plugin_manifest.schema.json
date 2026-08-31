@@ -40,7 +40,7 @@
         "properties": {
           "path": {
             "type": "string",
-            "pattern": "^(?:LICENSE|NOTICE\\.md|THIRD_PARTY_NOTICES\\.md|release/[^\\\\]+|\\.agents/skills/slidethus/[^\\\\]+|renderers/pptxgenjs/[^\\\\]+|schemas/[^\\\\]+)$"
+            "pattern": "^(?:LICENSE|NOTICE\\.md|THIRD_PARTY_NOTICES\\.md|release/[^\\\\]+|\\.agents/skills/(?:slidethus(?:-brief|-research|-story|-plan|-design|-render|-review)?|using-slidethus)/[^\\\\]+|renderers/pptxgenjs/[^\\\\]+|schemas/[^\\\\]+)$"
           },
           "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
         }

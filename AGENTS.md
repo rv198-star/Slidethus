@@ -17,7 +17,7 @@ Before changing code or architecture, read in this order:
 7. `TASKS.md`
 8. The applicable ADRs under `docs/adr/`
 
-For Skill behavior, also read `.agents/skills/slidethus/SKILL.md` and only the referenced workflow/reference files needed for the current task.
+For Skill behavior, also read `.agents/skills/using-slidethus/SKILL.md`, its shared contract, and only the phase skills/workflow/reference files needed for the current task. `.agents/skills/slidethus/SKILL.md` remains a compatibility entry; all suite modules use one primary orchestrator and the existing artifacts.
 
 ## Non-negotiable architecture rules
 
@@ -45,6 +45,8 @@ For Skill behavior, also read `.agents/skills/slidethus/SKILL.md` and only the r
 - Preserve third-party source material verbatim under `source_material/source-preserved/`; place improvements elsewhere.
 
 ## Required checks
+
+For the v0.8.0 release, use the single Python 3.11 baseline (including CI). Do not add a multi-Python audit unless the user requests it.
 
 Run before considering a task complete:
 
@@ -83,4 +85,5 @@ A change is done only when:
 - After a lab direction is approved, translate its palette, typography, spatial rhythm, imagery, and composition grammar back into the formal page-planning and design artifacts, then rebuild and inspect the real Office-rendered PPTX.
 - Do not mark roadmap tasks complete because only interfaces or placeholders exist.
 - Do not call a workflow an MVP unless every claimed action has a distinct, inspectable output and acceptance check. Serializing a planning artifact into another file format is not a new completed stage.
+- Designed Create must use the host proposal entry and the same admitted IR/producer for samples and the full candidate. A deterministic baseline or independent hand-scripted sample cannot stand in for the formal design path. Keep full replay packaging and additional case/Office acceptance work explicitly scoped; do not expand them when the user has deferred them.
 - When the user corrects a recurring project rule, update this file or the closest applicable nested `AGENTS.md`.

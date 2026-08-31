@@ -5,6 +5,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from jsonschema import Draft202012Validator
+
 from slidethus.artifact_runtime import ArtifactRuntime, utc_now
 from slidethus.constants import SCHEMA_VERSION
 from slidethus.errors import LayoutPlanningError, PlanningError
@@ -14,7 +16,7 @@ from slidethus.io_utils import (
     atomic_write_bytes,
     sha256_bytes,
 )
-from slidethus.layout_geometry import build_layout_plan
+from slidethus.layout_geometry import admit_authored_layout, build_layout_plan
 from slidethus.planning_limits import (
     admit_planning_proposal,
     validate_planning_limits,
@@ -173,6 +175,15 @@ class LayoutPlanningService:
         } if existing else {}
         canvas = {"width": 1280, "height": 720}
         safe_area = {"top": 60.0, "right": 80.0, "bottom": 60.0, "left": 80.0}
+        if "safe_area" in proposal_content:
+            safe_area = copy.deepcopy(proposal_content["safe_area"])
+            schema = self.runtime.registry.schema("layout_plans")["properties"]["safe_area"]
+            if list(Draft202012Validator(schema).iter_errors(safe_area)):
+                raise LayoutPlanningError("Invalid authored safe_area")
+        if len(raw_by_id) != len(proposal_content.get("plans", [])) or set(raw_by_id) != {
+            slide["slide_id"] for slide in specs.get("slides", [])
+        }:
+            raise LayoutPlanningError("Layout proposal contains duplicate or mismatched slides")
         if len(specs.get("slides", [])) > limits.max_slides:
             raise LayoutPlanningError("Slide Specs exceed max_slides")
         plans: list[dict[str, Any]] = []
@@ -202,11 +213,10 @@ class LayoutPlanningService:
                 raise LayoutPlanningError(
                     f"Layout provider selected {family} outside Slide Spec intent for {slide_id}"
                 )
-            plan = build_layout_plan(
-                slide,
-                family=family,
-                canvas=canvas,
-                safe_area=safe_area,
+            plan = (
+                admit_authored_layout(slide, raw)
+                if "regions" in raw
+                else build_layout_plan(slide, family=family, canvas=canvas, safe_area=safe_area)
             )
             plan.update(
                 {

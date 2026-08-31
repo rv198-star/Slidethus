@@ -295,7 +295,7 @@ def evaluate_m4_exit(root: Path, *, run_runtime_checks: bool = True) -> tuple[Ch
     )
 
     readme = _read(root, "README.md")
-    skill = _read(root, ".agents/skills/slidethus/SKILL.md")
+    skill = _read(root, ".agents/skills/slidethus/references/shared-contract.md")
     truth_ok = (
         "M4 Exit Gate：PASS" in readme
         and "M5" in readme

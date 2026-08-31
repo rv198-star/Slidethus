@@ -5,6 +5,7 @@ import shutil
 import sys
 from pathlib import Path
 
+from slidethus import __version__
 from slidethus.constants import find_repository_root
 
 _SCRIPT = Path(__file__).resolve().parents[1] / "scripts/validate_m6_exit.py"
@@ -57,7 +58,9 @@ def test_m6_exit_rejects_version_drift(tmp_path: Path) -> None:
     root = _copy_repository(tmp_path)
     pyproject = root / "pyproject.toml"
     pyproject.write_text(
-        pyproject.read_text(encoding="utf-8").replace('version = "1.0.0"', 'version = "1.0.1"', 1),
+        pyproject.read_text(encoding="utf-8").replace(
+            f'version = "{__version__}"', 'version = "99.0.0"', 1
+        ),
         encoding="utf-8",
     )
 

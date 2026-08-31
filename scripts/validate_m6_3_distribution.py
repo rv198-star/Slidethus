@@ -10,6 +10,7 @@ from pathlib import Path
 
 from slidethus.constants import find_repository_root
 from slidethus.distribution import (
+    SKILL_NAMES,
     bootstrap_renderer,
     build_plugin_bundle,
     materialize_skill,
@@ -63,15 +64,16 @@ def evaluate(root: Path) -> tuple[Check, ...]:
     }
     expected_skill = {
         path.relative_to(root).as_posix()
-        for path in (root / ".agents/skills/slidethus").rglob("*")
+        for name in SKILL_NAMES
+        for path in (root / ".agents/skills" / name).rglob("*")
         if path.is_file()
     }
-    configured_skill = {item for item in configured if item.startswith(".agents/skills/slidethus/")}
+    configured_skill = {item for item in configured if item.startswith(".agents/skills/")}
     checks.append(
         Check(
             "wheel_skill_assets",
             configured_skill == expected_skill,
-            f"wheel data-files cover all {len(expected_skill)} canonical Skill files"
+            f"wheel data-files cover all {len(expected_skill)} canonical Skill suite files"
             if configured_skill == expected_skill
             else f"missing={sorted(expected_skill - configured_skill)} extra={sorted(configured_skill - expected_skill)}",
         )
@@ -134,16 +136,17 @@ def evaluate(root: Path) -> tuple[Check, ...]:
 
         installed = materialize_skill(temporary / "host")
         skill_ok = (installed / "SKILL.md").is_file() and all(
-            (installed / path.relative_to(root / ".agents/skills/slidethus")).read_bytes()
+            (installed.parent / path.relative_to(root / ".agents/skills")).read_bytes()
             == path.read_bytes()
-            for path in (root / ".agents/skills/slidethus").rglob("*")
+            for name in SKILL_NAMES
+            for path in (root / ".agents/skills" / name).rglob("*")
             if path.is_file()
         )
         checks.append(
             Check(
                 "skill_materialization",
                 skill_ok,
-                "canonical Skill tree materializes byte-identically" if skill_ok else "Skill materialization drift",
+                "complete Skill suite materializes byte-identically" if skill_ok else "Skill materialization drift",
             )
         )
 

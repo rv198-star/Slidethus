@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from jsonschema import Draft202012Validator
 
 from slidethus.constants import find_repository_root
+from slidethus.distribution import SKILL_NAMES
 from slidethus.schema_registry import SchemaRegistry
 from slidethus.validation import format_report, validate_workspace
 
@@ -245,9 +246,22 @@ def main() -> int:
     missing = [path.relative_to(root).as_posix() for path in required_paths(root) if not path.exists()]
     checks.append(Check("required_paths", not missing, "all present" if not missing else "; ".join(missing)))
 
-    skill_text = (root / ".agents/skills/slidethus/SKILL.md").read_text(encoding="utf-8")
-    fm_ok = skill_text.startswith("---\n") and re.search(r"^name:\s*slidethus\s*$", skill_text, re.M) and re.search(r"^description:\s*.+$", skill_text, re.M)
-    checks.append(Check("skill_frontmatter", bool(fm_ok), "name and description present" if fm_ok else "invalid frontmatter"))
+    skill_errors: list[str] = []
+    for name in SKILL_NAMES:
+        skill_root = root / ".agents/skills" / name
+        skill_file = skill_root / "SKILL.md"
+        skill_text = skill_file.read_text(encoding="utf-8") if skill_file.is_file() else ""
+        fm_ok = (
+            skill_text.startswith("---\n")
+            and re.search(rf"^name:\s*{re.escape(name)}\s*$", skill_text, re.M)
+            and re.search(r"^description:\s*.+$", skill_text, re.M)
+            and (skill_root / "agents/openai.yaml").is_file()
+        )
+        if not fm_ok:
+            skill_errors.append(name)
+    checks.append(Check("skill_frontmatter", not skill_errors,
+                        "complete suite has name, description and UI metadata"
+                        if not skill_errors else "; ".join(skill_errors)))
 
     registry = SchemaRegistry(root / "schemas")
     schema_errors: list[str] = []
@@ -274,8 +288,14 @@ def main() -> int:
     mirror_ok = root_schema_files == package_schema_files
     checks.append(Check("packaged_schema_mirror", mirror_ok, "matches repository schemas" if mirror_ok else "schema mirror drift"))
 
-    instruction_bytes = (root / "AGENTS.md").stat().st_size + (root / ".agents/skills/slidethus/SKILL.md").stat().st_size
-    checks.append(Check("instruction_budget", instruction_bytes < 32 * 1024, f"{instruction_bytes} bytes across AGENTS.md and SKILL.md"))
+    instruction_bytes = sum(path.stat().st_size for path in (
+        root / "AGENTS.md",
+        root / ".agents/skills/slidethus/SKILL.md",
+        root / ".agents/skills/using-slidethus/SKILL.md",
+        root / ".agents/skills/slidethus/references/shared-contract.md",
+    ))
+    checks.append(Check("instruction_budget", instruction_bytes < 32 * 1024,
+                        f"{instruction_bytes} bytes across AGENTS, entry/compat skills and shared contract"))
 
     raw_html = list((root / "source_material/raw").glob("*.html"))
     checks.append(Check("raw_browser_html_omitted", not raw_html, "no browser-session HTML in package" if not raw_html else "; ".join(path.name for path in raw_html)))

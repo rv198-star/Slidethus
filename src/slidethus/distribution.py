@@ -33,6 +33,17 @@ _RENDERER_DEPENDENCIES = {
 }
 _FIXED_ZIP_TIME = (1980, 1, 1, 0, 0, 0)
 _TASTE_SKILL_PATH = Path("providers/art-direction/taste/SKILL.md")
+SKILL_NAMES = (
+    "slidethus",
+    "using-slidethus",
+    "slidethus-brief",
+    "slidethus-research",
+    "slidethus-story",
+    "slidethus-plan",
+    "slidethus-design",
+    "slidethus-render",
+    "slidethus-review",
+)
 
 
 class DistributionError(SlidethusError):
@@ -75,11 +86,36 @@ def skill_source_root() -> Path:
         root = (
             repository / ".agents/skills/slidethus"
             if repository is not None
-            else installed_share_root() / "skill"
+            else installed_share_root() / "skills/slidethus"
         )
+        if repository is None and not (root / "SKILL.md").is_file():
+            root = installed_share_root() / "skill"
     if not (root / "SKILL.md").is_file():
         raise DistributionError(f"Slidethus Skill assets are unavailable: {root}")
     return root
+
+
+def skill_source_roots() -> dict[str, Path]:
+    """Resolve the complete allowlisted suite; never collect unrelated host skills."""
+
+    legacy = skill_source_root()
+    roots = {name: legacy if name == "slidethus" else legacy.parent / name for name in SKILL_NAMES}
+    missing = [
+        name for name, root in roots.items()
+        if not (root / "SKILL.md").is_file() or not (root / "agents/openai.yaml").is_file()
+    ]
+    if missing:
+        raise DistributionError("Slidethus Skill suite is incomplete: " + ", ".join(missing))
+    return roots
+
+
+def _skill_files(root: Path) -> dict[str, bytes]:
+    if root.is_symlink() or any(path.is_symlink() for path in root.rglob("*")):
+        raise DistributionError(f"Refusing symlinked Skill tree: {root}")
+    return {
+        path.relative_to(root).as_posix(): path.read_bytes()
+        for path in sorted(root.rglob("*")) if path.is_file()
+    }
 
 
 def taste_skill_identity(source_root: Path | None = None) -> dict[str, Any]:
@@ -400,34 +436,37 @@ def bootstrap_renderer(
 
 
 def materialize_skill(destination_root: Path) -> Path:
-    """Install the canonical Skill tree into one host workspace root."""
+    """Install the suite after conflict preflight; return the legacy Skill root."""
 
-    source = skill_source_root()
-    destination = destination_root.expanduser().resolve() / ".agents/skills/slidethus"
-    if destination.exists():
-        existing = sorted(
-            path.relative_to(destination).as_posix()
-            for path in destination.rglob("*")
-            if path.is_file()
-        )
-        source_files = sorted(
-            path.relative_to(source).as_posix()
-            for path in source.rglob("*")
-            if path.is_file()
-        )
-        if existing != source_files:
+    sources = skill_source_roots()
+    source_files = {name: _skill_files(source) for name, source in sources.items()}
+    parent = destination_root.expanduser().resolve() / ".agents/skills"
+    for path in (parent.parent, parent):
+        if path.is_symlink() or (path.exists() and not path.is_dir()):
+            raise DistributionError(f"Refusing non-directory or symlinked Skill destination: {path}")
+    for name in SKILL_NAMES:
+        destination = parent / name
+        if destination.is_symlink():
+            raise DistributionError(f"Refusing symlinked Skill tree: {destination}")
+        if not destination.exists():
+            continue
+        existing = _skill_files(destination)
+        if not destination.is_dir() or existing.keys() != source_files[name].keys():
             raise DistributionError(
                 f"Refusing to replace a non-matching existing Slidethus Skill tree: {destination}"
             )
-        for relative in source_files:
-            if (destination / relative).read_bytes() != (source / relative).read_bytes():
+        for relative, payload in source_files[name].items():
+            if existing[relative] != payload:
                 raise DistributionError(
                     f"Refusing to overwrite modified Skill file: {destination / relative}"
                 )
-        return destination
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(source, destination)
-    return destination
+    # No destination is written until every existing module has passed preflight.
+    for name, source in sources.items():
+        destination = parent / name
+        if not destination.exists():
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(source, destination)
+    return parent / "slidethus"
 
 
 def plugin_manifest_identity_payload(data: dict[str, Any]) -> dict[str, Any]:
@@ -486,14 +525,14 @@ def _zip_bytes(files: dict[str, bytes], manifest: dict[str, Any]) -> bytes:
 def build_plugin_bundle(output_path: Path) -> PluginBundleResult:
     """Build one deterministic Plugin zip from canonical/installed distribution assets."""
 
-    skill = skill_source_root()
-    taste = taste_skill_identity(skill)
+    skills = skill_source_roots()
+    taste = taste_skill_identity(skills["slidethus"])
     renderer = renderer_source_root()
     schemas = SchemaRegistry().schema_dir
     files: dict[str, bytes] = {}
-    for path in sorted(skill.rglob("*")):
-        if path.is_file():
-            files[f".agents/skills/slidethus/{path.relative_to(skill).as_posix()}"] = path.read_bytes()
+    for name, skill in skills.items():
+        for relative, payload in _skill_files(skill).items():
+            files[f".agents/skills/{name}/{relative}"] = payload
     for name in _RENDERER_FILES:
         files[f"renderers/pptxgenjs/{name}"] = (renderer / name).read_bytes()
     for path in sorted(schemas.glob("*.json")):
@@ -544,13 +583,15 @@ def build_plugin_bundle(output_path: Path) -> PluginBundleResult:
 
 
 def distribution_status() -> dict[str, Any]:
-    skill = skill_source_root()
-    taste = taste_skill_identity(skill)
+    skills = skill_source_roots()
+    taste = taste_skill_identity(skills["slidethus"])
     renderer = renderer_source_root()
     prepared = prepared_renderer_root()
     return {
         "version": __version__,
-        "skill_root": str(skill),
+        "skill_root": str(skills["slidethus"]),
+        "entry_skill_root": str(skills["using-slidethus"]),
+        "skill_roots": {name: str(path) for name, path in skills.items()},
         "default_art_direction_provider": taste,
         "renderer_source_root": str(renderer),
         "renderer_lock_sha256": renderer_lock_sha256(renderer),

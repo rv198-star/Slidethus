@@ -51,6 +51,8 @@ def _art_direction_reasons(
     if schema_errors:
         reasons.append("visual system Art Direction Packet is schema-invalid")
         return tuple(reasons)
+    if visual_system.get("page_designs") != packet["direction"].get("page_designs"):
+        reasons.append("visual system page appearance differs from admitted Art Direction Packet")
     expected_types = {
         "project_brief",
         "deck_outline",

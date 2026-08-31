@@ -304,7 +304,7 @@ def evaluate_m5_exit(root: Path, *, run_runtime_checks: bool = True) -> tuple[Ch
     )
 
     readme = _read(root, "README.md")
-    skill = _read(root, ".agents/skills/slidethus/SKILL.md")
+    skill = _read(root, ".agents/skills/slidethus/references/shared-contract.md")
     release_state_ok = (
         "capability boundary" in readme
         and (

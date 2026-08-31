@@ -3,8 +3,11 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from jsonschema import Draft202012Validator
+
 from slidethus.errors import LayoutPlanningError
 from slidethus.planning_rules import planning_content_units
+from slidethus.schema_registry import SchemaRegistry
 
 _LAYOUT_FAMILIES = {
     "hero",
@@ -475,6 +478,61 @@ def build_layout_plan(
             "region_count": len(regions),
             "content_units": content_units,
             "capacity_units": capacity_units,
+            "warnings": [],
+        },
+    }
+
+
+def admit_authored_layout(slide: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
+    """Preserve proposed geometry; derive identities, bindings and capacity ourselves."""
+
+    allowed = {"slide_id", "layout_family", "regions", "rationale"}
+    if set(raw) - allowed or not str(raw.get("rationale", "")).strip():
+        raise LayoutPlanningError("Authored layout requires rationale and only declared fields")
+    blocks = {block["block_id"]: block for block in slide["content_blocks"]}
+    rows = raw["regions"]
+    if not isinstance(rows, list) or len(rows) != len(blocks):
+        raise LayoutPlanningError("Authored layout must map every Block exactly once")
+    fields = {"block_id", "x", "y", "w", "h", "z", "align", "valign", "overflow_strategy"}
+    regions = []
+    seen = set()
+    schema = SchemaRegistry().schema("layout_plans")
+    region_schema = schema["properties"]["plans"]["items"]["properties"]["regions"]["items"]
+    for row in rows:
+        if not isinstance(row, dict) or set(row) != fields:
+            raise LayoutPlanningError("Authored region requires exact geometry/alignment fields")
+        block_id = row["block_id"]
+        if block_id not in blocks or block_id in seen:
+            raise LayoutPlanningError("Authored region contains unknown or duplicate Block")
+        seen.add(block_id)
+        block = blocks[block_id]
+        floor = _font_floor(block, slide)
+        region = {
+            **row,
+            "region_id": "REG-" + block_id.removeprefix("BLK-"),
+            "role": block["semantic_role"],
+            "min_font_pt": floor,
+            "source_block_hash": block["content_hash"],
+            "content_capacity_units": 1,
+        }
+        errors = list(Draft202012Validator(region_schema).iter_errors(region))
+        if errors or any(
+            not math.isfinite(float(row[key])) for key in ("x", "y", "w", "h")
+        ):
+            raise LayoutPlanningError("Invalid authored region geometry")
+        region["content_capacity_units"] = region_capacity_units(row["w"], row["h"], floor)
+        regions.append(region)
+    return {
+        "slide_id": slide["slide_id"],
+        "layout_family": raw["layout_family"],
+        "regions": regions,
+        "reading_order": [region["region_id"] for region in regions],
+        "rationale": raw["rationale"],
+        "diagnostics": {
+            "block_count": len(blocks),
+            "region_count": len(regions),
+            "content_units": sum(planning_content_units(b["content"]) for b in blocks.values()),
+            "capacity_units": sum(r["content_capacity_units"] for r in regions),
             "warnings": [],
         },
     }

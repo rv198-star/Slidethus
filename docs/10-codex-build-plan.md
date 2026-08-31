@@ -2,7 +2,7 @@
 
 ## 1. 仓库接手方式
 
-从仓库根目录启动 Codex。根目录 `AGENTS.md` 负责持久规则，`.agents/skills/slidethus/SKILL.md` 负责产品工作流。不要把全部设计文档塞进 AGENTS.md；按当前任务渐进读取。
+从仓库根目录启动 Codex。根目录 `AGENTS.md` 负责持久规则，`.agents/skills/using-slidethus/SKILL.md` 负责产品工作流入口，七个阶段技能按需读取；旧 `slidethus` 入口兼容。不要把全部设计文档塞进 AGENTS.md；按当前任务渐进读取。
 
 ## 2. 首次会话
 
@@ -65,7 +65,7 @@ M2.1–M2.7、M3.1–M3.7 与 M4.1–M4.7 已完成并分别通过 M2/M3/M4 Exit
 
 | 变更 | 优先阅读 |
 |---|---|
-| Skill 行为 | `.agents/skills/slidethus/SKILL.md`、workflows/references |
+| Skill 行为 | `.agents/skills/using-slidethus/SKILL.md`、对应阶段技能、共享 workflows/references |
 | 状态/Gate | `docs/03-*`、`src/slidethus/state_machine.py`、`gates.py` |
 | Schema | `docs/04-*`、`schemas/`、example、tests |
 | 渲染 | `docs/06-*`、`renderers/`、layout/visual schemas |

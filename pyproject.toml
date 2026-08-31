@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "slidethus"
-version = "1.0.0"
+version = "0.8.0"
 description = "Agentic presentation engineering skill foundation"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -45,10 +45,11 @@ where = ["src"]
 slidethus = ["_schemas/*.json"]
 
 [tool.setuptools.data-files]
-"share/slidethus/skill" = [".agents/skills/slidethus/SKILL.md"]
-"share/slidethus/skill/agents" = [".agents/skills/slidethus/agents/openai.yaml"]
-"share/slidethus/skill/assets" = [".agents/skills/slidethus/assets/README.md"]
-"share/slidethus/skill/references" = [
+"share/slidethus/skills/slidethus" = [".agents/skills/slidethus/SKILL.md"]
+"share/slidethus/skills/slidethus/agents" = [".agents/skills/slidethus/agents/openai.yaml"]
+"share/slidethus/skills/slidethus/scripts" = [".agents/skills/slidethus/scripts/render_artifact.mjs"]
+"share/slidethus/skills/slidethus/assets" = [".agents/skills/slidethus/assets/README.md"]
+"share/slidethus/skills/slidethus/references" = [
   ".agents/skills/slidethus/references/artifact-map.md",
   ".agents/skills/slidethus/references/capability-matrix.md",
   ".agents/skills/slidethus/references/failure-recovery.md",
@@ -56,8 +57,10 @@ slidethus = ["_schemas/*.json"]
   ".agents/skills/slidethus/references/phase-contracts.md",
   ".agents/skills/slidethus/references/quality-gates.md",
   ".agents/skills/slidethus/references/source-integrity.md",
+  ".agents/skills/slidethus/references/host-create.md",
+  ".agents/skills/slidethus/references/shared-contract.md",
 ]
-"share/slidethus/skill/workflows" = [
+"share/slidethus/skills/slidethus/workflows" = [
   ".agents/skills/slidethus/workflows/audit-deck.md",
   ".agents/skills/slidethus/workflows/create-deck.md",
   ".agents/skills/slidethus/workflows/extract-style.md",
@@ -65,11 +68,27 @@ slidethus = ["_schemas/*.json"]
   ".agents/skills/slidethus/workflows/rebuild-deck.md",
   ".agents/skills/slidethus/workflows/revise-slide.md",
 ]
-"share/slidethus/skill/providers/art-direction/taste" = [
+"share/slidethus/skills/slidethus/providers/art-direction/taste" = [
   ".agents/skills/slidethus/providers/art-direction/taste/SKILL.md",
   ".agents/skills/slidethus/providers/art-direction/taste/LICENSE",
   ".agents/skills/slidethus/providers/art-direction/taste/PROVENANCE.json",
 ]
+"share/slidethus/skills/using-slidethus" = [".agents/skills/using-slidethus/SKILL.md"]
+"share/slidethus/skills/using-slidethus/agents" = [".agents/skills/using-slidethus/agents/openai.yaml"]
+"share/slidethus/skills/slidethus-brief" = [".agents/skills/slidethus-brief/SKILL.md"]
+"share/slidethus/skills/slidethus-brief/agents" = [".agents/skills/slidethus-brief/agents/openai.yaml"]
+"share/slidethus/skills/slidethus-research" = [".agents/skills/slidethus-research/SKILL.md"]
+"share/slidethus/skills/slidethus-research/agents" = [".agents/skills/slidethus-research/agents/openai.yaml"]
+"share/slidethus/skills/slidethus-story" = [".agents/skills/slidethus-story/SKILL.md"]
+"share/slidethus/skills/slidethus-story/agents" = [".agents/skills/slidethus-story/agents/openai.yaml"]
+"share/slidethus/skills/slidethus-plan" = [".agents/skills/slidethus-plan/SKILL.md"]
+"share/slidethus/skills/slidethus-plan/agents" = [".agents/skills/slidethus-plan/agents/openai.yaml"]
+"share/slidethus/skills/slidethus-design" = [".agents/skills/slidethus-design/SKILL.md"]
+"share/slidethus/skills/slidethus-design/agents" = [".agents/skills/slidethus-design/agents/openai.yaml"]
+"share/slidethus/skills/slidethus-render" = [".agents/skills/slidethus-render/SKILL.md"]
+"share/slidethus/skills/slidethus-render/agents" = [".agents/skills/slidethus-render/agents/openai.yaml"]
+"share/slidethus/skills/slidethus-review" = [".agents/skills/slidethus-review/SKILL.md"]
+"share/slidethus/skills/slidethus-review/agents" = [".agents/skills/slidethus-review/agents/openai.yaml"]
 "share/slidethus/renderer" = [
   "renderers/pptxgenjs/README.md",
   "renderers/pptxgenjs/package.json",

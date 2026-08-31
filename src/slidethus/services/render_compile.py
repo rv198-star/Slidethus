@@ -10,6 +10,7 @@ from slidethus.constants import SCHEMA_VERSION
 from slidethus.errors import RenderCompileError
 from slidethus.gates import evaluate_gate
 from slidethus.io_utils import atomic_create_json, read_json
+from slidethus.page_design import authored_styles, validate_page_designs
 from slidethus.render_ir import (
     renderer_ir_file_key,
     renderer_ir_id,
@@ -352,6 +353,7 @@ class RenderCompileService:
         outline = graph["deck_outline"]["data"]
         specs = graph["slide_specs"]["data"]
         visual = graph["visual_system"]["data"]
+        explicit_styles = authored_styles(visual)
         outline_by_id = {
             str(item["slide_id"]): item
             for item in outline.get("slides", [])
@@ -364,7 +366,7 @@ class RenderCompileService:
             if outline_slide is None:
                 continue
             for block in slide.get("content_blocks", []):
-                text_style = _text_style_for(
+                text_style = explicit_styles.get(str(block["block_id"])) or _text_style_for(
                     block,
                     str(outline_slide["slide_type"]),
                     visual,
@@ -414,6 +416,10 @@ class RenderCompileService:
         specs = graph["slide_specs"]["data"]
         layouts = graph["layout_plans"]["data"]
         visual = graph["visual_system"]["data"]
+        explicit_styles = authored_styles(visual)
+        page_designs = {p["slide_id"]: p for p in visual.get("page_designs", [])}
+        if "page_designs" in visual:
+            validate_page_designs(visual["page_designs"], specs, layouts)
 
         expected_visual_inputs = [
             _artifact_ref(graph[artifact_type], artifact_type)
@@ -454,7 +460,7 @@ class RenderCompileService:
                 block = blocks.get(block_id)
                 if block is None:
                     raise RenderCompileError(f"Layout region references unknown block: {block_id}")
-                style = _style_for(
+                style = copy.deepcopy(explicit_styles.get(block_id)) or _style_for(
                     block,
                     str(outline_slide["slide_type"]),
                     visual,
@@ -462,6 +468,7 @@ class RenderCompileService:
                     family=str(layout["layout_family"]),
                     region_index=int(region["z"]),
                 )
+                style["font_family"] = font_map.get(style["font_family"], style["font_family"])
                 if str(region.get("overflow_strategy")) == "shrink_with_floor":
                     fitted = fitting_font_size(
                         block.get("content"),
@@ -509,9 +516,10 @@ class RenderCompileService:
                 {
                     "slide_id": slide_id,
                     "ordinal": ordinal,
+                    **({"background": page_designs[slide_id]["background"]} if page_designs else {}),
                     "layout_family": str(layout["layout_family"]),
                     "regions": sorted(regions, key=lambda item: (item["z"], item["region_id"])),
-                    "decorations": _decorations(
+                    "decorations": copy.deepcopy(page_designs[slide_id]["decorations"]) if page_designs else _decorations(
                         slide_id,
                         str(layout["layout_family"]),
                         visual,

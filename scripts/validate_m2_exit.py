@@ -186,7 +186,8 @@ def evaluate_m2_exit(root: Path) -> tuple[Check, ...]:
     )
 
     readme = (root / "README.md").read_text(encoding="utf-8", errors="replace") if (root / "README.md").is_file() else ""
-    skill = (root / ".agents/skills/slidethus/SKILL.md").read_text(encoding="utf-8", errors="replace") if (root / ".agents/skills/slidethus/SKILL.md").is_file() else ""
+    skill_contract = root / ".agents/skills/slidethus/references/shared-contract.md"
+    skill = skill_contract.read_text(encoding="utf-8", errors="replace") if skill_contract.is_file() else ""
     checks.append(
         Check(
             "capability_truthfulness",

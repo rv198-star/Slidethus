@@ -2,7 +2,7 @@
 
 ## 1. Discovery
 
-Codex discovers the repository Skill at `.agents/skills/slidethus/SKILL.md`. The root `AGENTS.md` supplies persistent engineering rules; the Skill supplies presentation workflow behavior. `tests/test_skill_layout.py` and `scripts/audit_package.py` verify the discovery layout and frontmatter.
+The repository suite uses `.agents/skills/using-slidethus/SKILL.md` as the entry, with seven sibling phase skills and the legacy `slidethus` compatibility entry. The root `AGENTS.md` supplies persistent engineering rules; one host Agent reads the required modules progressively. `tests/test_skill_layout.py` and `scripts/audit_package.py` verify discovery; distribution tests verify complete installation and relative-reference closure. Install the whole suite with `slidethus plugin install-skill <host-root>`, not the entry folder alone.
 
 ## 2. Local execution
 
@@ -18,6 +18,8 @@ Codex discovers the repository Skill at `.agents/skills/slidethus/SKILL.md`. The
 Codex should use `slidethus artifact list/show/validate/migrate/recover` for runtime inspection. Registered artifact writes require an expected version; out-of-band edits produce an explicit conflict. POSIX `flock` and Windows `msvcrt.locking` serialize workspace writes. Transaction payloads exist only while recovery is possible; archived journal summaries contain paths and status, not artifact bodies.
 
 ## 4. Capability truthfulness
+
+The milestone descriptions below record existing module boundaries. Current skill orchestration and designed Create limits are maintained in the [shared contract](../.agents/skills/slidethus/references/shared-contract.md) and [host entry](../.agents/skills/slidethus/references/host-create.md); modularization does not reopen the renderer implementation or certify a release.
 
 M2.1–M2.2 provide Production ingestion through `slidethus source ingest/show`: deterministic detection, Parser Registry selection, bounded resources, format-native Chunk/locator/hash, immutable snapshots, source-risk records, `parsed/partial` and Source Ledger lineage. Admitted formats are Markdown/TXT、HTML、PDF、DOCX、PPTX、CSV/TSV、XLSX and common raster-image metadata. Optional dependency absence is a capability failure; macro-enabled OOXML、encrypted PDF、legacy OLE、SVG and unknown families remain unsupported. Codex must never widen capability by routing them through the text parser.
 

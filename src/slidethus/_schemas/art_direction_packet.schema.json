@@ -71,6 +71,186 @@
         "forbidden_patterns"
       ],
       "properties": {
+        "page_designs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 120,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "slide_id",
+              "background",
+              "regions",
+              "decorations"
+            ],
+            "properties": {
+              "slide_id": {
+                "type": "string",
+                "pattern": "^S-[0-9]{3}$"
+              },
+              "background": {
+                "type": "string",
+                "pattern": "^#[a-fA-F0-9]{6}$"
+              },
+              "regions": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "block_id",
+                    "style"
+                  ],
+                  "properties": {
+                    "block_id": {
+                      "type": "string",
+                      "pattern": "^BLK-S[0-9]{3}-[0-9]{2}$"
+                    },
+                    "style": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "font_family",
+                        "font_size",
+                        "font_weight",
+                        "line_height",
+                        "color",
+                        "fill",
+                        "border_color",
+                        "border_width"
+                      ],
+                      "properties": {
+                        "font_family": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "font_size": {
+                          "type": "number",
+                          "minimum": 1
+                        },
+                        "font_weight": {
+                          "type": "integer",
+                          "minimum": 100,
+                          "maximum": 900
+                        },
+                        "line_height": {
+                          "type": "number",
+                          "minimum": 0.5
+                        },
+                        "color": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "fill": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "border_color": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "border_width": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "italic": {
+                          "type": "boolean"
+                        },
+                        "corner_radius": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "image_fit": {
+                          "enum": [
+                            "cover",
+                            "contain"
+                          ]
+                        },
+                        "chart_colors": {
+                          "type": "array",
+                          "minItems": 1,
+                          "items": {
+                            "type": "string",
+                            "pattern": "^#[a-fA-F0-9]{6}$"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "decorations": {
+                "type": "array",
+                "maxItems": 99,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "decoration_id",
+                    "kind",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "fill",
+                    "stroke",
+                    "z"
+                  ],
+                  "properties": {
+                    "decoration_id": {
+                      "type": "string",
+                      "pattern": "^DEC-S[0-9]{3}-[0-9]{2}$"
+                    },
+                    "kind": {
+                      "enum": [
+                        "rect",
+                        "round_rect",
+                        "ellipse",
+                        "line"
+                      ]
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "fill": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "stroke": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "z": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "theme_id": {"type": "string", "pattern": "^THEME-[A-Z0-9][A-Z0-9_-]{2,63}$"},
         "tone": {
           "type": "array",

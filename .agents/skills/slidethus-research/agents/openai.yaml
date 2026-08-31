@@ -1,0 +1,6 @@
+interface:
+  display_name: "Slidethus Research"
+  short_description: "Build traceable slide evidence and chart data"
+  default_prompt: "Use $slidethus-research to verify the evidence and fill the research gaps for this presentation."
+policy:
+  allow_implicit_invocation: true

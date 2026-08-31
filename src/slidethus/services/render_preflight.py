@@ -27,8 +27,9 @@ from slidethus.services.render_assets import RenderAssetService, ResolvedRenderA
 from slidethus.services.render_compile import RenderCompileResult, RenderCompileService
 from slidethus.text_capacity import estimated_text_height
 
-_BACKENDS = {"final-svg", "pptxgenjs-native", "pptxgenjs-hybrid"}
+_BACKENDS = {"final-svg", "pptxgenjs-native", "pptxgenjs-hybrid", "artifact-tool"}
 _SUPPORTED_CONTENT = {
+    "artifact-tool": {"text", "list", "metric", "quote", "spacer", "table", "chart", "image", "icon", "diagram"},
     "final-svg": {"text", "list", "metric", "quote", "spacer", "table", "chart", "image", "icon", "diagram"},
     "pptxgenjs-native": {"text", "list", "metric", "quote", "spacer", "table", "chart", "image", "icon", "diagram"},
     "pptxgenjs-hybrid": {"text", "list", "metric", "quote", "spacer", "table", "chart", "image", "icon", "diagram"},
@@ -238,6 +239,8 @@ class RenderPreflightService:
             include_exports=include_exports,
         )
         visual = read_json(self.workspace / "design/visual_system.json")
+        if visual.get("page_designs") and admitted_backends != ("artifact-tool",):
+            raise RenderCompileError("Explicit page appearance currently requires the Artifact Tool adapter; no baseline fallback")
         compiler = RenderCompileService(self.workspace)
         font_requirements = compiler.required_font_characters()
         resolutions: tuple[FontResolution, ...] = ()

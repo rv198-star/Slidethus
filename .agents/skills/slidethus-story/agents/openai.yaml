@@ -1,0 +1,6 @@
+interface:
+  display_name: "Slidethus Story"
+  short_description: "Shape the argument and stable slide outline"
+  default_prompt: "Use $slidethus-story to develop the narrative and slide outline from this Brief and evidence."
+policy:
+  allow_implicit_invocation: true

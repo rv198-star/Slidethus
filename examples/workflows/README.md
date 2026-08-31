@@ -5,7 +5,7 @@ These examples mirror the six M6 product workflows. The executable expectations 
 ## Create
 
 ```bash
-slidethus workflow run create /tmp/slidethus-create \
+slidethus workflow run create /tmp/slidethus-create --deterministic-baseline \
   --source examples/workflows/create/source.md \
   --title "Enterprise Agent Operating Model" \
   --purpose "Present the enterprise agent operating model" \
