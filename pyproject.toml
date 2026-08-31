@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "slidethus"
-version = "0.8.1"
+version = "0.9.0"
 description = "Agentic presentation engineering skill foundation"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -71,6 +71,42 @@ slidethus = ["_schemas/*.json"]
   ".agents/skills/slidethus/references/design-library/cards/black-gold-ledger.md",
   ".agents/skills/slidethus/references/design-library/cards/moon-white-imagery.md",
   ".agents/skills/slidethus/references/design-library/cards/warm-clay-works.md",
+  ".agents/skills/slidethus/references/design-library/cards/apricot-white-brief.md",
+  ".agents/skills/slidethus/references/design-library/cards/marine-blue-research.md",
+  ".agents/skills/slidethus/references/design-library/cards/moss-green-transformation.md",
+  ".agents/skills/slidethus/references/design-library/cards/pine-green-strategy.md",
+  ".agents/skills/slidethus/references/design-library/cards/red-black-growth.md",
+  ".agents/skills/slidethus/references/design-library/cards/ebony-ledger.md",
+  ".agents/skills/slidethus/references/design-library/cards/honey-orange-memo.md",
+  ".agents/skills/slidethus/references/design-library/cards/lake-blue-memo.md",
+  ".agents/skills/slidethus/references/design-library/cards/prospect-annual.md",
+  ".agents/skills/slidethus/references/design-library/cards/rice-paper-annual.md",
+  ".agents/skills/slidethus/references/design-library/cards/blue-flame-brand.md",
+  ".agents/skills/slidethus/references/design-library/cards/electric-violet-business.md",
+  ".agents/skills/slidethus/references/design-library/cards/sky-blue-wayfinding.md",
+  ".agents/skills/slidethus/references/design-library/cards/warm-jade-annual-report.md",
+  ".agents/skills/slidethus/references/design-library/cards/aqua-charity-report.md",
+  ".agents/skills/slidethus/references/design-library/cards/pine-soot-pictorial.md",
+  ".agents/skills/slidethus/references/design-library/cards/travel-green-handbook.md",
+  ".agents/skills/slidethus/references/design-library/cards/blue-line-courseware.md",
+  ".agents/skills/slidethus/references/design-library/cards/deep-blue-atlas.md",
+  ".agents/skills/slidethus/references/design-library/cards/paper-white-courseware.md",
+  ".agents/skills/slidethus/references/design-library/cards/teal-green-academic-defense.md",
+  ".agents/skills/slidethus/references/design-library/cards/wine-red-data.md",
+  ".agents/skills/slidethus/references/design-library/cards/dusk-violet-consulting.md",
+  ".agents/skills/slidethus/references/design-library/cards/red-black-business.md",
+  ".agents/skills/slidethus/references/design-library/cards/map-strategy.md",
+  ".agents/skills/slidethus/references/design-library/cards/xuan-paper-annual.md",
+  ".agents/skills/slidethus/references/design-library/cards/lead-gray-quarterly.md",
+  ".agents/skills/slidethus/references/design-library/cards/ink-green-market-trends.md",
+  ".agents/skills/slidethus/references/design-library/cards/orange-tech.md",
+  ".agents/skills/slidethus/references/design-library/cards/mist-blue-travelogue.md",
+  ".agents/skills/slidethus/references/design-library/cards/color-stripes-documentary.md",
+  ".agents/skills/slidethus/references/design-library/cards/red-white-business.md",
+  ".agents/skills/slidethus/references/design-library/cards/gold-orange-type-journal.md",
+  ".agents/skills/slidethus/references/design-library/cards/fresh-brand.md",
+  ".agents/skills/slidethus/references/design-library/cards/pink-purple-diagnosis.md",
+  ".agents/skills/slidethus/references/design-library/cards/dark-themed-data.md",
   ".agents/skills/slidethus/references/design-library/cards/cream-collage.md",
   ".agents/skills/slidethus/references/design-library/cards/silk-yellow-magazine.md",
   ".agents/skills/slidethus/references/design-library/cards/silver-gray-luxury-magazine.md",

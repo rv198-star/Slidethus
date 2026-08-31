@@ -53,9 +53,34 @@
       "bytes": 1073
     },
     {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/apricot-white-brief/design.md",
+      "sha256": "94a912c08d769a44e7b13a8332fda0148299d708cb4d21beed5847feb0f67fc9",
+      "bytes": 17794
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/aqua-charity-report/design.md",
+      "sha256": "26209fc8f074e44d139e977db283a79920954a2a15b045e4359d78cba14fd148",
+      "bytes": 15464
+    },
+    {
       "path": "source_material/source-preserved/open-kimi-ppt-skill/black-gold-ledger/design.md",
       "sha256": "03e708f0b2a347f3de053b98081daffb875a51fe6570761234cfbacf32ca805b",
       "bytes": 15611
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/blue-flame-brand/design.md",
+      "sha256": "49c6d12df76e72e8940e99b5251ddeb8b31a570a1fa8d217f9f672e39a7dc924",
+      "bytes": 14982
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/blue-line-courseware/design.md",
+      "sha256": "cbceb29f83eefbab1b593923948344fc60143cb124fed37885eb78c07034701b",
+      "bytes": 14267
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/color-stripes-documentary/design.md",
+      "sha256": "5bdcbd5f021c99e3a9bc37d5410d2f6dc729a775c477e575125bf925b95c9988",
+      "bytes": 18845
     },
     {
       "path": "source_material/source-preserved/open-kimi-ppt-skill/cream-collage/design.md",
@@ -63,9 +88,79 @@
       "bytes": 12937
     },
     {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/dark-themed-data/design.md",
+      "sha256": "b8540b4bd8cda0dd6e3e567426bfe77299974140036a81162c4339fa8f36265e",
+      "bytes": 21038
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/deep-blue-atlas/design.md",
+      "sha256": "9ec1dceff1768027c704261feee85c39ff84d4812a5eabdb116194452be7670a",
+      "bytes": 13777
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/dusk-violet-consulting/design.md",
+      "sha256": "a48c25db24dbd5f04d6471c1c3a2eb4dbdc2055f70c3b8111c8ee33d88b3a4b5",
+      "bytes": 21626
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/ebony-ledger/design.md",
+      "sha256": "8d162c31122401419a011d1be21b0608aeae19df778ff443d7a2eeac9e13623c",
+      "bytes": 14968
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/electric-violet-business/design.md",
+      "sha256": "30b7f007eeb5fc7495f98a22240847504c02c002a6413e5ac7afcf0901a923cb",
+      "bytes": 13346
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/fresh-brand/design.md",
+      "sha256": "bf4a27937456aa5cafa001603f2062be45854b98f9d5c487cc05e0015bbf5fad",
+      "bytes": 20828
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/gold-orange-type-journal/design.md",
+      "sha256": "d17a9dd9b2e7827af7dcff099b5376c493dfd10ef76766f63dccd2d3a4c1d043",
+      "bytes": 19502
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/honey-orange-memo/design.md",
+      "sha256": "08af45cf6170095695d426e43a5d4a407d5579f4b092edef853eae0e957dea69",
+      "bytes": 13093
+    },
+    {
       "path": "source_material/source-preserved/open-kimi-ppt-skill/indigo-due-diligence/design.md",
       "sha256": "34ac9b1cdda0f344aaa1a36c5dca3ba5daad148295fc86642a4bdff96e948557",
       "bytes": 12056
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/ink-green-market-trends/design.md",
+      "sha256": "813d0807b6a6af8ba3d9afc204a8703b8ea44d0ed9eba6ea885ab5bfb09e64a9",
+      "bytes": 20928
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/lake-blue-memo/design.md",
+      "sha256": "d866c14b688afd597e5ac27eda35385669b50b5bc52852cd195db1439c00bcd8",
+      "bytes": 16367
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/lead-gray-quarterly/design.md",
+      "sha256": "a15187918f7bcf0c068db084451eb035554479c81b0e4585426ad5f619bc4db2",
+      "bytes": 16987
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/map-strategy/design.md",
+      "sha256": "c42db2dc47f9dda6b1caa8079df156db9e7959d05c4ea74d3d1dba6c7fa08f83",
+      "bytes": 9037
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/marine-blue-research/design.md",
+      "sha256": "be40268248dcc50fba0e2ed06ad7427c80bf4ebc3b68c8403270a7ca9a658a62",
+      "bytes": 12057
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/mist-blue-travelogue/design.md",
+      "sha256": "663b3fe85363d240a9f8e38022212632f31ee90b2de000a6b8d66f2c71a46fc0",
+      "bytes": 24852
     },
     {
       "path": "source_material/source-preserved/open-kimi-ppt-skill/moon-white-imagery/design.md",
@@ -73,9 +168,64 @@
       "bytes": 13833
     },
     {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/moss-green-transformation/design.md",
+      "sha256": "f7f4e31e18f7ecd50017527c821003787aec2c0cd522842e213c4c017c4ffa81",
+      "bytes": 13505
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/orange-tech/design.md",
+      "sha256": "75b31493f7e326312a35fde307fb389365d1355c8243c21568b261ddf0aa366f",
+      "bytes": 20560
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/paper-white-courseware/design.md",
+      "sha256": "afd099d9cd40a30c1a393c9910604b9caf8e4c6d8a1f490efad29b8da21cda53",
+      "bytes": 14310
+    },
+    {
       "path": "source_material/source-preserved/open-kimi-ppt-skill/pastel-derivation/design.md",
       "sha256": "8c959783f95073be9c7f1df7382a987640e1f7b43ca23ae9e95b0211860ab83a",
       "bytes": 14971
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/pine-green-strategy/design.md",
+      "sha256": "29ed43e59579278a2fcd93f4ec4d915041c73c5a51a8e50111e2b16be7e7f121",
+      "bytes": 15421
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/pine-soot-pictorial/design.md",
+      "sha256": "f755132236574cb66d8937d55e3cde5df5ad5900ff19ae6960e7d9bbbd0705bd",
+      "bytes": 14309
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/pink-purple-diagnosis/design.md",
+      "sha256": "7ea8a474249e50146d2e287981709bf2aa6e81ba66b467a7eb2f66eab109eb55",
+      "bytes": 15734
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/prospect-annual/design.md",
+      "sha256": "f84d64c4d10a8ebd0cc7161cacd85b338bbce295df552e9445ce2c109da76cd9",
+      "bytes": 14998
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/red-black-business/design.md",
+      "sha256": "1891c8ca3cc8aef181bfd76e3493d937e361165bacf497058ba6a0b781dd3d2f",
+      "bytes": 19149
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/red-black-growth/design.md",
+      "sha256": "83f3c08597dc51ae32aed1bcf7ec8210e27f2e003d6cff3a90be95c908531c8f",
+      "bytes": 12963
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/red-white-business/design.md",
+      "sha256": "02700e8b9f009b3fa5cec673dbcfab1c0b5dbb161d51695a2589d9edfa896f79",
+      "bytes": 19616
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/rice-paper-annual/design.md",
+      "sha256": "b98b50eced346dc6d86c00cf0acfeb32298b0e9521fb3bbee2b5889b6b82abbf",
+      "bytes": 11329
     },
     {
       "path": "source_material/source-preserved/open-kimi-ppt-skill/silk-yellow-magazine/design.md",
@@ -88,14 +238,44 @@
       "bytes": 14171
     },
     {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/sky-blue-wayfinding/design.md",
+      "sha256": "da54734ef2f533e72b11f8d75fe8d2a8629489d2f3491214c0589bc938a69e65",
+      "bytes": 15769
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/teal-green-academic-defense/design.md",
+      "sha256": "2945f10d4844153aa26add53feabf105c54701216662154ca5ccf3353bdf11c9",
+      "bytes": 14420
+    },
+    {
       "path": "source_material/source-preserved/open-kimi-ppt-skill/theme.md",
       "sha256": "3340346558c197e1de2dbcdba27a305e73d1ba742399d98517513fcbf088f71f",
       "bytes": 18176
     },
     {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/travel-green-handbook/design.md",
+      "sha256": "5e960091a9f92bb95a5a0afb28d5341d4c58b74d36a7f83dd37c1854bb221018",
+      "bytes": 15734
+    },
+    {
       "path": "source_material/source-preserved/open-kimi-ppt-skill/warm-clay-works/design.md",
       "sha256": "8c4db65126cbb7a2e80c444a5ee7e6d07e219c2dd4d604f1392dc704398bd856",
       "bytes": 13808
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/warm-jade-annual-report/design.md",
+      "sha256": "5961b8a59ad467f283fe1e6aa49b7866784e876f4b30a6a0dae83d9508a1d735",
+      "bytes": 16040
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/wine-red-data/design.md",
+      "sha256": "6b6fa9f7ec50ea38a466dcd904682a129ac0d0c5f7b929ad788aa1b915876d1a",
+      "bytes": 14505
+    },
+    {
+      "path": "source_material/source-preserved/open-kimi-ppt-skill/xuan-paper-annual/design.md",
+      "sha256": "00e108f9748c3e5c7feb6c7ead60015cd2e0b4c11caa7721099fa0b0b2ca5c66",
+      "bytes": 18856
     },
     {
       "path": "source_material/source-preserved/outline-architect-source.md",

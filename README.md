@@ -1,6 +1,8 @@
-# Slidethus v0.8.1 — Evidence-backed Presentation Engineering
+# Slidethus v0.9.0 — Evidence-backed Presentation Engineering
 
 从一个主题到一套有依据、有设计的 PPT。
+
+v0.9.0 为 Pre-release，新案例实测与 PowerPoint 验收待完成。
 
 ## 小米 YU7 · 产品介绍
 
@@ -30,10 +32,10 @@
 
 ## 开始使用
 
-从 [Releases](https://github.com/rv198-star/Slidethus/releases/latest) 下载 Wheel，然后：
+从 [v0.9.0 Pre-release](https://github.com/rv198-star/Slidethus/releases/tag/v0.9.0) 下载 Wheel（[稳定版](https://github.com/rv198-star/Slidethus/releases/latest)），然后：
 
 ```bash
-python -m pip install slidethus-0.8.1-py3-none-any.whl
+python -m pip install slidethus-0.9.0-py3-none-any.whl
 slidethus plugin install-skill /absolute/path/to/project
 ```
 
@@ -41,16 +43,16 @@ slidethus plugin install-skill /absolute/path/to/project
 
 > 使用 $using-slidethus，制作一份介绍小米 YU7 的 PPT。
 
-[发布说明与能力边界](release/v0.8.1.md) · [工作流程](docs/03-workflow-state-machine.md) · [架构](docs/02-architecture.md) · [开发路线](TASKS.md)
+[发布说明与能力边界](release/v0.9.0.md) · [工作流程](docs/03-workflow-state-machine.md) · [架构](docs/02-architecture.md) · [开发路线](TASKS.md)
 
-包版本：`0.8.1` · 本轮验证 Python 3.11 · [Apache-2.0](LICENSE)
+包版本：`0.9.0` · Pre-release · 本轮验证 Python 3.11 · [Apache-2.0](LICENSE)
 
 <details>
 <summary>版本与能力边界</summary>
 
 历史模块工程验收：M2 Exit Gate：PASS；M3 Exit Gate：PASS；M4 Exit Gate：PASS。当前仍不是生产级端到端 PPT 产品，不能据此免除宿主能力与真实 Office 验收。
 
-M5 Exit Gate：PASS（工程边界）；M6.6 尚未完成，不声明 v1.0 发布就绪。外部工具依赖（capability boundary）与 Office 验收限制见[发布说明](release/v0.8.1.md)。
+M5 Exit Gate：PASS（工程边界）；M6.6 尚未完成，不声明 v1.0 发布就绪。外部工具依赖（capability boundary）与 Office 验收限制见[发布说明](release/v0.9.0.md)。
 
 </details>
 

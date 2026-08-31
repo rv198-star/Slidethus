@@ -25,16 +25,26 @@ def test_design_reference_index_is_small_and_cards_have_pinned_provenance() -> N
     index = (library / "index.md").read_text(encoding="utf-8")
     paths = re.findall(r"\]\((cards/[^)]+\.md)\)", index)
     references = provenance["references"]
-    assert len(paths) == len(set(paths)) == len(references) == 8
+    catalog = (root / "source_material/source-preserved/open-kimi-ppt-skill/theme.md").read_text(encoding="utf-8")
+    upstream_paths = re.findall(r"\]\((skills/[^)]+\.md)\)", catalog)
+    upstream_ids = re.findall(r"^#### `([^`]+)`", catalog, flags=re.MULTILINE)
+    assert len(paths) == len(set(paths)) == len(references) == len(upstream_ids) == 44
+    assert {item["id"] for item in references} == set(upstream_ids)
+    assert {item["upstream_path"] for item in references} == set(upstream_paths)
+    catalog_paths = dict(zip(upstream_ids, upstream_paths, strict=True))
     assert set(paths) == {item["card_path"] for item in references}
     assert set(paths) == {str(p.relative_to(library)) for p in (library / "cards").glob("*.md")}
-    assert len(index.encode("utf-8")) <= 4096
+    # Full coverage stays cheap: only descriptors/links in the index, not manuals.
+    assert len(index.encode("utf-8")) <= 8192
+    assert not re.search(r"!\[[^\]]*\]\(", index)
     assert provenance["library_revision"] in index
     commit = provenance["upstream_commit"]
     assert re.fullmatch(r"[a-f0-9]{40}", commit)
     source_total = 0
     card_sizes = []
     for item in references:
+        assert item["card_path"] == f"cards/{item['id']}.md"
+        assert item["upstream_path"] == catalog_paths[item["id"]]
         card_path = library / item["card_path"]
         assert card_path.resolve().is_relative_to(library.resolve())
         card = card_path.read_bytes()
@@ -56,6 +66,7 @@ def test_design_reference_index_is_small_and_cards_have_pinned_provenance() -> N
         assert re.fullmatch(r"[a-f0-9]{40}", item["preview_git_blob"])
     # Measures available reading volume only; it does not claim an Agent obeyed a budget.
     assert len(index.encode("utf-8")) + sum(sorted(card_sizes, reverse=True)[:3]) < source_total / 4
+    assert len(index.encode("utf-8")) + sum(sorted(card_sizes, reverse=True)[:3]) <= 16384
     license_bytes = (library / "LICENSE").read_bytes()
     assert provenance["files"]["LICENSE"] == "sha256:" + hashlib.sha256(license_bytes).hexdigest()
     assert license_bytes == (root / "source_material/source-preserved/open-kimi-ppt-skill/LICENSE").read_bytes()

@@ -6,7 +6,7 @@ Use after Outline, before the native prototype and ArtDirectionSeed; for an auth
 
 Describe the needed expression from audience, live presentation versus reading, information relationships/density, brand constraints and available imagery/data. Do not map industry/topic keywords to templates. Reuse a suitable approved direction or user-supplied brand/reference without opening the library. A new library version or minor copy edit alone is not a reason to redesign.
 
-If guidance would help, read only the [compact index](design-library/index.md), not the upstream 44-theme catalog. Names identify sources, not industries. All candidates can be rejected.
+If guidance would help, read only the [compact 44-entry index](design-library/index.md), not the original manuals or image catalog. Coverage and context loading are separate: all 44 references remain available, but only useful candidates are expanded. Names identify sources, not industries. All candidates can be rejected; nearby variants are not independent reasons to read more cards.
 
 ## Progressive reading and stop rule
 

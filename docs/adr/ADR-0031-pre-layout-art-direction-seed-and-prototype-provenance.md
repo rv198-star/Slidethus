@@ -35,6 +35,8 @@ That produces two distinct but easily conflated states: the package contains Tas
 
 The host may consult a curated, version-pinned design reference library before the native prototype/Seed. This is Skill-level progressive reading, not a new provider or theme engine: first an index, then a small candidate subset and only necessary reference imagery; approved-direction reuse and no reference are valid. Source-template imperatives, industry mappings, content order and media quotas have no authority over the Brief or phase contracts. Existing `design_read`/`assumptions` record reference IDs, library revision and actual adoption/rejection; the same Seed/Packet, native prototype and Office review obligations remain unchanged. See `plans/design-reference-library.md` and the bundled `references/design-reference-selection.md`.
 
+Reference coverage clarification (2026-08-31): all 44 agreed upstream themes are retained as separate adapted references, including nearby variants. The small reading budget constrains context expansion, not library coverage. This clarification does not change the artifact/runtime architecture.
+
 ## Non-goals
 
 - No mandatory four-page sample, image quota, chart count, palette or layout family.

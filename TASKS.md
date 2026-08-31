@@ -1,8 +1,12 @@
 # Slidethus Build Roadmap
 
+## v0.9.0 候选发布
+
+44 套设计参考库能力冻结为 Pre-release，暂未完成新案例与真实 PowerPoint 全篇验收。仅做发布收尾，实测待后续真实任务；不新增优化、行业验证或多 Python 审计。范围与待验项见 `plans/v0.9.0-release.md`、`release/v0.9.0.md`，不改变 M6.6 / v1.0 Gate。
+
 ## 设计参考库（当前实现）
 
-[Issue #1](https://github.com/rv198-star/Slidethus/issues/1)：设计阶段自主、分层查阅精选参考，不让用户选主题，不按行业套模板。计划见 `plans/design-reference-library.md`；不新增状态机、渲染器或美学验收声明，不改变 v0.8.1 / M6.6 发布边界。
+[Issue #1](https://github.com/rv198-star/Slidethus/issues/1)：全量覆盖 44 套适配参考，设计阶段自主、分层查阅，不让用户选主题，不按行业套模板。覆盖范围不等于读取预算，近似主题保留差异及独立出处。计划见 `plans/design-reference-library.md`；不新增状态机、渲染器或美学验收声明，不改变 v0.8.1 / M6.6 发布边界。
 
 ## v0.8.1 视觉基础能力发布
 

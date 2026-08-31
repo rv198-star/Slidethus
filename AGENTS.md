@@ -81,6 +81,7 @@ A change is done only when:
 - Start complex work with an execution plan based on `PLANS.md`.
 - Make small coherent changes and keep the tree runnable.
 - Record decisions, assumptions, and remaining risks.
+- Separate reference-library coverage from context loading: retain all 44 agreed upstream themes as individually attributable, adapted references; design reads a lightweight index and only useful candidates. Do not reduce library coverage to enforce a reading budget, merge away similar theme identities, or turn source categories into industry-to-template rules.
 - When a deck is visually complete but still below the requested aesthetic bar, allow an explicitly isolated art-direction lab before further PPTX iteration. The lab may use a native visual medium such as HTML/CSS plus generated assets, but it must not update project state, satisfy gates, or count as release evidence.
 - Call an artifact "Taste-generated" only when Taste drives a native visual prototype. Applying Taste rules directly while authoring PowerPoint is "Taste-informed" and must not be represented as the same thing.
 - After a lab direction is approved, translate its palette, typography, spatial rhythm, imagery, and composition grammar back into the formal page-planning and design artifacts, then rebuild and inspect the real Office-rendered PPTX.
