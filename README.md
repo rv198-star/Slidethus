@@ -16,6 +16,14 @@
 
 ![五一旅游消费调研封面](docs/showcase/mayday-cover.png)
 
+![五一旅游消费调研：客流与消费增速对比](docs/showcase/mayday-data.png)
+
+## FDE 与 AI 生产落地 · 技术展示
+
+![FDE 人才能力：技术、业务与交付的连接](docs/showcase/fde-talent.png)
+
+![FDE 案例中的 AI 生产落地：任务、团队、指标与回流闭环](docs/showcase/fde-ai-delivery.png)
+
 案例来自不同阶段的真实任务，并非同一版本的统一验收集。[案例说明与素材出处](docs/showcase/README.md)
 
 ## 开始使用

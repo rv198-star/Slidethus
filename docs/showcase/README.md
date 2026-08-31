@@ -18,7 +18,14 @@
 ## 五一旅游消费
 
 - 历史真实任务，来自 `candidate-49jg4hdi/S-001.png` 的既有封面预览，未修改图片字节。
+- `mayday-data.png` 为同一候选的第 3 页，展示客流与消费增速对照及口径限定；不是只有封面的案例。
 - 封面场景为 AI 生成示意图，原页面已明确标注；不是对应地点或日期的现场记录。
+
+## FDE 与 AI 生产落地
+
+- `fde-talent.png`、`fde-ai-delivery.png` 为历史 FDE 场景实验技术展示稿的第 2、3 页，原路径 `dist/fde-china-2026/scenario-experiment/outputs/tech-showcase-artifact-rendered/slide-02.png` 与 `slide-03.png`。
+- 前者展示人才能力关系，后者展示 AI 生产交付闭环。它们来自同一个 FDE 案例，不冒充另一份独立 AI 落地报告；程序预览不替代 PPTX 的真实 Office 验收。
+- 独立“中小微企业 AI 落地”旧样板的可用本地预览存在中文缺字，未纳入首页，也未为展示而重新绘制或修补。
 
 ## 使用边界
 
