@@ -340,14 +340,14 @@ M3ApplicationService
 - Production Narrative/Outline/Specs/Layout 统一携带 `PLN-*` lineage，绑定 current upstream artifacts、provider、proposal 与 policy；
 - Outline 的 `S-*` 与 ordinal 分离，显式 insert/exclude/reorder/split/merge/freeze/update 产生 `PCH-*`，并保留 excluded history/mappings；
 - Slide Specs 只允许 Outline 已声明、policy-usable 的 Evidence，qualified support 必须可见；若 Host Create 已冻结 `ArtDirectionSeed`，Specs 还绑定同一 Seed，并让其 required visual carrier 成为对应的 semantic Block；
-- Layout Plans 将 stable Blocks 一一映射到 stable Regions，执行 safe-area、collision、capacity、reading-order 和 minimum-font checks；wireframe SVG content-addressed，不是最终视觉；
+- Layout Plans 将 stable Blocks 一一映射到 stable Regions，执行 safe-area、collision、canonical text-fit、reading-order 和 minimum-font checks；自动生成的兼容纵向布局可在不越过字体 floor 的前提下有界重分配留白，wireframe SVG content-addressed，不是最终视觉；
 - `PRV-*` Planning Review 把问题定位到 P0/P2/P3/P4/P5A/P5B；`PRP-*` Repair 只自动处理已准入问题，并重跑相关 Gate 与全 deck regression；
 - `M3R-*` 报告绑定 Brief hints、limits/providers、M2 Reports、最终 planning artifacts、Review/Repair、wireframes 和 Project State；P0/P2/P3/P4/P5A/P5B 由最终状态重算；
 - M3 CLI 不内置模型 SDK 或在线 ResearchProvider。内置 deterministic provider 是真实 contract baseline，不声称通用 LLM 叙事能力。
 
 详细决策见 ADR-0015、ADR-0016、ADR-0017、ADR-0018。
 
-Designed Host Create 在 P5A 前先冻结 `.slidethus/art-direction/seeds/<sha256>.json` 的 `ArtDirectionSeed`。Seed 不拥有文案、证据或 Region，只记录视觉载体、表面节奏、图片处理和原生样板出处；required carrier 必须由 Specs/Layouts 正式兑现。P6 的 `ArtDirectionProvider` 再提交受限视觉方向 proposal。确定性核心将其绑定 Brief、Outline、Slide Specs、Layout Plans、Asset Manifest 和同一 Seed，校验后冻结为 `.slidethus/art-direction/packets/<sha256>.json`。Visual System 引用 Packet；renderer 不感知 provider。默认 adapter 使用随包分发、固定 commit 与 MIT provenance 的 Taste Skill，但只能标为 Taste-informed；只有带 workspace-local hash-bound 原生样板的 Host Seed 才是 Taste-generated。详见 ADR-0028、ADR-0031。
+Designed Host Create 在 P5A 前先冻结 `.slidethus/art-direction/seeds/<sha256>.json` 的 `ArtDirectionSeed`。Seed 不拥有文案、证据或 Region，只记录视觉载体、表面节奏、图片处理和原生样板出处；required carrier 必须由 Specs/Layouts 正式兑现。Host Seed/Specs 请求同时携带所选 backend 的可验证能力合同；`diagram` 可由归一化 nodes/edges 生成可编辑形状，也可显式绑定一个 PNG/JPEG，不再等同于位图。Seed 可通过独立 revise 路径变更载体。P6 的 `ArtDirectionProvider` 再提交受限视觉方向 proposal。确定性核心将其绑定 Brief、Outline、Slide Specs、Layout Plans、Asset Manifest 和同一 Seed，校验后冻结为 `.slidethus/art-direction/packets/<sha256>.json`。Visual System 引用 Packet；renderer 不感知 provider。默认 adapter 使用随包分发、固定 commit 与 MIT provenance 的 Taste Skill，但只能标为 Taste-informed；只有带 workspace-local hash-bound 原生样板的 Host Seed 才是 Taste-generated。详见 ADR-0028、ADR-0031、ADR-0032。
 
 ### 7.7 M5 Independent Review / Repair 边界
 
@@ -378,6 +378,7 @@ M5.1 `DeterministicReviewService` 已建立第一层 Production Review：它独�
 3. **PPTX Native**：可编辑文本、形状和图表；
 4. **Hybrid PPTX**：原生基础对象 + 复杂 SVG/图片；
 5. **Preview Renderer**：PPTX/PDF → PNG，用于视觉审计。
+6. **Host Artifact Tool**：Designed Create 的可选单一 producer；preflight 与 adapter 共用 target contract，每次启动都形成闭合 attempt receipt。
 
 v0.4 将文件生成拆成不同语义阶段：`DebugPptxRenderBackend` 把 Layout Plans 编译成带网格、safe area 与 Region/Block 映射的调试稿；`MinimalDesignPptxRenderBackend` 再消费 Visual System 生成独立最终稿；`LibreOfficeDocumentRenderer` 分别做独立 PDF/PNG 预览。两份 PPTX 都是可替换 MinimalImpl，不完成 PptxGenJS、Hybrid ProductionImpl 或生产级视觉设计。
 

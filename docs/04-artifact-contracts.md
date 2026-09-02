@@ -263,6 +263,12 @@ Packet 写入 `.slidethus/art-direction/packets/<sha256>.json` 后不可覆盖�
 
 `target_editability_level` 表示计划目标；`editability_level` 表示对真实输出的测量结果。`pending`/`draft` 阶段必须允许 `not_measured`，成功渲染和可交付状态则不能继续使用该值。
 
+Designed Host Create 另有非 catalog 的 `host_candidate_receipt.schema.json`。每次真正启动的 Artifact Tool attempt 先写 `render_started`，再闭合为 `render_failed`、`render_timed_out` 或 `candidate_office_review_pending`。回执绑定 current artifact refs、Renderer IR、Preflight、input/output hashes、adapter identity、stage/duration/exit/timeout 和截断脱敏后的 stdout/stderr；失败回执也必须通过 Schema。它不是 Render Manifest、G7 或 release evidence。
+
+`render_preflight_report.schema.json` 的容量 finding 使用结构化 `details`：required/available height、minimum height increase、width、preferred/floor/fitted font、line-height、line count、qualification reserve、实际 renderer horizontal/vertical padding 与 stable failure reason。Adapter-specific finding 可绑定 `asset_id`，同一次报告聚合全 deck 的 capacity、collision、asset、caption、carrier 与 runtime 条件。
+
+Artifact Tool 表格在既定 Region 内按内容需求分配列宽、按换行需求分配行高，并使用显式单元格边距；Preflight 与 sidecar 共享同一目标计算。总需求超过 Region 时必须回到 P5A/P5B，不能依赖 PowerPoint 裁切或等分单元格继续交付。
+
 完整 MVP 还使用 `pipeline_stages` 记录 planning、diagnostics、debug render/preview、design compile、final render/preview 动作，并用 `outputs[].role` 区分每个产出。输出文件扩展名不能替代阶段语义；Debug PPTX 和 Final PPTX 必须是不同文件。
 
 ### 4.11 Quality Report

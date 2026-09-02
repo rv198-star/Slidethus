@@ -8,6 +8,11 @@ from jsonschema import Draft202012Validator
 from slidethus.errors import LayoutPlanningError
 from slidethus.planning_rules import planning_content_units
 from slidethus.schema_registry import SchemaRegistry
+from slidethus.text_capacity import (
+    canonical_line_height,
+    fit_text,
+    font_floor_for_role,
+)
 
 _LAYOUT_FAMILIES = {
     "hero",
@@ -334,14 +339,73 @@ def _body_boxes(
 
 
 def _font_floor(block: dict[str, Any], slide: dict[str, Any]) -> float:
-    role = str(block.get("semantic_role", "body"))
-    if role == "headline":
-        return max(28.0, float(slide["density_budget"]["min_body_pt"]))
-    if role in {"metric", "quote"}:
-        return max(24.0, float(slide["density_budget"]["min_body_pt"]))
-    if role in {"caption", "footer", "label"}:
-        return max(12.0, min(16.0, float(slide["density_budget"]["min_body_pt"])))
-    return float(slide["density_budget"]["min_body_pt"])
+    return font_floor_for_role(
+        str(block.get("semantic_role", "body")),
+        float(slide["density_budget"]["min_body_pt"]),
+    )
+
+
+def _rebalance_stacked_text_boxes(
+    slide: dict[str, Any],
+    boxes_by_index: dict[int, tuple[float, float, float, float]],
+    *,
+    gap: float,
+) -> dict[int, tuple[float, float, float, float]]:
+    """Expand overflowing text boxes using only safe slack from sibling text boxes."""
+
+    blocks = list(slide.get("content_blocks", []))
+    ordered = sorted(boxes_by_index, key=lambda index: boxes_by_index[index][1])
+    if len(ordered) < 2:
+        return boxes_by_index
+    first_x, _first_y, first_width, _first_height = boxes_by_index[ordered[0]]
+    if any(
+        abs(boxes_by_index[index][0] - first_x) > 0.001
+        or abs(boxes_by_index[index][2] - first_width) > 0.001
+        for index in ordered
+    ):
+        return boxes_by_index
+    text_types = {"text", "list", "metric", "quote"}
+    fits: dict[int, Any] = {}
+    for index in ordered:
+        block = blocks[index]
+        if str(block.get("content_type")) not in text_types:
+            return boxes_by_index
+        floor = _font_floor(block, slide)
+        _x, _y, width, height = boxes_by_index[index]
+        fits[index] = fit_text(
+            block.get("content"),
+            str(block.get("content_type")),
+            width=width,
+            height=height,
+            preferred=floor,
+            floor=floor,
+            line_height=canonical_line_height(str(block.get("semantic_role", "body"))),
+            qualification=block.get("evidence_qualification"),
+        )
+    if all(result.fits for result in fits.values()):
+        return boxes_by_index
+    top = min(boxes_by_index[index][1] for index in ordered)
+    bottom = max(
+        boxes_by_index[index][1] + boxes_by_index[index][3]
+        for index in ordered
+    )
+    usable_height = bottom - top - gap * (len(ordered) - 1)
+    required = {index: fits[index].required_height for index in ordered}
+    if sum(required.values()) > usable_height:
+        return boxes_by_index
+    remaining = usable_height - sum(required.values())
+    weights = {
+        index: max(1.0, boxes_by_index[index][3])
+        for index in ordered
+    }
+    weight_total = sum(weights.values())
+    repaired: dict[int, tuple[float, float, float, float]] = {}
+    cursor = top
+    for index in ordered:
+        height = required[index] + remaining * weights[index] / weight_total
+        repaired[index] = (first_x, cursor, first_width, height)
+        cursor += height + gap
+    return repaired
 
 
 def build_layout_plan(
@@ -410,6 +474,13 @@ def build_layout_plan(
     )
     for index, box in zip(body_indices, body_boxes, strict=True):
         boxes_by_index[index] = box
+    initial_boxes = dict(boxes_by_index)
+    boxes_by_index = _rebalance_stacked_text_boxes(
+        slide,
+        boxes_by_index,
+        gap=gap,
+    )
+    capacity_rebalanced = boxes_by_index != initial_boxes
 
     regions: list[dict[str, Any]] = []
     spotlight_index = (
@@ -425,11 +496,26 @@ def build_layout_plan(
         font_floor = _font_floor(block, slide)
         capacity = region_capacity_units(region_width, region_height, font_floor)
         content_units = planning_content_units(block.get("content"))
-        if content_units > capacity:
-            raise LayoutPlanningError(
-                f"Block {block_id} requires {content_units} units but region capacity is {capacity}"
-            )
         content_type = str(block.get("content_type", "text"))
+        if content_type in {"text", "list", "metric", "quote"}:
+            fit = fit_text(
+                block.get("content"),
+                content_type,
+                width=region_width,
+                height=region_height,
+                preferred=font_floor,
+                floor=font_floor,
+                line_height=canonical_line_height(
+                    str(block.get("semantic_role", "body"))
+                ),
+                qualification=block.get("evidence_qualification"),
+            )
+            if not fit.fits:
+                raise LayoutPlanningError(
+                    f"Block {block_id} cannot fit at {font_floor:g}pt after bounded "
+                    f"space reallocation; increase its region by at least "
+                    f"{fit.required_height_increase:.1f}px or return to Slide Specs"
+                )
         regions.append(
             {
                 "region_id": f"REG-{slide_token}-{suffix}",
@@ -478,7 +564,14 @@ def build_layout_plan(
             "region_count": len(regions),
             "content_units": content_units,
             "capacity_units": capacity_units,
-            "warnings": [],
+            "warnings": (
+                [
+                    "Deterministic text capacity repair reallocated stacked whitespace "
+                    "without crossing the approved font floors."
+                ]
+                if capacity_rebalanced
+                else []
+            ),
         },
     }
 

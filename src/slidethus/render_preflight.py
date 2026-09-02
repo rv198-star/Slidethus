@@ -34,6 +34,8 @@ def render_check_id(check: dict[str, Any]) -> str:
         "block_id": check.get("block_id"),
         "region_id": check.get("region_id"),
     }
+    if check.get("asset_id") is not None:
+        payload["asset_id"] = check.get("asset_id")
     return "RPC-" + sha256_json(payload)[:16].upper()
 
 

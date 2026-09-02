@@ -126,6 +126,14 @@ class RenderBackendError(RenderingError):
     """Raised when a concrete Production render backend cannot produce a valid output."""
 
 
+class RenderAttemptError(RenderBackendError):
+    """Raised after a failed render attempt has persisted its terminal receipt."""
+
+    def __init__(self, message: str, *, receipt_path: str) -> None:
+        self.receipt_path = receipt_path
+        super().__init__(f"{message} Receipt: {receipt_path}")
+
+
 class RenderCapabilityError(RenderingError):
     """Raised when a requested renderer or preview capability is unavailable on the host."""
 

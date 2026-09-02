@@ -57,6 +57,8 @@ Delivery Manifest 必须记录最终等级。
 - M2 Application Report 中的 D0/D3/D4/D5 只描述 M2 Source/Research/Evidence 边界，不替代最终 Delivery Manifest 的全产品等级；
 - M3 的内置 DeterministicPlanningProvider 是 provider-neutral Production contract baseline，可在离线/D3 情况下完成结构化策划，但不声称等价于通用 LLM 受众洞察；
 - Brief 仍缺材料性答案时返回 `needs_input/P0`；Evidence 不满足时停在 P2；Planning Review 有 Critical/Major 时返回 `rework_required` 并路由到最早责任阶段；
+- Artifact Tool runtime 按 explicit args → `RUNTIME_NODE*` → admitted Codex bundled runtime 解析；doctor、preflight 和 render 使用同一解析与版本检查，缺失时在 Node 启动前结构化阻断；
+- Artifact Tool 非零退出或超时写 terminal receipt 并让 CLI 指向该路径；日志截断并清理 workspace/runtime 路径，不因失败切换 renderer；
 - PlanningProvider 输出只是一份 bounded proposal，不能自行写 artifact、分配 stable IDs、声明 Gate 或创造 Evidence；
 - M3 Application Report 的 P0/P2/P3/P4/P5A/P5B 是规划完成层级，不是最终 Delivery Level，也不代表 M4/M5 完成；
 - 降级仍必须产出可复用 artifacts；

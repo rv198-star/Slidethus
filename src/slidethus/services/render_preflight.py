@@ -13,6 +13,14 @@ from slidethus.errors import (
     RenderCompileError,
 )
 from slidethus.io_utils import atomic_create_json, read_json, sha256_file
+from slidethus.render_backends.artifact_tool_contract import (
+    ARTIFACT_TOOL_TEXT_HORIZONTAL_PADDING,
+    ARTIFACT_TOOL_TEXT_VERTICAL_PADDING,
+    artifact_tool_admission_issues,
+)
+from slidethus.render_backends.artifact_tool_runtime import (
+    resolve_artifact_tool_runtime,
+)
 from slidethus.render_backends.node_toolchain import node_executable, validate_sidecar
 from slidethus.render_backends.node_toolchain import renderer_root as resolve_renderer_root
 from slidethus.render_preflight import (
@@ -25,7 +33,10 @@ from slidethus.schema_registry import SchemaRegistry
 from slidethus.services.font_resolution import FontResolution, FontResolutionService
 from slidethus.services.render_assets import RenderAssetService, ResolvedRenderAsset
 from slidethus.services.render_compile import RenderCompileResult, RenderCompileService
-from slidethus.text_capacity import estimated_text_height
+from slidethus.text_capacity import (
+    DEFAULT_HORIZONTAL_PADDING,
+    DEFAULT_VERTICAL_PADDING,
+)
 
 _BACKENDS = {"final-svg", "pptxgenjs-native", "pptxgenjs-hybrid", "artifact-tool"}
 _SUPPORTED_CONTENT = {
@@ -82,6 +93,8 @@ def _check(
     slide_id: str | None = None,
     block_id: str | None = None,
     region_id: str | None = None,
+    asset_id: str | None = None,
+    details: dict[str, float | int | str | None] | None = None,
 ) -> dict[str, Any]:
     item = {
         "check_id": "",
@@ -94,6 +107,10 @@ def _check(
         "region_id": region_id,
         "message": " ".join(message.split()).strip()[:4000],
     }
+    if asset_id is not None:
+        item["asset_id"] = asset_id
+    if details is not None:
+        item["details"] = copy.deepcopy(details)
     item["check_id"] = render_check_id(item)
     return item
 
@@ -107,6 +124,7 @@ class RenderPreflightService:
         *,
         renderer_root: Path | None = None,
         node: str | None = None,
+        artifact_tool_modules: Path | None = None,
         font_match: str | None = None,
         font_query: str | None = None,
         schema_registry: SchemaRegistry | None = None,
@@ -114,6 +132,7 @@ class RenderPreflightService:
         self.workspace = workspace.resolve()
         self.renderer_root = resolve_renderer_root(renderer_root)
         self.node = node
+        self.artifact_tool_modules = artifact_tool_modules
         self.fonts = FontResolutionService(
             font_match=font_match,
             font_query=font_query,
@@ -188,6 +207,37 @@ class RenderPreflightService:
                         "detail": "Node.js and PptxGenJS 4.0.1 are available.",
                     }
                 )
+        if "artifact-tool" in backends:
+            try:
+                runtime = resolve_artifact_tool_runtime(
+                    node=self.node,
+                    modules=self.artifact_tool_modules,
+                )
+            except RenderCapabilityError as exc:
+                capabilities.append(
+                    {
+                        "capability": "artifact_tool",
+                        "status": "missing",
+                        "detail": str(exc),
+                    }
+                )
+                checks.append(
+                    _check(
+                        code="artifact_tool_capability_missing",
+                        status="fail",
+                        severity="major",
+                        backend="artifact-tool",
+                        message=str(exc),
+                    )
+                )
+            else:
+                capabilities.append(
+                    {
+                        "capability": "artifact_tool",
+                        "status": "available",
+                        "detail": runtime.capability_detail(),
+                    }
+                )
         if include_exports:
             try:
                 node_executable(self.node)
@@ -239,8 +289,21 @@ class RenderPreflightService:
             include_exports=include_exports,
         )
         visual = read_json(self.workspace / "design/visual_system.json")
-        if visual.get("page_designs") and admitted_backends != ("artifact-tool",):
-            raise RenderCompileError("Explicit page appearance currently requires the Artifact Tool adapter; no baseline fallback")
+        if visual.get("page_designs"):
+            for backend in admitted_backends:
+                if backend != "artifact-tool":
+                    checks.append(
+                        _check(
+                            code="explicit_page_design_backend_unsupported",
+                            status="fail",
+                            severity="major",
+                            backend=backend,
+                            message=(
+                                "Explicit page appearance currently requires the Artifact Tool "
+                                "adapter; no baseline fallback is admitted."
+                            ),
+                        )
+                    )
         compiler = RenderCompileService(self.workspace)
         font_requirements = compiler.required_font_characters()
         resolutions: tuple[FontResolution, ...] = ()
@@ -261,19 +324,54 @@ class RenderPreflightService:
                 )
         compiled = compiler.compile(
             font_resolutions=resolutions,
+            collect_readiness_failures=True,
+            # Artifact Tool explicitly emits zero text insets. Keep the generic
+            # Office-conservative profile for every other or mixed backend run.
+            text_horizontal_padding=(
+                ARTIFACT_TOOL_TEXT_HORIZONTAL_PADDING
+                if admitted_backends == ("artifact-tool",)
+                else DEFAULT_HORIZONTAL_PADDING
+            ),
+            text_vertical_padding=(
+                ARTIFACT_TOOL_TEXT_VERTICAL_PADDING
+                if admitted_backends == ("artifact-tool",)
+                else DEFAULT_VERTICAL_PADDING
+            ),
         )
-        try:
-            assets = RenderAssetService(self.workspace).resolve(
-                tuple(compiled.ir.get("asset_ids", []))
-            )
-        except (RenderAssetError, RenderCapabilityError) as exc:
-            assets = {}
+        assets: dict[str, ResolvedRenderAsset] = {}
+        asset_service = RenderAssetService(self.workspace)
+        for asset_id in sorted(str(item) for item in compiled.ir.get("asset_ids", [])):
+            try:
+                assets.update(asset_service.resolve((asset_id,)))
+            except (RenderAssetError, RenderCapabilityError) as exc:
+                checks.append(
+                    _check(
+                        code="render_asset_resolution_failed",
+                        status="fail",
+                        severity="major",
+                        asset_id=asset_id,
+                        message=f"{asset_id}: {exc}",
+                    )
+                )
+        for binding in compiled.text_fits:
+            fit = binding.result
+            if fit.fits:
+                continue
             checks.append(
                 _check(
-                    code="render_asset_resolution_failed",
+                    code="render_text_overflow",
                     status="fail",
                     severity="major",
-                    message=str(exc),
+                    message=(
+                        f"Text requires {fit.required_height:.1f}px at the approved floor "
+                        f"{fit.floor_font_pt:g}pt but region height is "
+                        f"{fit.available_height:.1f}px; increase height by at least "
+                        f"{fit.required_height_increase:.1f}px or return to P5A/P5B."
+                    ),
+                    slide_id=binding.slide_id,
+                    block_id=binding.block_id,
+                    region_id=binding.region_id,
+                    details=fit.as_preflight_details(),
                 )
             )
         width = float(compiled.ir["canvas"]["width"])
@@ -310,30 +408,6 @@ class RenderPreflightService:
                         )
                     )
                 content_type = str(region["content_type"])
-                if content_type in {"text", "list", "metric", "quote"}:
-                    required_height = estimated_text_height(
-                        region.get("content"),
-                        content_type,
-                        width=float(region["w"]),
-                        font_size=float(region["style"]["font_size"]),
-                        line_height=float(region["style"]["line_height"]),
-                        qualification=region.get("evidence_qualification"),
-                    )
-                    if required_height > float(region["h"]):
-                        checks.append(
-                            _check(
-                                code="render_text_overflow",
-                                status="fail",
-                                severity="major",
-                                message=(
-                                    f"Estimated text height {required_height:.1f} exceeds "
-                                    f"region height {float(region['h']):.1f}; return to P5A/P5B."
-                                ),
-                                slide_id=slide_id,
-                                block_id=block_id,
-                                region_id=region_id,
-                            )
-                        )
                 for backend in admitted_backends:
                     if content_type not in _SUPPORTED_CONTENT[backend]:
                         checks.append(
@@ -389,6 +463,20 @@ class RenderPreflightService:
                             region_id=str(crossed["region_id"]),
                         )
                     )
+        if "artifact-tool" in admitted_backends:
+            for issue in artifact_tool_admission_issues(compiled.ir, assets):
+                checks.append(
+                    _check(
+                        code=issue.code,
+                        status="fail",
+                        severity="major",
+                        backend="artifact-tool",
+                        message=issue.message,
+                        slide_id=issue.slide_id,
+                        block_id=issue.block_id,
+                        region_id=issue.region_id,
+                    )
+                )
         failed = [item for item in checks if item["status"] == "fail"]
         report: dict[str, Any] = {
             "schema_version": SCHEMA_VERSION,

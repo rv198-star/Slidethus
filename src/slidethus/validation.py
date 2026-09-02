@@ -236,6 +236,11 @@ def _validate_cross_references(
         str(item.get("artifact_type")): str(item.get("status", ""))
         for item in state.get("artifacts", [])
     }
+
+    def reference_severity(owner: str) -> str:
+        """Draft downstream artifacts cannot block a valid upstream graph revision."""
+
+        return "warning" if artifact_status.get(owner) == "draft" else "error"
     open_blockers = [item for item in state.get("blockers", []) if item.get("status") == "open"]
     state_status = state.get("status")
     current_phase = state.get("current_phase")
@@ -460,17 +465,7 @@ def _validate_cross_references(
                 )
 
     evidence_ledger = loaded.get("evidence_ledger", {})
-    evidence_registry_entry = next(
-        (
-            item
-            for item in state.get("artifacts", [])
-            if item.get("artifact_type") == "evidence_ledger"
-        ),
-        {},
-    )
-    evidence_lineage_severity = (
-        "error" if evidence_registry_entry.get("status") == "approved" else "warning"
-    )
+    evidence_lineage_severity = reference_severity("evidence_ledger")
     research_cycles = evidence_ledger.get("research_cycles", [])
     cycle_ids = [item["cycle_id"] for item in research_cycles if "cycle_id" in item]
     _unique_ids(report, cycle_ids, "evidence/evidence_ledger.json", "research cycle")
@@ -481,6 +476,7 @@ def _validate_cross_references(
                     "missing_source_ref",
                     f"Research cycle {cycle.get('cycle_id')} references unknown source {source_id}",
                     "evidence/evidence_ledger.json",
+                    evidence_lineage_severity,
                 )
         for run_id in cycle.get("run_ids", []):
             run_path = workspace / ".slidethus/research/runs" / f"{run_id}.json"
@@ -691,7 +687,12 @@ def _validate_cross_references(
         for ref in claim.get("source_refs", []):
             source_id = ref.get("source_id")
             if source_id not in source_set:
-                report.add("missing_source_ref", f"Evidence {claim.get('evidence_id')} references unknown source {source_id}", "evidence/evidence_ledger.json")
+                report.add(
+                    "missing_source_ref",
+                    f"Evidence {claim.get('evidence_id')} references unknown source {source_id}",
+                    "evidence/evidence_ledger.json",
+                    evidence_lineage_severity,
+                )
                 continue
             parse_status, allowed_use = source_status.get(source_id, (None, None))
             source = source_by_id.get(str(source_id), {})
@@ -806,6 +807,7 @@ def _validate_cross_references(
                 )
 
     narrative = loaded.get("narrative_blueprint", {})
+    narrative_reference_severity = reference_severity("narrative_blueprint")
     narrative_sections = narrative.get("sections", [])
     section_ids = [str(section.get("section_id", "")) for section in narrative_sections]
     _unique_ids(report, section_ids, "narrative/narrative_blueprint.json", "section")
@@ -813,11 +815,21 @@ def _validate_cross_references(
     for section in narrative_sections:
         for evidence_id in section.get("evidence_ids", []):
             if evidence_id not in evidence_set:
-                report.add("missing_evidence_ref", f"Narrative section references unknown evidence {evidence_id}", "narrative/narrative_blueprint.json")
+                report.add(
+                    "missing_evidence_ref",
+                    f"Narrative section references unknown evidence {evidence_id}",
+                    "narrative/narrative_blueprint.json",
+                    narrative_reference_severity,
+                )
             else:
                 status, policy = evidence_status.get(evidence_id, (None, None))
                 if status in {"unsupported", "disputed"} or policy == "do_not_use":
-                    report.add("unusable_evidence", f"Narrative section uses {evidence_id} with status={status}, policy={policy}", "narrative/narrative_blueprint.json")
+                    report.add(
+                        "unusable_evidence",
+                        f"Narrative section uses {evidence_id} with status={status}, policy={policy}",
+                        "narrative/narrative_blueprint.json",
+                        narrative_reference_severity,
+                    )
     for objection in narrative.get("objections", []):
         for evidence_id in objection.get("evidence_ids", []):
             if evidence_id not in evidence_set:
@@ -825,6 +837,7 @@ def _validate_cross_references(
                     "missing_evidence_ref",
                     f"Narrative objection references unknown evidence {evidence_id}",
                     "narrative/narrative_blueprint.json",
+                    narrative_reference_severity,
                 )
             else:
                 status, policy = evidence_status.get(evidence_id, (None, None))
@@ -833,6 +846,7 @@ def _validate_cross_references(
                         "unusable_evidence",
                         f"Narrative objection uses {evidence_id} with status={status}, policy={policy}",
                         "narrative/narrative_blueprint.json",
+                        narrative_reference_severity,
                     )
 
     outline = loaded.get("deck_outline", {})
@@ -842,9 +856,20 @@ def _validate_cross_references(
         if artifact_type in {"deck_outline", "slide_specs", "layout_plans", "visual_system", "render_manifest"} and data.get("deck_id")
     }
     if len(set(deck_ids.values())) > 1:
-        report.add("deck_id_mismatch", f"Deck IDs are inconsistent: {deck_ids}", "project_state.json")
+        severity = (
+            "warning"
+            if any(artifact_status.get(artifact_type) == "draft" for artifact_type in deck_ids)
+            else "error"
+        )
+        report.add(
+            "deck_id_mismatch",
+            f"Deck IDs are inconsistent: {deck_ids}",
+            "project_state.json",
+            severity,
+        )
 
     active_outline_slides = [slide for slide in outline.get("slides", []) if slide.get("status") != "excluded"]
+    outline_reference_severity = reference_severity("deck_outline")
     slide_ids = [slide["slide_id"] for slide in active_outline_slides if "slide_id" in slide]
     _unique_ids(report, slide_ids, "outline/deck_outline.json", "slide")
     ordinals = [slide.get("ordinal") for slide in active_outline_slides]
@@ -859,19 +884,36 @@ def _validate_cross_references(
                 "missing_section_ref",
                 f"Slide {slide.get('slide_id')} references unknown narrative section {section_id}",
                 "outline/deck_outline.json",
+                outline_reference_severity,
             )
         for evidence_id in slide.get("evidence_ids", []):
             if evidence_id not in evidence_set:
-                report.add("missing_evidence_ref", f"Slide {slide.get('slide_id')} references unknown evidence {evidence_id}", "outline/deck_outline.json")
+                report.add(
+                    "missing_evidence_ref",
+                    f"Slide {slide.get('slide_id')} references unknown evidence {evidence_id}",
+                    "outline/deck_outline.json",
+                    outline_reference_severity,
+                )
             else:
                 status, policy = evidence_status.get(evidence_id, (None, None))
                 if status in {"unsupported", "disputed"} or policy == "do_not_use":
-                    report.add("unusable_evidence", f"Slide {slide.get('slide_id')} uses {evidence_id} with status={status}, policy={policy}", "outline/deck_outline.json")
+                    report.add(
+                        "unusable_evidence",
+                        f"Slide {slide.get('slide_id')} uses {evidence_id} with status={status}, policy={policy}",
+                        "outline/deck_outline.json",
+                        outline_reference_severity,
+                    )
 
     specs = loaded.get("slide_specs", {}).get("slides", [])
+    specs_reference_severity = reference_severity("slide_specs")
     spec_ids = [slide["slide_id"] for slide in specs if "slide_id" in slide]
     if "slide_specs" in loaded and slide_ids and set(spec_ids) != set(slide_ids):
-        report.add("slide_coverage_mismatch", f"Slide Specs IDs {sorted(spec_ids)} do not match Outline IDs {sorted(slide_ids)}", "slides/slide_specs.json")
+        report.add(
+            "slide_coverage_mismatch",
+            f"Slide Specs IDs {sorted(spec_ids)} do not match Outline IDs {sorted(slide_ids)}",
+            "slides/slide_specs.json",
+            specs_reference_severity,
+        )
     _unique_ids(report, spec_ids, "slides/slide_specs.json", "slide spec")
     block_map: dict[str, set[str]] = {}
     all_block_ids: list[str] = []
@@ -895,26 +937,44 @@ def _validate_cross_references(
         for block in blocks:
             for evidence_id in block.get("evidence_ids", []):
                 if evidence_id not in evidence_set:
-                    report.add("missing_evidence_ref", f"Block {block.get('block_id')} references unknown evidence {evidence_id}", "slides/slide_specs.json")
+                    report.add(
+                        "missing_evidence_ref",
+                        f"Block {block.get('block_id')} references unknown evidence {evidence_id}",
+                        "slides/slide_specs.json",
+                        specs_reference_severity,
+                    )
                 else:
                     status, policy = evidence_status.get(evidence_id, (None, None))
                     if status in {"unsupported", "disputed"} or policy == "do_not_use":
-                        report.add("unusable_evidence", f"Block {block.get('block_id')} uses {evidence_id} with status={status}, policy={policy}", "slides/slide_specs.json")
+                        report.add(
+                            "unusable_evidence",
+                            f"Block {block.get('block_id')} uses {evidence_id} with status={status}, policy={policy}",
+                            "slides/slide_specs.json",
+                            specs_reference_severity,
+                        )
             for asset_id in block.get("asset_refs", []):
                 if asset_id not in asset_set:
-                    report.add("missing_asset_ref", f"Block {block.get('block_id')} references unknown asset {asset_id}", "slides/slide_specs.json")
+                    report.add(
+                        "missing_asset_ref",
+                        f"Block {block.get('block_id')} references unknown asset {asset_id}",
+                        "slides/slide_specs.json",
+                        specs_reference_severity,
+                    )
                 else:
                     status, policy = asset_status.get(asset_id, (None, None))
                     if status != "available" or policy == "do_not_use":
-                        report.add("unusable_asset", f"Block {block.get('block_id')} uses {asset_id} with status={status}, policy={policy}", "slides/slide_specs.json")
+                        report.add(
+                            "unusable_asset",
+                            f"Block {block.get('block_id')} uses {asset_id} with status={status}, policy={policy}",
+                            "slides/slide_specs.json",
+                            specs_reference_severity,
+                        )
     _unique_ids(report, all_block_ids, "slides/slide_specs.json", "block")
 
     layout = loaded.get("layout_plans", {})
     plans = layout.get("plans", [])
     plan_ids = [plan["slide_id"] for plan in plans if "slide_id" in plan]
-    layout_reference_severity = (
-        "warning" if artifact_status.get("layout_plans") == "draft" else "error"
-    )
+    layout_reference_severity = reference_severity("layout_plans")
     if "layout_plans" in loaded and slide_ids and set(plan_ids) != set(slide_ids):
         report.add(
             "layout_coverage_mismatch",
@@ -936,6 +996,7 @@ def _validate_cross_references(
                 "aspect_ratio_mismatch",
                 f"Layout canvas {width}x{height} does not match brief aspect ratio {aspect_ratio}",
                 "layout/layout_plans.json",
+                layout_reference_severity,
             )
     all_region_ids: list[str] = []
     for plan in plans:
@@ -989,16 +1050,32 @@ def _validate_cross_references(
         page_count = brief.get("constraints", {}).get("page_count", {})
         target = outline.get("target_page_count")
         if target is not None and not (page_count.get("min", target) <= target <= page_count.get("max", target)):
-            report.add("page_count_outside_brief", f"Outline target {target} is outside brief range", "outline/deck_outline.json")
+            report.add(
+                "page_count_outside_brief",
+                f"Outline target {target} is outside brief range",
+                "outline/deck_outline.json",
+                outline_reference_severity,
+            )
 
     visual = loaded.get("visual_system", {})
+    visual_reference_severity = reference_severity("visual_system")
     for asset_id in visual.get("brand_assets", []):
         if asset_id not in asset_set:
-            report.add("missing_asset_ref", f"Visual System references unknown brand asset {asset_id}", "design/visual_system.json")
+            report.add(
+                "missing_asset_ref",
+                f"Visual System references unknown brand asset {asset_id}",
+                "design/visual_system.json",
+                visual_reference_severity,
+            )
         else:
             status, policy = asset_status.get(asset_id, (None, None))
             if status != "available" or policy == "do_not_use":
-                report.add("unusable_asset", f"Visual System uses {asset_id} with status={status}, policy={policy}", "design/visual_system.json")
+                report.add(
+                    "unusable_asset",
+                    f"Visual System uses {asset_id} with status={status}, policy={policy}",
+                    "design/visual_system.json",
+                    visual_reference_severity,
+                )
 
     state_artifacts = state.get("artifacts", [])
     registry_paths = [str(item.get("path", "")) for item in state_artifacts]
@@ -1092,6 +1169,7 @@ def _validate_cross_references(
             report.add("unregistered_artifact", f"Present artifact is not registered: {expected_path}", "project_state.json")
 
     render = loaded.get("render_manifest", {})
+    render_reference_severity = reference_severity("render_manifest")
     render_is_current = (
         artifact_status.get("render_manifest") != "draft"
         and current_phase
@@ -1104,7 +1182,12 @@ def _validate_cross_references(
         if artifact_path is None:
             continue
         if registered is None or not artifact_path.exists():
-            report.add("invalid_render_input", f"Render input is not a registered existing artifact: {relative}", "renders/render_manifest.json")
+            report.add(
+                "invalid_render_input",
+                f"Render input is not a registered existing artifact: {relative}",
+                "renders/render_manifest.json",
+                render_reference_severity,
+            )
         elif render_is_current and input_artifact.get("version") != registered.get("version"):
             report.add("render_input_version_mismatch", f"Render input version mismatch: {relative}", "renders/render_manifest.json")
         elif render_is_current and input_artifact.get("sha256") != sha256_file(artifact_path):
@@ -1145,9 +1228,11 @@ def _validate_cross_references(
                 "invalid_production_render_manifest",
                 message,
                 "renders/render_manifest.json",
+                render_reference_severity,
             )
 
     delivery = loaded.get("delivery_manifest", {})
+    delivery_reference_severity = reference_severity("delivery_manifest")
     for artifact_version in delivery.get("artifact_versions", []):
         relative = artifact_version.get("path")
         registered = registered_by_path.get(relative)
@@ -1155,11 +1240,26 @@ def _validate_cross_references(
         if artifact_path is None:
             continue
         if registered is None or not artifact_path.exists():
-            report.add("invalid_delivery_artifact", f"Delivery references an unregistered artifact: {relative}", "delivery/delivery_manifest.json")
+            report.add(
+                "invalid_delivery_artifact",
+                f"Delivery references an unregistered artifact: {relative}",
+                "delivery/delivery_manifest.json",
+                delivery_reference_severity,
+            )
         elif artifact_version.get("artifact_type") != registered.get("artifact_type") or artifact_version.get("version") != registered.get("version"):
-            report.add("delivery_artifact_version_mismatch", f"Delivery artifact version mismatch: {relative}", "delivery/delivery_manifest.json")
+            report.add(
+                "delivery_artifact_version_mismatch",
+                f"Delivery artifact version mismatch: {relative}",
+                "delivery/delivery_manifest.json",
+                delivery_reference_severity,
+            )
         elif artifact_version.get("sha256") != sha256_file(artifact_path):
-            report.add("delivery_artifact_hash_mismatch", f"Delivery artifact hash mismatch: {relative}", "delivery/delivery_manifest.json")
+            report.add(
+                "delivery_artifact_hash_mismatch",
+                f"Delivery artifact hash mismatch: {relative}",
+                "delivery/delivery_manifest.json",
+                delivery_reference_severity,
+            )
     delivery_outputs = delivery.get("outputs", [])
     if delivery.get("status") in {"ready", "delivered"} and delivery.get("editability_level") == "not_measured":
         report.add(
@@ -1188,17 +1288,33 @@ def _validate_cross_references(
             report.add("delivery_output_hash_mismatch", f"Delivery output hash mismatch: {output.get('path')}", "delivery/delivery_manifest.json")
 
     quality = loaded.get("quality_report", {})
+    quality_reference_severity = reference_severity("quality_report")
     valid_slide_ids = set(slide_ids)
     valid_block_ids = set(all_block_ids)
     valid_region_ids = set(all_region_ids)
     blocking_quality_issues = []
     for issue in quality.get("issues", []):
         if issue.get("slide_id") and issue["slide_id"] not in valid_slide_ids:
-            report.add("invalid_issue_ref", f"Issue {issue.get('issue_id')} references unknown slide", "review/quality_report.json")
+            report.add(
+                "invalid_issue_ref",
+                f"Issue {issue.get('issue_id')} references unknown slide",
+                "review/quality_report.json",
+                quality_reference_severity,
+            )
         if issue.get("block_id") and issue["block_id"] not in valid_block_ids:
-            report.add("invalid_issue_ref", f"Issue {issue.get('issue_id')} references unknown block", "review/quality_report.json")
+            report.add(
+                "invalid_issue_ref",
+                f"Issue {issue.get('issue_id')} references unknown block",
+                "review/quality_report.json",
+                quality_reference_severity,
+            )
         if issue.get("region_id") and issue["region_id"] not in valid_region_ids:
-            report.add("invalid_issue_ref", f"Issue {issue.get('issue_id')} references unknown region", "review/quality_report.json")
+            report.add(
+                "invalid_issue_ref",
+                f"Issue {issue.get('issue_id')} references unknown region",
+                "review/quality_report.json",
+                quality_reference_severity,
+            )
         if issue.get("status") == "open" and issue.get("severity") in {"critical", "major"}:
             blocking_quality_issues.append(issue)
     if quality:

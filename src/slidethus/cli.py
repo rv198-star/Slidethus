@@ -18,7 +18,7 @@ from slidethus.distribution import (
     distribution_status,
     materialize_skill,
 )
-from slidethus.errors import SlidethusError
+from slidethus.errors import RenderCapabilityError, SlidethusError
 from slidethus.gates import evaluate_gate
 from slidethus.io_utils import read_json
 from slidethus.m2_application_reports import (
@@ -43,6 +43,9 @@ from slidethus.protocols import (
     PlanningLimits,
     ResearchLimits,
     SourceParseLimits,
+)
+from slidethus.render_backends.artifact_tool_runtime import (
+    resolve_artifact_tool_runtime,
 )
 from slidethus.review_proposals import (
     ReviewSynthesisProposalProvider,
@@ -114,7 +117,16 @@ def _parser() -> argparse.ArgumentParser:
     create.add_argument("--request", default="")
     create.add_argument("--render", action="store_true", help="export a candidate, not release approval")
     create.add_argument("--slide-id", action="append", dest="slide_ids", help="sample from the same full-deck IR")
-    create.add_argument("--revise-stage", choices=["narrative_blueprint", "deck_outline", "slide_specs", "layout_plans"])
+    create.add_argument(
+        "--revise-stage",
+        choices=[
+            "narrative_blueprint",
+            "deck_outline",
+            "art_direction_seed",
+            "slide_specs",
+            "layout_plans",
+        ],
+    )
     create.add_argument("--node")
     create.add_argument("--node-modules", type=Path)
     create.add_argument("--font-match")
@@ -145,7 +157,9 @@ def _parser() -> argparse.ArgumentParser:
     mvp.add_argument("--max-slides", type=int, default=6)
     mvp.add_argument("--require-preview", action="store_true")
 
-    sub.add_parser("doctor", help="check local foundation prerequisites")
+    doctor = sub.add_parser("doctor", help="check local foundation prerequisites")
+    doctor.add_argument("--node")
+    doctor.add_argument("--node-modules", type=Path)
     sub.add_parser("schemas", help="list known artifact schemas")
 
     artifact = sub.add_parser("artifact", help="inspect and maintain versioned artifacts")
@@ -547,7 +561,7 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _doctor() -> int:
+def _doctor(*, node: str | None = None, node_modules: Path | None = None) -> int:
     checks: list[tuple[str, bool, str]] = []
     checks.append(("python", sys.version_info >= (3, 11), platform.python_version()))
     try:
@@ -584,6 +598,15 @@ def _doctor() -> int:
         )
         print(f"{status} ingestion:{capability}: {detail}")
     print("PASS ingestion:html-csv-pptx: available in the base install")
+    try:
+        artifact_runtime = resolve_artifact_tool_runtime(
+            node=node,
+            modules=node_modules,
+        )
+    except RenderCapabilityError as exc:
+        print(f"OPTIONAL artifact-tool: {exc}")
+    else:
+        print(f"PASS artifact-tool: {artifact_runtime.capability_detail()}")
     return 0 if all(ok for _, ok, _ in checks) else 1
 
 
@@ -658,7 +681,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1 if result.status == "blocked" else 0
         if args.command == "doctor":
-            return _doctor()
+            return _doctor(node=args.node, node_modules=args.node_modules)
         if args.command == "schemas":
             registry = SchemaRegistry()
             for artifact_type, entry in sorted(registry.entries.items()):

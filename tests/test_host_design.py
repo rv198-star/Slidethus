@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import os
 import shutil
+import subprocess
 from dataclasses import asdict
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -14,7 +15,13 @@ from slidethus.art_direction import TasteSkillArtDirectionProvider
 from slidethus.art_direction_seed import compile_art_direction_seed
 from slidethus.artifact_runtime import ArtifactRuntime
 from slidethus.cli import main
-from slidethus.errors import ArtifactError, PlanningError, RenderBackendError, RenderCapabilityError
+from slidethus.errors import (
+    ArtifactError,
+    PlanningError,
+    RenderAttemptError,
+    RenderBackendError,
+    RenderCapabilityError,
+)
 from slidethus.gates import evaluate_gate
 from slidethus.host_design import (
     HostArtDirectionProvider,
@@ -22,7 +29,7 @@ from slidethus.host_design import (
     HostDesignRequired,
     HostPlanningProvider,
 )
-from slidethus.io_utils import atomic_create_json, read_json, sha256_file
+from slidethus.io_utils import atomic_create_json, atomic_write_json, read_json, sha256_file
 from slidethus.layout_geometry import admit_authored_layout
 from slidethus.page_design import validate_page_designs
 from slidethus.planning_provider import DeterministicPlanningProvider
@@ -33,6 +40,9 @@ from slidethus.protocols import (
     PlanningLimits,
 )
 from slidethus.render_backends.artifact_tool import ArtifactToolRenderBackend
+from slidethus.render_backends.artifact_tool_runtime import (
+    resolve_artifact_tool_runtime,
+)
 from slidethus.services.host_create import HostCreateService
 from slidethus.services.render_compile import RenderCompileService
 from slidethus.services.render_preflight import RenderPreflightService
@@ -97,6 +107,138 @@ def test_malformed_host_proposals_fail_explicitly(tmp_path: Path, stage: str, pr
 def test_artifact_tool_missing_capability_does_not_install_or_fallback(tmp_path: Path) -> None:
     with pytest.raises(RenderCapabilityError):
         ArtifactToolRenderBackend(node=str(tmp_path / "no-node"), modules=tmp_path).check_available()
+
+
+def _fake_artifact_tool_runtime(tmp_path: Path) -> tuple[Path, Path]:
+    node = tmp_path / "node"
+    node.write_text(
+        "#!/bin/sh\n"
+        "if [ \"$1\" = \"--version\" ]; then echo v20.11.0; exit 0; fi\n"
+        "echo synthetic-adapter-failure \"$@\" >&2\n"
+        "exit 9\n",
+        encoding="utf-8",
+    )
+    node.chmod(0o755)
+    modules = tmp_path / "node_modules"
+    package = modules / "@oai/artifact-tool/package.json"
+    package.parent.mkdir(parents=True)
+    package.write_text('{"version":"0.0.0-test"}\n', encoding="utf-8")
+    return node, modules
+
+
+def _fake_successful_artifact_tool_runtime(tmp_path: Path) -> tuple[Path, Path]:
+    node = tmp_path / "node-success"
+    node.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json, pathlib, sys, zipfile\n"
+        "if sys.argv[1:] == ['--version']:\n"
+        "    print('v20.11.0')\n"
+        "    raise SystemExit(0)\n"
+        "payload = json.loads(pathlib.Path(sys.argv[2]).read_text())\n"
+        "output = pathlib.Path(sys.argv[3])\n"
+        "output.mkdir(parents=True, exist_ok=True)\n"
+        "with zipfile.ZipFile(output / 'candidate.pptx', 'w') as archive:\n"
+        "    archive.writestr('[Content_Types].xml', '<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"/>')\n"
+        "    for index, _slide_id in enumerate(payload['slide_ids'], 1):\n"
+        "        archive.writestr(f'ppt/slides/slide{index}.xml', '<p:sld xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\"/>')\n"
+        "for slide_id in payload['slide_ids']:\n"
+        "    (output / f'{slide_id}.png').write_bytes(b'\\x89PNG\\r\\n\\x1a\\nfixture')\n"
+        "    (output / f'{slide_id}.layout.json').write_text('{}\\n')\n",
+        encoding="utf-8",
+    )
+    node.chmod(0o755)
+    modules = tmp_path / "node_modules-success"
+    package = modules / "@oai/artifact-tool/package.json"
+    package.parent.mkdir(parents=True)
+    package.write_text('{"version":"0.0.0-test"}\n', encoding="utf-8")
+    return node, modules
+
+
+def test_same_host_request_records_distinct_response_and_proposal_hashes(
+    tmp_path: Path,
+) -> None:
+    bridge = HostDesignBridge(tmp_path)
+    provider = HostPlanningProvider(bridge)
+    context = {"title": "Stable request"}
+    with pytest.raises(HostDesignRequired):
+        provider.propose("narrative_blueprint", context, PlanningLimits())
+    pending = copy.deepcopy(bridge.pending)
+
+    first_response = {
+        "schema_version": "0.1.0",
+        "request_hash": pending["request_hash"],
+        "stage": pending["stage"],
+        "proposal": {"content": {"version": "first"}, "warnings": [], "assumptions": []},
+    }
+    atomic_write_json(Path(pending["response_path"]), first_response)
+    assert provider.propose(
+        "narrative_blueprint", context, PlanningLimits()
+    ).content == {"version": "first"}
+    first = copy.deepcopy(bridge.last_submission)
+
+    second_response = copy.deepcopy(first_response)
+    second_response["proposal"]["content"]["version"] = "second"
+    atomic_write_json(Path(pending["response_path"]), second_response)
+    assert provider.propose(
+        "narrative_blueprint", context, PlanningLimits()
+    ).content == {"version": "second"}
+    second = bridge.last_submission
+
+    assert first["request_hash"] == second["request_hash"]
+    assert first["response_hash"] != second["response_hash"]
+    assert first["proposal_hash"] != second["proposal_hash"]
+    assert len(list((tmp_path / ".slidethus/host-design/received").glob("*.json"))) == 2
+
+
+def test_doctor_and_renderer_share_explicit_artifact_runtime(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    node, modules = _fake_artifact_tool_runtime(tmp_path)
+    resolved = resolve_artifact_tool_runtime(node=str(node), modules=modules)
+
+    assert ArtifactToolRenderBackend(
+        node=str(node), modules=modules
+    ).check_available() == {"name": "artifact-tool", "version": resolved.version}
+    assert main(
+        ["doctor", "--node", str(node), "--node-modules", str(modules)]
+    ) == 0
+    output = capsys.readouterr().out
+    assert f"node={node}" in output
+    assert f"node_modules={modules}" in output
+
+
+def test_artifact_runtime_resolver_uses_host_bundle_after_args_and_env(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import slidethus.render_backends.artifact_tool_runtime as runtime_module
+
+    bundle = tmp_path / "bundled-node"
+    node = bundle / "bin/node"
+    node.parent.mkdir(parents=True)
+    node.write_text(
+        "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo v20.11.0; fi\n",
+        encoding="utf-8",
+    )
+    node.chmod(0o755)
+    modules = bundle / "node_modules"
+    package = modules / "@oai/artifact-tool/package.json"
+    package.parent.mkdir(parents=True)
+    package.write_text('{"version":"0.0.0-bundled"}\n', encoding="utf-8")
+    monkeypatch.delenv("RUNTIME_NODE", raising=False)
+    monkeypatch.delenv("RUNTIME_NODE_MODULES", raising=False)
+    monkeypatch.setattr(
+        runtime_module,
+        "_host_bundled_node_roots",
+        lambda: (bundle,),
+    )
+
+    resolved = resolve_artifact_tool_runtime()
+
+    assert resolved.node == str(node)
+    assert resolved.modules == modules
+    assert resolved.version == "0.0.0-bundled"
 
 
 def test_deterministic_taste_seed_is_never_claimed_as_taste_generated() -> None:
@@ -364,6 +506,137 @@ def test_host_decisions_reach_ir_without_family_restyling(authored_workspace: Pa
     raw["regions"][0]["w"] = -1
     with pytest.raises(PlanningError, match="geometry"):
         admit_authored_layout(specs["slides"][0], raw)
+
+
+def test_host_create_can_request_seed_revision_without_outline_perturbation(
+    authored_workspace: Path,
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "seed-revision"
+    shutil.copytree(authored_workspace, workspace)
+    current_seed = ArtifactRuntime(workspace).show_artifact("slide_specs")[
+        "art_direction_seed"
+    ]
+
+    result = HostCreateService(workspace).run(
+        revise_stage="art_direction_seed"
+    )
+
+    assert result["status"] == "host_input_required"
+    assert result["pending"]["stage"] == "art_direction_seed"
+    request = read_json(Path(result["pending"]["request_path"]))
+    assert request["context"]["revision_request"] == {
+        "requested": True,
+        "supersedes": current_seed,
+    }
+    assert ArtifactRuntime(workspace).show_artifact("deck_outline") == ArtifactRuntime(
+        authored_workspace
+    ).show_artifact("deck_outline")
+
+
+def test_artifact_tool_failure_writes_terminal_receipt(
+    authored_workspace: Path,
+    tmp_path: Path,
+) -> None:
+    node, modules = _fake_artifact_tool_runtime(tmp_path)
+    fonts = write_fontconfig_tools(tmp_path)
+    preflight = RenderPreflightService(
+        authored_workspace,
+        node=str(node),
+        artifact_tool_modules=modules,
+        font_match=str(fonts),
+    ).run(("artifact-tool",), include_exports=False)
+    assert preflight.report["status"] == "pass", preflight.report
+
+    with pytest.raises(RenderAttemptError) as failure:
+        ArtifactToolRenderBackend(
+            node=str(node),
+            modules=modules,
+        ).render(authored_workspace, preflight)
+
+    receipt = read_json(Path(failure.value.receipt_path))
+    assert receipt["status"] == "render_failed"
+    assert receipt["diagnostics"]["stage"] == "adapter"
+    assert receipt["diagnostics"]["exit_code"] == 9
+    assert receipt["diagnostics"]["timed_out"] is False
+    assert "synthetic-adapter-failure" in receipt["diagnostics"]["stderr"]
+    assert str(authored_workspace) not in receipt["diagnostics"]["stderr"]
+    assert str(modules) not in receipt["diagnostics"]["stderr"]
+    assert "<candidate>" in receipt["diagnostics"]["stderr"]
+    assert "<node_modules>" in receipt["diagnostics"]["stderr"]
+    assert receipt["input"]["sha256"] == sha256_file(Path(receipt["input"]["path"]))
+
+
+def test_host_create_success_closes_candidate_receipt(
+    authored_workspace: Path,
+    tmp_path: Path,
+) -> None:
+    node, modules = _fake_successful_artifact_tool_runtime(tmp_path)
+    fonts = write_fontconfig_tools(tmp_path)
+
+    result = HostCreateService(
+        authored_workspace,
+        node=str(node),
+        modules=modules,
+        font_match=str(fonts),
+    ).run(render=True)
+
+    assert result["status"] == "candidate_office_review_pending", result
+    assert result["scope"] == "full"
+    assert result["office_review"] == "pending"
+    assert result["release_approved"] is False
+    receipt_path = Path(result["receipt_path"])
+    receipt = read_json(receipt_path)
+    assert receipt["status"] == "candidate_office_review_pending"
+    assert receipt["diagnostics"]["stage"] == "complete"
+    assert all(
+        Path(item["path"]).is_file()
+        and item["sha256"] == sha256_file(Path(item["path"]))
+        for item in receipt["outputs"]
+    )
+
+
+def test_artifact_tool_timeout_writes_terminal_receipt(
+    authored_workspace: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    node, modules = _fake_artifact_tool_runtime(tmp_path)
+    fonts = write_fontconfig_tools(tmp_path)
+    preflight = RenderPreflightService(
+        authored_workspace,
+        node=str(node),
+        artifact_tool_modules=modules,
+        font_match=str(fonts),
+    ).run(("artifact-tool",), include_exports=False)
+    assert preflight.report["status"] == "pass", preflight.report
+
+    def time_out(*_args, **_kwargs):
+        raise subprocess.TimeoutExpired(
+            cmd="node",
+            timeout=300,
+            output="partial-output",
+            stderr="synthetic-timeout",
+        )
+
+    backend = ArtifactToolRenderBackend(
+        node=str(node),
+        modules=modules,
+    )
+    resolved_runtime = backend._runtime()
+    monkeypatch.setattr(backend, "_runtime", lambda: resolved_runtime)
+    monkeypatch.setattr(
+        "slidethus.render_backends.artifact_tool.subprocess.run",
+        time_out,
+    )
+    with pytest.raises(RenderAttemptError) as failure:
+        backend.render(authored_workspace, preflight)
+
+    receipt = read_json(Path(failure.value.receipt_path))
+    assert receipt["status"] == "render_timed_out"
+    assert receipt["diagnostics"]["stage"] == "adapter"
+    assert receipt["diagnostics"]["timed_out"] is True
+    assert "300 seconds" in receipt["diagnostics"]["error"]
 
 
 def test_tampered_taste_prototype_invalidates_the_final_visual_system(

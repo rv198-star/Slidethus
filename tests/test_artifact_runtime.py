@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import shutil
 from pathlib import Path
@@ -10,6 +11,7 @@ from slidethus.artifact_runtime import ArtifactRuntime
 from slidethus.constants import find_repository_root
 from slidethus.errors import ArtifactConflictError, ArtifactError, GateError
 from slidethus.io_utils import read_json, sha256_file
+from slidethus.state_machine import PLANNING_REWORK_TARGETS, Phase
 from slidethus.validation import validate_workspace
 from slidethus.workspace import init_workspace
 
@@ -196,6 +198,83 @@ def test_upstream_write_rolls_back_phase_and_invalidates_downstream_gates(tmp_pa
     assert state["current_phase"] == "SOURCES_READY"
     assert {item["gate_id"] for item in state["completed_gates"]} == {"G0", "G1"}
     assert next(item for item in state["artifacts"] if item["artifact_type"] == "deck_outline")["status"] == "draft"
+    assert validate_workspace(workspace, check_hashes=True).ok
+
+
+def test_outline_signature_change_commits_before_downstream_rebuild(tmp_path: Path) -> None:
+    root = find_repository_root()
+    workspace = tmp_path / "project"
+    shutil.copytree(root / "examples/minimal_project", workspace)
+    runtime = ArtifactRuntime(workspace)
+    outline, version = runtime.read_artifact_snapshot("deck_outline")
+    revised = copy.deepcopy(outline["slides"][-1])
+    revised["slide_id"] = "S-004"
+    revised["headline"] = "A newly admitted outline page"
+    outline["slides"][-1] = revised
+
+    runtime.write_artifact(
+        "deck_outline",
+        outline,
+        expected_version=version,
+        status="approved",
+        created_by="test",
+    )
+
+    state = runtime.show_artifact("project_state")
+    assert state["current_phase"] == "NARRATIVE_READY"
+    assert next(
+        item for item in state["artifacts"] if item["artifact_type"] == "slide_specs"
+    )["status"] == "draft"
+    report = validate_workspace(workspace, check_hashes=True)
+    assert report.ok
+    assert any(
+        item.code == "slide_coverage_mismatch" and item.severity == "warning"
+        for item in report.issues
+    )
+
+
+def test_brief_revision_can_invalidate_out_of_range_draft_outline(tmp_path: Path) -> None:
+    root = find_repository_root()
+    workspace = tmp_path / "project"
+    shutil.copytree(root / "examples/minimal_project", workspace)
+    runtime = ArtifactRuntime(workspace)
+    brief, version = runtime.read_artifact_snapshot("project_brief")
+    brief["constraints"]["page_count"] = {"min": 2, "target": 2, "max": 2}
+
+    runtime.write_artifact(
+        "project_brief",
+        brief,
+        expected_version=version,
+        status="approved",
+        created_by="test",
+    )
+
+    report = validate_workspace(workspace, check_hashes=True)
+    assert report.ok
+    assert any(
+        item.code == "page_count_outside_brief" and item.severity == "warning"
+        for item in report.issues
+    )
+
+
+@pytest.mark.parametrize(
+    "target",
+    tuple(PLANNING_REWORK_TARGETS.values()),
+    ids=tuple(PLANNING_REWORK_TARGETS),
+)
+def test_layout_ready_routes_to_every_planning_review_target(
+    tmp_path: Path,
+    target: Phase,
+) -> None:
+    root = find_repository_root()
+    workspace = tmp_path / "project"
+    shutil.copytree(root / "examples/minimal_project", workspace)
+    runtime = ArtifactRuntime(workspace)
+    runtime.route_rework(Phase.LAYOUT_READY, reason="Prepare layout-owned rework")
+
+    state = runtime.route_rework(target, reason=f"Review routed to {target.value}")
+
+    assert state["current_phase"] == target.value
     assert validate_workspace(workspace, check_hashes=True).ok
 
 

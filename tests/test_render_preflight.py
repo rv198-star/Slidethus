@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+import copy
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import pytest
 
+from slidethus.art_direction import TasteSkillArtDirectionProvider
 from slidethus.artifact_runtime import ArtifactRuntime
-from slidethus.protocols import BriefCompletionHints
+from slidethus.protocols import (
+    ArtDirectionLimits,
+    ArtDirectionProposal,
+    BriefCompletionHints,
+)
 from slidethus.services.m3_application import M3ApplicationService
 from slidethus.services.render_preflight import RenderPreflightService
 from slidethus.services.visual_system import VisualSystemService
@@ -56,6 +63,69 @@ def _renderer_root() -> Path | None:
     return Path(raw).resolve() if raw else None
 
 
+class _OverflowArtDirectionProvider:
+    name = "overflow-fixture"
+    version = "1.0.0"
+    mode = "test"
+
+    def resource_identity(self) -> None:
+        return None
+
+    def propose(
+        self,
+        context: dict[str, Any],
+        limits: ArtDirectionLimits,
+    ) -> ArtDirectionProposal:
+        base = TasteSkillArtDirectionProvider().propose(context, limits)
+        direction = copy.deepcopy(base.direction)
+        plans = {
+            plan["slide_id"]: plan
+            for plan in context["layout_plans"]["plans"]
+        }
+        pages = []
+        for slide in context["slide_specs"]["slides"]:
+            plan = plans[slide["slide_id"]]
+            blocks = {
+                block["block_id"]: block
+                for block in slide["content_blocks"]
+            }
+            rows = []
+            for region in plan["regions"]:
+                block = blocks[region["block_id"]]
+                style: dict[str, Any] = {
+                    "font_family": "Arial",
+                    "font_size": region["min_font_pt"],
+                    "font_weight": 400,
+                    "line_height": 8.0,
+                    "color": "#1F2937",
+                    "fill": None,
+                    "border_color": None,
+                    "border_width": 0,
+                }
+                if block["content_type"] in {"image", "icon"}:
+                    style["image_fit"] = "contain"
+                if block["content_type"] == "chart":
+                    style["chart_colors"] = ["#2563EB"]
+                rows.append({"block_id": region["block_id"], "style": style})
+            pages.append(
+                {
+                    "slide_id": slide["slide_id"],
+                    "surface_treatment": "plain",
+                    "background": direction["palette"]["background"],
+                    "regions": rows,
+                    "decorations": [],
+                }
+            )
+        direction["page_designs"] = pages
+        return ArtDirectionProposal(
+            design_read="Intentionally excessive line height for capacity aggregation.",
+            dials=base.dials,
+            direction=direction,
+            warnings=(),
+            assumptions=(),
+        )
+
+
 def test_final_svg_preflight_passes_and_is_idempotent(tmp_path: Path) -> None:
     workspace = _workspace(tmp_path)
     service = RenderPreflightService(
@@ -72,6 +142,41 @@ def test_final_svg_preflight_passes_and_is_idempotent(tmp_path: Path) -> None:
     assert first.changed
     assert not second.changed
     assert validate_workspace(workspace, check_hashes=True).ok
+
+
+def test_preflight_aggregates_all_text_fit_failures_with_metrics(
+    tmp_path: Path,
+) -> None:
+    workspace = _workspace(tmp_path)
+    VisualSystemService(
+        workspace,
+        art_direction_provider=_OverflowArtDirectionProvider(),
+    ).compile()
+    ArtifactRuntime(workspace).record_gate(
+        "G6",
+        approved_by="render-preflight-test",
+        target_phase=Phase.VISUAL_SYSTEM_READY,
+    )
+
+    result = RenderPreflightService(
+        workspace,
+        font_match=str(_font_match(tmp_path)),
+    ).run(("final-svg",), include_exports=False)
+
+    overflows = [
+        item
+        for item in result.report["checks"]
+        if item["code"] == "render_text_overflow"
+    ]
+    assert result.report["status"] == "blocked"
+    assert len(overflows) >= 2
+    assert len({item["region_id"] for item in overflows}) == len(overflows)
+    assert all(
+        item["details"]["required_height"]
+        > item["details"]["available_height"]
+        and item["details"]["required_height_increase"] > 0
+        for item in overflows
+    )
 
 
 def test_preflight_tampering_is_detected_by_workspace_validation(tmp_path: Path) -> None:

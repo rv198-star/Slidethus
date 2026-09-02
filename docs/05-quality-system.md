@@ -84,7 +84,7 @@ Round A 的 Critical/Major 问题修复后，再按维度评分。评分必须�
 - factual Slide/Block 的 Evidence subset 与 qualification；
 - headline/takeaway 近重复、连续同类页面、transition 和 estimated duration；
 - content density、primary-block competition；
-- layout family、Block/Region 一一覆盖、safe area、collision、capacity 和 min font floor；
+- layout family、Block/Region 一一覆盖、safe area、collision、canonical text-fit 和 Region 权威 min font floor；
 - Planning Review 是否绑定最终 planning artifacts；
 - Repair 是否绑定 current Review、limits/provider，并重跑全套 planning regression。
 
@@ -106,6 +106,11 @@ M5.1 在 M4 之外重新计算 deterministic facts，而不是读取 `M4 Applica
 确定性失败必须定位最早责任阶段。全局 workspace validation 导致前置 Gate 被连带阻断时，根因沿用真实 validation issue 的责任阶段，不能把 P7 输出损坏误判为 P0/G0 问题。
 
 ### 4.6 Layout/Render
+
+- G5B、RenderCompile 与 Preflight 必须复用同一 text-fit 算法；同一输入不得在不同阶段得到相反结论；
+- Preflight 一次发布全部确定性 capacity/collision/asset/caption/carrier/runtime findings，renderer 不得首次发现已声明的 target admission 条件；
+- Artifact Tool 的 editable diagram 使用归一化 nodes/edges 并输出可编辑 shapes/text/lines；raster image/icon/diagram 明确绑定单一 PNG/JPEG；
+- 每个已启动 render attempt 必须有 started 与 terminal receipt；缺失终态回执本身是失败，不得解释为成功；
 
 - canvas/safe area；
 - overlap/collision；

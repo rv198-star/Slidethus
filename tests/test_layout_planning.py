@@ -210,7 +210,10 @@ def test_layout_geometry_fails_when_content_cannot_fit_font_floor() -> None:
         ],
     }
 
-    with pytest.raises(LayoutPlanningError, match="region capacity"):
+    with pytest.raises(
+        LayoutPlanningError,
+        match="after bounded space reallocation",
+    ):
         build_layout_plan(
             slide,
             family="split",

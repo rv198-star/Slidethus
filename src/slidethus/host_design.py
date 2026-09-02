@@ -16,7 +16,7 @@ from slidethus.art_direction_seed import (
     load_art_direction_seed,
 )
 from slidethus.artifact_runtime import ArtifactRuntime
-from slidethus.errors import PlanningError
+from slidethus.errors import ArtifactError, PlanningError
 from slidethus.io_utils import atomic_create_json, canonical_json_bytes, read_json, sha256_json
 from slidethus.protocols import (
     ArtDirectionLimits,
@@ -25,6 +25,9 @@ from slidethus.protocols import (
     PlanningLimits,
     PlanningProposal,
     PreLayoutArtDirection,
+)
+from slidethus.render_backends.artifact_tool_contract import (
+    artifact_tool_host_contract,
 )
 from slidethus.schema_registry import SchemaRegistry
 
@@ -40,6 +43,7 @@ class HostDesignBridge:
         self.workspace = workspace.resolve()
         self.root = self.workspace / ".slidethus/host-design"
         self.pending: dict[str, Any] | None = None
+        self.last_submission: dict[str, Any] | None = None
 
     def exchange(self, stage: str, context: dict[str, Any], limits: Any) -> dict[str, Any]:
         request = {
@@ -86,7 +90,16 @@ class HostDesignBridge:
             raise PlanningError("Host response exceeds stage payload limit")
         proposal = copy.deepcopy(response["proposal"])
         # Submission history is inspectable; stage admission has not happened yet.
-        atomic_create_json(self.root / "received" / f"{sha256_json(response)}.json", response)
+        response_hash = sha256_json(response)
+        received_path = self.root / "received" / f"{response_hash}.json"
+        atomic_create_json(received_path, response)
+        self.last_submission = {
+            "stage": stage,
+            "request_hash": f"sha256:{digest}",
+            "response_hash": f"sha256:{response_hash}",
+            "proposal_hash": f"sha256:{sha256_json(proposal)}",
+            "received_path": str(received_path),
+        }
         self.pending = None
         return proposal
 
@@ -152,6 +165,7 @@ class HostPlanningProvider:
                     "Slide Specs request is missing the current frozen Art Direction Seed"
                 )
             seed_reference = prepared.reference
+            request_context["target_backend_contract"] = artifact_tool_host_contract()
         raw = self.bridge.exchange(artifact_type, request_context, limits)
         if set(raw) - {"content", "warnings", "assumptions"} or "content" not in raw:
             raise PlanningError("Planning response requires content, warnings and assumptions only")
@@ -187,6 +201,12 @@ class HostArtDirectionProvider:
     ) -> None:
         self.bridge = bridge
         self.require_taste_generated = require_taste_generated
+        self._seed_revision_requested = False
+
+    def request_seed_revision(self) -> None:
+        """Make the next Seed exchange explicit and distinct from initial admission."""
+
+        self._seed_revision_requested = True
 
     def resource_identity(self) -> dict[str, Any]:
         return TasteSkillArtDirectionProvider().resource_identity()
@@ -199,7 +219,23 @@ class HostArtDirectionProvider:
         """Request a real pre-layout design direction from the host."""
 
         self.resource_identity()
-        raw = self.bridge.exchange("art_direction_seed", context, limits)
+        request_context = copy.deepcopy(context)
+        request_context["target_backend_contract"] = artifact_tool_host_contract()
+        if self._seed_revision_requested:
+            try:
+                current_specs = ArtifactRuntime(self.bridge.workspace).show_artifact(
+                    "slide_specs"
+                )
+            except ArtifactError:
+                current_seed = None
+            else:
+                current_seed = current_specs.get("art_direction_seed")
+            request_context["revision_request"] = {
+                "requested": True,
+                "supersedes": copy.deepcopy(current_seed),
+            }
+        raw = self.bridge.exchange("art_direction_seed", request_context, limits)
+        self._seed_revision_requested = False
         required = {"design_read", "dials", "foundation", "direction"}
         if not required.issubset(raw) or set(raw) - required - {"warnings", "assumptions"}:
             raise PlanningError(

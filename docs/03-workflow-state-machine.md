@@ -76,6 +76,7 @@ Brief completion / G0
 - Production Narrative、Outline、Specs、Layout 都携带 `planning_lineage`，绑定当前上游 artifact version/content hash、provider、proposal 与 policy；
 - `S-*` 是稳定页面身份，ordinal 只是顺序；insert/exclude/reorder/split/merge/freeze/update 产生 `PCH-*`，并只失效依赖该 Outline 的下游；
 - Planning Review 产生 `PRV-*`，把具体问题定位到 P0/P2/P3/P4/P5A/P5B 中最早责任阶段；
+- P0/P2/P3/P4/P5A/P5B 映射是状态机中的单一来源；从 Layout 或更后阶段均可回到更早责任阶段，回到当前 owner 为幂等停留；
 - 自动 Repair 只处理已显式准入的 deterministic 问题，产生 `PRP-*`，并重跑 G2/G3/G4/G5A/G5B 与全套 Planning Review；
 - assisted/manual 问题不自动改写语义，而是正式路由到最早责任阶段；
 - `M3 Application Report` 的 planning level P0/P2/P3/P4/P5A/P5B 必须与最终 Project State 一致，部分失败不能冒充 P5B。
@@ -152,6 +153,8 @@ M3 将策划返工拆成两类：
 - **Planning Review/Repair**：Review 绑定当前六类规划事实，Repair 绑定选中 issues、limits、provider 和 result Review；中断后保留最后一个有效阶段，M3 Application 发布 failed/rework report。
 
 改变 Outline 会使 Specs/Layout/Visual/Render/Review/Delivery draft，但不会无故重写 Narrative 或 Evidence；事实缺口仍回 P2，故事线问题回 P3，页面职责问题回 P4，内容块问题回 P5A，几何容量问题回 P5B。
+
+上游写入、阶段/Gate 回滚与下游 `draft` 标记属于同一 journaled graph transaction。`draft` 下游保留自身 Schema/hash/registry 约束，但其过时的跨 artifact 引用只形成 warning；重建并批准时恢复 error 级约束。Host Create 还允许直接修订 `ArtDirectionSeed`，请求显式绑定被替代的 Seed，不再通过扰动 Outline 间接触发。
 
 ## 6. 局部重生成
 

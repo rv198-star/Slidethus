@@ -13,7 +13,11 @@ from slidethus.brief_completion import is_unresolved
 from slidethus.errors import ArtifactError, WorkspaceError
 from slidethus.io_utils import ensure_within, sha256_file, sha256_json
 from slidethus.planning_lineage import planning_lineage_reference_errors
-from slidethus.text_capacity import estimated_text_height
+from slidethus.text_capacity import (
+    canonical_line_height,
+    fit_text,
+    font_floor_for_role,
+)
 
 
 def usable_evidence_map(evidence: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -174,26 +178,29 @@ def layout_gate_reasons(
                 or y + region_height > height - bottom
             ):
                 reasons.append(f"Region {region.get('region_id')} exceeds safe area")
-            content_units = planning_content_units(block.get("content"))
-            if content_units > int(region.get("content_capacity_units", 0)):
-                reasons.append(f"Region {region.get('region_id')} lacks content capacity")
             role = str(block.get("semantic_role", "body"))
             minimum = float(spec.get("density_budget", {}).get("min_body_pt", 8))
-            admitted_floor = 12.0 if role in {"caption", "footer", "label"} else minimum
-            if float(region.get("min_font_pt", 0)) < admitted_floor:
+            expected_floor = font_floor_for_role(role, minimum)
+            admitted_floor = float(region.get("min_font_pt", 0))
+            if admitted_floor < expected_floor:
                 reasons.append(f"Region {region.get('region_id')} violates font floor")
-            required_height = estimated_text_height(
-                block.get("content"),
-                str(block.get("content_type")),
-                width=region_width,
-                font_size=admitted_floor,
-                line_height=1.18 if role == "headline" else 1.28,
-                qualification=block.get("evidence_qualification"),
-            )
-            if required_height > region_height:
-                reasons.append(
-                    f"Region {region.get('region_id')} cannot fit its Block at font floor"
+            if str(block.get("content_type")) in {"text", "list", "metric", "quote"}:
+                fit = fit_text(
+                    block.get("content"),
+                    str(block.get("content_type")),
+                    width=region_width,
+                    height=region_height,
+                    preferred=admitted_floor,
+                    floor=admitted_floor,
+                    line_height=canonical_line_height(role),
+                    qualification=block.get("evidence_qualification"),
                 )
+                if not fit.fits:
+                    reasons.append(
+                        f"Region {region.get('region_id')} cannot fit its Block at font floor "
+                        f"{admitted_floor:g}pt: requires {fit.required_height:.1f}px, "
+                        f"available {fit.available_height:.1f}px"
+                    )
             for other in regions[index + 1 :]:
                 if _regions_overlap(region, other):
                     reasons.append(

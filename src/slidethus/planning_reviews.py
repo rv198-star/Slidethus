@@ -9,14 +9,10 @@ from jsonschema import Draft202012Validator
 from slidethus.errors import PlanningReviewError
 from slidethus.io_utils import read_json, sha256_json
 from slidethus.schema_registry import SchemaRegistry
+from slidethus.state_machine import PLANNING_REWORK_TARGETS
 
 _PHASE_TARGETS = {
-    "P0": "BRIEF_READY",
-    "P2": "EVIDENCE_READY",
-    "P3": "NARRATIVE_READY",
-    "P4": "OUTLINE_READY",
-    "P5A": "SLIDE_SPECS_READY",
-    "P5B": "LAYOUT_READY",
+    phase: target.value for phase, target in PLANNING_REWORK_TARGETS.items()
 }
 _PHASE_ORDER = {phase: index for index, phase in enumerate(_PHASE_TARGETS)}
 

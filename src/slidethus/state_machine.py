@@ -23,6 +23,15 @@ class Phase(StrEnum):
 
 FORWARD_SEQUENCE = list(Phase)
 
+PLANNING_REWORK_TARGETS: dict[str, Phase] = {
+    "P0": Phase.BRIEF_READY,
+    "P2": Phase.EVIDENCE_READY,
+    "P3": Phase.NARRATIVE_READY,
+    "P4": Phase.OUTLINE_READY,
+    "P5A": Phase.SLIDE_SPECS_READY,
+    "P5B": Phase.LAYOUT_READY,
+}
+
 ALLOWED_TRANSITIONS: dict[Phase, set[Phase]] = {
     phase: ({FORWARD_SEQUENCE[index + 1]} if index + 1 < len(FORWARD_SEQUENCE) else set())
     for index, phase in enumerate(FORWARD_SEQUENCE)
@@ -43,6 +52,16 @@ ALLOWED_TRANSITIONS.update(
         Phase.DELIVERY_READY: {Phase.COMPLETED, Phase.REVIEWED},
     }
 )
+
+# Planning Review owns the root-phase vocabulary. Every later phase must be able
+# to return to an earlier declared planning owner without a local hotfix.
+for current in Phase:
+    current_index = FORWARD_SEQUENCE.index(current)
+    ALLOWED_TRANSITIONS[current].update(
+        target
+        for target in PLANNING_REWORK_TARGETS.values()
+        if FORWARD_SEQUENCE.index(target) < current_index
+    )
 
 
 def can_transition(current: Phase, target: Phase) -> bool:

@@ -18,7 +18,12 @@ from slidethus.render_ir import (
 )
 from slidethus.schema_registry import SchemaRegistry
 from slidethus.services.font_resolution import FontResolution
-from slidethus.text_capacity import fitting_font_size
+from slidethus.text_capacity import (
+    DEFAULT_HORIZONTAL_PADDING,
+    DEFAULT_VERTICAL_PADDING,
+    TextFitResult,
+    fit_text,
+)
 
 
 @dataclass(frozen=True)
@@ -26,6 +31,17 @@ class RenderCompileResult:
     ir: dict[str, Any]
     path: Path
     changed: bool
+    text_fits: tuple[RegionTextFit, ...]
+
+
+@dataclass(frozen=True)
+class RegionTextFit:
+    """Bind one canonical text-fit result to its stable slide/block/region IDs."""
+
+    slide_id: str
+    block_id: str
+    region_id: str
+    result: TextFitResult
 
 
 def _artifact_ref(snapshot: dict[str, Any], artifact_type: str) -> dict[str, Any]:
@@ -389,6 +405,9 @@ class RenderCompileService:
         self,
         *,
         font_resolutions: tuple[FontResolution, ...] = (),
+        collect_readiness_failures: bool = False,
+        text_horizontal_padding: float = DEFAULT_HORIZONTAL_PADDING,
+        text_vertical_padding: float = DEFAULT_VERTICAL_PADDING,
     ) -> RenderCompileResult:
         gate = evaluate_gate(self.workspace, "G6")
         if not gate.passed:
@@ -447,8 +466,13 @@ class RenderCompileService:
 
         asset_map = {str(item["asset_id"]): item for item in assets.get("assets", [])}
         used_assets: set[str] = set(str(item) for item in visual.get("brand_assets", []))
-        fonts: set[str] = set()
+        # The substitution ledger describes every admitted font resolution, not
+        # only the families reached by the final authored page styles. Keep its
+        # actual families in the IR inventory so the two fields remain a closed
+        # and independently verifiable contract.
+        fonts: set[str] = {item.actual for item in font_resolutions}
         slides: list[dict[str, Any]] = []
+        text_fits: list[RegionTextFit] = []
         for ordinal, slide_id in enumerate(expected_ids, start=1):
             outline_slide = outline_by_id[slide_id]
             slide_spec = specs_by_id[slide_id]
@@ -469,23 +493,41 @@ class RenderCompileService:
                     region_index=int(region["z"]),
                 )
                 style["font_family"] = font_map.get(style["font_family"], style["font_family"])
-                if str(region.get("overflow_strategy")) == "shrink_with_floor":
-                    fitted = fitting_font_size(
+                content_type = str(block.get("content_type"))
+                if content_type in {"text", "list", "metric", "quote"}:
+                    overflow_strategy = str(region.get("overflow_strategy"))
+                    preferred = float(style["font_size"])
+                    floor = (
+                        float(region.get("min_font_pt", preferred))
+                        if overflow_strategy == "shrink_with_floor"
+                        else preferred
+                    )
+                    fit = fit_text(
                         block.get("content"),
-                        str(block.get("content_type")),
+                        content_type,
                         width=float(region["w"]),
                         height=float(region["h"]),
-                        preferred=float(style["font_size"]),
-                        floor=float(region.get("min_font_pt", style["font_size"])),
+                        preferred=preferred,
+                        floor=floor,
                         line_height=float(style["line_height"]),
                         qualification=block.get("evidence_qualification"),
+                        horizontal_padding=text_horizontal_padding,
+                        vertical_padding=text_vertical_padding,
                     )
-                    if fitted is None:
-                        raise RenderCompileError(
-                            f"Office-conservative text capacity failed for {region['region_id']} "
-                            f"at the approved floor {region.get('min_font_pt', style['font_size'])}pt"
+                    text_fits.append(
+                        RegionTextFit(
+                            slide_id=slide_id,
+                            block_id=block_id,
+                            region_id=str(region["region_id"]),
+                            result=fit,
                         )
-                    style["font_size"] = fitted
+                    )
+                    if fit.fitted_font_pt is not None:
+                        style["font_size"] = fit.fitted_font_pt
+                    else:
+                        # Preflight needs a complete IR to aggregate every deterministic
+                        # blocker. It must never pass this floor-sized region to a backend.
+                        style["font_size"] = fit.floor_font_pt
                 fonts.add(style["font_family"])
                 block_assets = [str(item) for item in block.get("asset_refs", [])]
                 used_assets.update(block_assets)
@@ -535,9 +577,21 @@ class RenderCompileService:
             or asset_map[asset_id].get("status") != "available"
             or asset_map[asset_id].get("allowed_use") in {"reference_only", "do_not_use"}
         )
-        if invalid_assets:
+        if invalid_assets and not collect_readiness_failures:
             raise RenderCompileError(
                 "Renderer IR references unavailable or disallowed assets: " + ", ".join(invalid_assets)
+            )
+
+        failed_text = [item for item in text_fits if not item.result.fits]
+        if failed_text and not collect_readiness_failures:
+            detail = "; ".join(
+                f"{item.region_id} floor={item.result.floor_font_pt:g}pt "
+                f"required={item.result.required_height:.1f}px "
+                f"available={item.result.available_height:.1f}px"
+                for item in failed_text
+            )
+            raise RenderCompileError(
+                "Office-conservative text capacity failed: " + detail
             )
 
         input_artifacts = sorted(
@@ -583,4 +637,9 @@ class RenderCompileService:
         created = atomic_create_json(path, ir)
         if not created and read_json(path) != ir:
             raise RenderCompileError(f"Immutable Renderer IR path contains different content: {path}")
-        return RenderCompileResult(ir=copy.deepcopy(ir), path=path, changed=created)
+        return RenderCompileResult(
+            ir=copy.deepcopy(ir),
+            path=path,
+            changed=created,
+            text_fits=tuple(text_fits),
+        )

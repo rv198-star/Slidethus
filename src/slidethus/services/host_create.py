@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from slidethus.artifact_runtime import ArtifactRuntime
-from slidethus.errors import SlidethusError
+from slidethus.errors import RenderAttemptError, SlidethusError
 from slidethus.host_design import HostArtDirectionProvider, HostDesignBridge, HostPlanningProvider
 from slidethus.protocols import BriefCompletionHints
 from slidethus.render_backends.artifact_tool import ArtifactToolRenderBackend
@@ -61,9 +61,19 @@ class HostCreateService:
                     "slide_specs": SlideSpecPlanningService,
                     "layout_plans": LayoutPlanningService,
                 }
-                if revise_stage not in services:
+                if revise_stage == "art_direction_seed":
+                    self.art_direction.request_seed_revision()
+                    SlideSpecPlanningService(
+                        self.workspace,
+                        provider=self.planning,
+                    ).generate(force=True)
+                elif revise_stage not in services:
                     raise ValueError("Unknown planning revision stage")
-                services[revise_stage](self.workspace, provider=self.planning).generate(force=True)
+                else:
+                    services[revise_stage](
+                        self.workspace,
+                        provider=self.planning,
+                    ).generate(force=True)
             runtime = ArtifactRuntime(self.workspace)
             # Rendering a current design must not re-run intake with empty/default hints.
             current_planning = evaluate_m3_workspace_gate(self.workspace)
@@ -95,16 +105,37 @@ class HostCreateService:
                 target_phase=Phase.VISUAL_SYSTEM_READY if state["current_phase"] == "LAYOUT_READY" else None,
             )
             if not render:
-                return {"status": "design_ready", "theme_id": visual["theme_id"], "release_approved": False}
-            self.backend.check_available()
-            preflight = RenderPreflightService(self.workspace, font_match=self.font_match).run(
+                return {
+                    "status": "design_ready",
+                    "theme_id": visual["theme_id"],
+                    "host_submission": self.bridge.last_submission,
+                    "release_approved": False,
+                }
+            preflight = RenderPreflightService(
+                self.workspace,
+                node=self.backend.node,
+                artifact_tool_modules=self.backend.modules,
+                font_match=self.font_match,
+            ).run(
                 ("artifact-tool",), include_exports=False,
             )
             if preflight.report["status"] != "pass":
                 return {"status": "blocked", "preflight": str(preflight.path), "checks": preflight.report["checks"], "release_approved": False}
             return self.backend.render(self.workspace, preflight, slide_ids=slide_ids)
+        except RenderAttemptError as exc:
+            return {
+                "status": "blocked",
+                "pending": self.bridge.pending,
+                "host_submission": self.bridge.last_submission,
+                "error": str(exc),
+                "receipt_path": exc.receipt_path,
+                "release_approved": False,
+            }
         except SlidethusError as exc:
             return {
                 "status": "host_input_required" if self.bridge.pending else "blocked",
-                "pending": self.bridge.pending, "error": str(exc), "release_approved": False,
+                "pending": self.bridge.pending,
+                "host_submission": self.bridge.last_submission,
+                "error": str(exc),
+                "release_approved": False,
             }
