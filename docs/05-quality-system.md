@@ -86,7 +86,10 @@ Round A 的 Critical/Major 问题修复后，再按维度评分。评分必须�
 - content density、primary-block competition；
 - layout family、Block/Region 一一覆盖、safe area、collision、canonical text-fit 和 Region 权威 min font floor；
 - Planning Review 是否绑定最终 planning artifacts；
-- Repair 是否绑定 current Review、limits/provider，并重跑全套 planning regression。
+- Repair 是否绑定 current Review、limits/provider，并重跑全套 planning regression；
+- Host Create resume 是否同时满足 current Phase、accepted Gate、registry version/hash、provider/policy 和 upstream lineage，不能把存在或 Schema 合法的 draft 文件当成已完成阶段；
+- M2 orientation/targeted report 是否精确绑定当前 config、Sources、Gate 和相关 artifact refs；targeted report 是否绑定 current Outline/Slide Specs；
+- Host response 是否一次聚合当前 envelope/stage 中全部可确定字段、枚举、coverage、family、density 与基础 geometry finding，而不是 fail-fast 串行试错。
 
 M3 Planning Review 的 Critical/Major 必须为 0 才能通过 repository M3 Exit。Minor 可以保留为显式 warning，但不能被自动评分掩盖。该报告不是 P8 最终视觉 Quality Report。
 
@@ -111,6 +114,8 @@ M5.1 在 M4 之外重新计算 deterministic facts，而不是读取 `M4 Applica
 - Preflight 一次发布全部确定性 capacity/collision/asset/caption/carrier/runtime findings，renderer 不得首次发现已声明的 target admission 条件；
 - Artifact Tool 的 editable diagram 使用归一化 nodes/edges 并输出可编辑 shapes/text/lines；raster image/icon/diagram 明确绑定单一 PNG/JPEG；
 - 每个已启动 render attempt 必须有 started 与 terminal receipt；缺失终态回执本身是失败，不得解释为成功；
+- 每个 Host Create invocation 在 P7 前后都必须有 started 与唯一 terminal operation；`rework_required` 必须提供 target phase、Review path、`PRI-*` issue IDs 和 allowed next actions；
+- semantic layout family 与 observable geometry topology 分开审计；同名不同几何不自动判重复，改名后的相同几何仍必须被识别；
 
 - canvas/safe area；
 - overlap/collision；
@@ -171,7 +176,7 @@ Quality Report 可以用于前置规划审计，但最终 P8 Review 必须生成
 
 检测：
 
-- 连续三页相同 slide type 或 layout family；
+- 连续三页相同 slide type，或可观察 Region 几何拓扑机械重复；family 改名不能规避；
 - 全 deck 超过 40% 页面使用 Bento；
 - 不同内容只换颜色不换信息结构；
 - 关键 statement 被拆成多个小卡片；

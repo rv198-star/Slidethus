@@ -14,6 +14,7 @@ from slidethus.planning_limits import (
     validate_planning_limits,
 )
 from slidethus.planning_lineage import (
+    accepted_gate_current,
     build_planning_lineage,
     planning_artifact_reusable,
     reuse_semantically_current_lineage,
@@ -470,6 +471,10 @@ class SlideSpecPlanningService:
             and planning_artifact_reusable(
                 existing["data"],
                 graph,
+                artifact_status=str(existing["status"]),
+                gate_current=accepted_gate_current(
+                    self.runtime.show_artifact("project_state"), "G5A"
+                ),
                 required_inputs=("deck_outline", "evidence_ledger", "project_brief"),
                 provider_name=self.provider_name,
                 provider_version=self.provider_version,

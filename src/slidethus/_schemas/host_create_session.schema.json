@@ -1,0 +1,368 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/host-create-session.schema.json",
+  "title": "Host Create Session",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "session_id",
+    "session_revision",
+    "intent_revision",
+    "created_at",
+    "updated_at",
+    "status",
+    "config",
+    "pending_revision",
+    "pending_request",
+    "m2_reports",
+    "last_planning_report",
+    "last_terminal"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "session_id": {"type": "string", "pattern": "^HCS-[A-F0-9]{16}$"},
+    "session_revision": {"type": "integer", "minimum": 1},
+    "intent_revision": {"type": "integer", "minimum": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "status": {
+      "enum": ["active", "design_ready", "candidate_office_review_pending"]
+    },
+    "config": {"$ref": "#/$defs/config"},
+    "pending_revision": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/pendingRevision"}
+      ]
+    },
+    "pending_request": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/pendingRequest"}
+      ]
+    },
+    "m2_reports": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["orientation", "targeted"],
+      "properties": {
+        "orientation": {
+          "oneOf": [{"type": "null"}, {"$ref": "#/$defs/m2ReportRef"}]
+        },
+        "targeted": {
+          "oneOf": [{"type": "null"}, {"$ref": "#/$defs/m2ReportRef"}]
+        }
+      }
+    },
+    "last_planning_report": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/fileRef"}]
+    },
+    "last_terminal": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/terminalRef"}]
+    }
+  },
+  "$defs": {
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 128},
+        "version": {"type": "string", "minLength": 1, "maxLength": 128}
+      }
+    },
+    "artDirectionProvider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "mode"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 128},
+        "version": {"type": "string", "minLength": 1, "maxLength": 128},
+        "mode": {"type": "string", "minLength": 1, "maxLength": 128}
+      }
+    },
+    "sourceFingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "size_bytes", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "briefHints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_text",
+        "purpose",
+        "desired_outcome",
+        "call_to_action",
+        "delivery_context",
+        "presentation_mode",
+        "audience_role",
+        "audience_needs",
+        "audience_objections",
+        "decision_power",
+        "knowledge_level",
+        "page_target",
+        "duration_minutes",
+        "output_formats",
+        "editability_target",
+        "approval_mode",
+        "quality_profile"
+      ],
+      "properties": {
+        "request_text": {"type": "string", "maxLength": 20000},
+        "purpose": {"type": ["string", "null"], "maxLength": 4000},
+        "desired_outcome": {"type": ["string", "null"], "maxLength": 4000},
+        "call_to_action": {"type": ["string", "null"], "maxLength": 4000},
+        "delivery_context": {"type": ["string", "null"], "maxLength": 1000},
+        "presentation_mode": {"type": ["string", "null"]},
+        "audience_role": {"type": ["string", "null"], "maxLength": 1000},
+        "audience_needs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 1000}
+        },
+        "audience_objections": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 1000}
+        },
+        "decision_power": {"type": ["string", "null"]},
+        "knowledge_level": {"type": ["string", "null"]},
+        "page_target": {"type": ["integer", "null"], "minimum": 1},
+        "duration_minutes": {"type": ["number", "null"], "minimum": 0},
+        "output_formats": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "editability_target": {"type": ["string", "null"]},
+        "approval_mode": {"type": ["string", "null"]},
+        "quality_profile": {"type": ["string", "null"]}
+      }
+    },
+    "planningLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_blocking_questions",
+        "max_assumptions",
+        "max_sections",
+        "max_slides",
+        "max_blocks_per_slide",
+        "max_words_per_slide",
+        "max_provider_payload_bytes",
+        "max_change_targets"
+      ],
+      "properties": {
+        "max_blocking_questions": {"type": "integer", "minimum": 1},
+        "max_assumptions": {"type": "integer", "minimum": 1},
+        "max_sections": {"type": "integer", "minimum": 1},
+        "max_slides": {"type": "integer", "minimum": 1},
+        "max_blocks_per_slide": {"type": "integer", "minimum": 1},
+        "max_words_per_slide": {"type": "integer", "minimum": 1},
+        "max_provider_payload_bytes": {"type": "integer", "minimum": 1},
+        "max_change_targets": {"type": "integer", "minimum": 1}
+      }
+    },
+    "sourceLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_source_bytes",
+        "max_chunks",
+        "max_chunk_chars",
+        "max_risks",
+        "max_pages",
+        "max_slides",
+        "max_sheets",
+        "max_rows",
+        "max_cells",
+        "max_archive_entries",
+        "max_archive_member_bytes",
+        "max_uncompressed_bytes",
+        "max_image_pixels"
+      ],
+      "properties": {
+        "max_source_bytes": {"type": "integer", "minimum": 1},
+        "max_chunks": {"type": "integer", "minimum": 1},
+        "max_chunk_chars": {"type": "integer", "minimum": 1},
+        "max_risks": {"type": "integer", "minimum": 1},
+        "max_pages": {"type": "integer", "minimum": 1},
+        "max_slides": {"type": "integer", "minimum": 1},
+        "max_sheets": {"type": "integer", "minimum": 1},
+        "max_rows": {"type": "integer", "minimum": 1},
+        "max_cells": {"type": "integer", "minimum": 1},
+        "max_archive_entries": {"type": "integer", "minimum": 1},
+        "max_archive_member_bytes": {"type": "integer", "minimum": 1},
+        "max_uncompressed_bytes": {"type": "integer", "minimum": 1},
+        "max_image_pixels": {"type": "integer", "minimum": 1}
+      }
+    },
+    "researchLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_queries",
+        "max_query_chars",
+        "max_results_per_query",
+        "max_total_results",
+        "max_title_chars",
+        "max_summary_chars",
+        "max_metadata_bytes",
+        "cache_ttl_seconds"
+      ],
+      "properties": {
+        "max_queries": {"type": "integer", "minimum": 1},
+        "max_query_chars": {"type": "integer", "minimum": 1},
+        "max_results_per_query": {"type": "integer", "minimum": 1},
+        "max_total_results": {"type": "integer", "minimum": 1},
+        "max_title_chars": {"type": "integer", "minimum": 1},
+        "max_summary_chars": {"type": "integer", "minimum": 1},
+        "max_metadata_bytes": {"type": "integer", "minimum": 1},
+        "cache_ttl_seconds": {"type": "integer", "minimum": 0}
+      }
+    },
+    "m2Limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_sources", "max_total_source_bytes", "source", "research"],
+      "properties": {
+        "max_sources": {"type": "integer", "minimum": 1},
+        "max_total_source_bytes": {"type": "integer", "minimum": 1},
+        "source": {"$ref": "#/$defs/sourceLimits"},
+        "research": {"$ref": "#/$defs/researchLimits"}
+      }
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "config_hash",
+        "title",
+        "sources",
+        "brief_hints",
+        "planning_limits",
+        "m2_limits",
+        "allow_research_degraded",
+        "approve_external_disclosure",
+        "allow_high_risk_source_evidence",
+        "planning_provider",
+        "research_provider",
+        "art_direction_provider"
+      ],
+      "properties": {
+        "config_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 500},
+        "sources": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/sourceFingerprint"}
+        },
+        "brief_hints": {"$ref": "#/$defs/briefHints"},
+        "planning_limits": {"$ref": "#/$defs/planningLimits"},
+        "m2_limits": {"$ref": "#/$defs/m2Limits"},
+        "allow_research_degraded": {"type": "boolean"},
+        "approve_external_disclosure": {"type": "boolean"},
+        "allow_high_risk_source_evidence": {"type": "boolean"},
+        "planning_provider": {"$ref": "#/$defs/provider"},
+        "research_provider": {
+          "oneOf": [{"type": "null"}, {"$ref": "#/$defs/provider"}]
+        },
+        "art_direction_provider": {"$ref": "#/$defs/artDirectionProvider"}
+      }
+    },
+    "pendingRevision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "stage", "requested_at"],
+      "properties": {
+        "kind": {"const": "stage"},
+        "stage": {
+          "enum": [
+            "narrative_blueprint",
+            "deck_outline",
+            "art_direction_seed",
+            "slide_specs",
+            "layout_plans"
+          ]
+        },
+        "requested_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "pendingRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "request_hash",
+        "request_path",
+        "response_path"
+      ],
+      "properties": {
+        "stage": {
+          "enum": [
+            "narrative_blueprint",
+            "deck_outline",
+            "art_direction_seed",
+            "slide_specs",
+            "layout_plans",
+            "art_direction"
+          ]
+        },
+        "request_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "request_path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "response_path": {"type": "string", "minLength": 1, "maxLength": 4096}
+      }
+    },
+    "m2ReportRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["report_id", "path", "sha256", "status"],
+      "properties": {
+        "report_id": {"type": "string", "pattern": "^M2R-[A-F0-9]{16}$"},
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "status": {"enum": ["ready", "degraded"]}
+      }
+    },
+    "fileRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "terminalRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt_id", "status", "path", "sha256"],
+      "properties": {
+        "attempt_id": {"type": "string", "pattern": "^HCO-[A-F0-9]{16}$"},
+        "status": {
+          "enum": [
+            "host_input_required",
+            "rework_required",
+            "blocked",
+            "failed",
+            "design_ready",
+            "candidate_office_review_pending",
+            "render_failed",
+            "render_timed_out"
+          ]
+        },
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    }
+  }
+}

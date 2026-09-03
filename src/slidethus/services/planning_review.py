@@ -145,21 +145,35 @@ def _issue(
 
 
 def _layout_topology_signature(plan: dict[str, Any]) -> tuple[Any, ...]:
+    """Fingerprint observable region geometry independently of family labels."""
+
     body = [
-        item for item in plan.get("regions", [])
+        item
+        for item in plan.get("regions", [])
         if str(item.get("role", "")) != "headline"
     ]
     if not body:
         return ("headline_only",)
+    geometry = tuple(
+        (
+            round(float(item.get("x", 0.0)) / 80.0),
+            round(float(item.get("y", 0.0)) / 60.0),
+            round(float(item.get("w", 0.0)) / 80.0),
+            round(float(item.get("h", 0.0)) / 60.0),
+        )
+        for item in body
+    )
     if len(body) == 1:
-        return ("single_support",)
-    xs = {round(float(item.get("x", 0.0)) / 40.0) for item in body}
-    ys = {round(float(item.get("y", 0.0)) / 40.0) for item in body}
+        return ("single_support", geometry)
+    xs = {item[0] for item in geometry}
+    ys = {item[1] for item in geometry}
     if len(ys) == 1 and len(xs) == len(body):
-        return ("row", len(body))
-    if len(xs) == 1:
-        return ("column", len(body))
-    return ("grid", len(xs), len(ys), len(body))
+        arrangement = "row"
+    elif len(xs) == 1:
+        arrangement = "column"
+    else:
+        arrangement = "grid"
+    return (arrangement, len(body), geometry)
 
 
 def _generated_at(graph: dict[str, dict[str, Any]]) -> str:
@@ -691,7 +705,6 @@ class PlanningReviewService:
                 )
             )
         families = [str(item.get("layout_family", "")) for item in plans]
-        families = [str(item.get("layout_family", "")) for item in plans]
         if plans and families.count("bento") / len(plans) > 0.4:
             issues.append(
                 _issue(
@@ -704,13 +717,18 @@ class PlanningReviewService:
                     repairability="assisted",
                 )
             )
+        topology_signatures = [_layout_topology_signature(item) for item in plans]
         run_start = 0
-        while run_start < len(families):
+        while run_start < len(topology_signatures):
             run_end = run_start + 1
-            while run_end < len(families) and families[run_end] == families[run_start]:
+            while (
+                run_end < len(topology_signatures)
+                and topology_signatures[run_end] == topology_signatures[run_start]
+            ):
                 run_end += 1
             run_length = run_end - run_start
             if run_length >= 3:
+                family_names = sorted(set(families[run_start:run_end]))
                 issues.append(
                     _issue(
                         code="repetitive_layout_rhythm",
@@ -719,9 +737,14 @@ class PlanningReviewService:
                         earliest_phase="P5B",
                         slide_id=str(plans[run_end - 1]["slide_id"]),
                         message=(
-                            f"{run_length} consecutive pages use layout family {families[run_start]}."
+                            f"{run_length} consecutive pages share observable topology "
+                            f"{topology_signatures[run_start]} across family label(s) "
+                            f"{', '.join(family_names)}."
                         ),
-                        suggested_action="Vary the spatial relationship only where page semantics support it.",
+                        suggested_action=(
+                            "Vary the spatial relationship only where page semantics support it; "
+                            "renaming a family without changing geometry does not create rhythm."
+                        ),
                         repairability="assisted",
                     )
                 )

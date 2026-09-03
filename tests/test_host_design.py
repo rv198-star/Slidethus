@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import os
 import shutil
 import subprocess
@@ -17,12 +18,19 @@ from slidethus.artifact_runtime import ArtifactRuntime
 from slidethus.cli import main
 from slidethus.errors import (
     ArtifactError,
+    HostCreateConflictError,
     PlanningError,
     RenderAttemptError,
     RenderBackendError,
     RenderCapabilityError,
 )
-from slidethus.gates import evaluate_gate
+from slidethus.gates import GateResult, evaluate_gate
+from slidethus.host_create_records import (
+    build_host_create_config,
+    create_host_create_session,
+    fingerprint_sources,
+    host_create_workspace_errors,
+)
 from slidethus.host_design import (
     HostArtDirectionProvider,
     HostDesignBridge,
@@ -38,14 +46,20 @@ from slidethus.protocols import (
     ArtDirectionSeedProposal,
     BriefCompletionHints,
     PlanningLimits,
+    PlanningProposal,
 )
 from slidethus.render_backends.artifact_tool import ArtifactToolRenderBackend
 from slidethus.render_backends.artifact_tool_runtime import (
     resolve_artifact_tool_runtime,
 )
+from slidethus.schema_registry import SchemaRegistry
 from slidethus.services.host_create import HostCreateService
+from slidethus.services.m2_application import M2ApplicationLimits
+from slidethus.services.m3_application import M3ApplicationService
 from slidethus.services.render_compile import RenderCompileService
 from slidethus.services.render_preflight import RenderPreflightService
+from slidethus.state_machine import Phase
+from slidethus.workspace import init_workspace
 from tests.fontconfig_fakes import write_fontconfig_tools
 
 
@@ -58,17 +72,21 @@ def _respond(pending: dict, proposal: dict) -> None:
 
 def test_host_bridge_missing_stale_and_invalid_responses_never_fall_back(tmp_path: Path) -> None:
     bridge = HostDesignBridge(tmp_path)
-    provider = HostPlanningProvider(bridge)
     with pytest.raises(HostDesignRequired):
-        provider.propose("narrative_blueprint", {"title": "A"}, PlanningLimits())
+        bridge.exchange("narrative_blueprint", {"title": "A"}, PlanningLimits())
     pending = dict(bridge.pending)
-    _respond(pending, {"content": {"sections": []}})
-    assert provider.propose("narrative_blueprint", {"title": "A"}, PlanningLimits()).content == {"sections": []}
+    proposal = {"content": {"sections": []}}
+    _respond(pending, proposal)
+    assert bridge.exchange(
+        "narrative_blueprint", {"title": "A"}, PlanningLimits()
+    ) == proposal
     with pytest.raises(HostDesignRequired):
-        provider.propose("narrative_blueprint", {"title": "B"}, PlanningLimits())
-    Path(bridge.pending["response_path"]).write_bytes(Path(pending["response_path"]).read_bytes())
+        bridge.exchange("narrative_blueprint", {"title": "B"}, PlanningLimits())
+    Path(bridge.pending["response_path"]).write_bytes(
+        Path(pending["response_path"]).read_bytes()
+    )
     with pytest.raises(PlanningError, match="stale"):
-        provider.propose("narrative_blueprint", {"title": "B"}, PlanningLimits())
+        bridge.exchange("narrative_blueprint", {"title": "B"}, PlanningLimits())
     assert not (tmp_path / "outputs").exists()
 
 
@@ -102,6 +120,131 @@ def test_malformed_host_proposals_fail_explicitly(tmp_path: Path, stage: str, pr
             HostArtDirectionProvider(bridge).propose({}, limits)
         else:
             HostPlanningProvider(bridge).propose(stage, {}, limits)
+
+
+def test_host_response_envelope_aggregates_schema_and_binding_findings(
+    tmp_path: Path,
+) -> None:
+    bridge = HostDesignBridge(tmp_path)
+    with pytest.raises(HostDesignRequired):
+        bridge.exchange("narrative_blueprint", {"title": "A"}, PlanningLimits())
+    pending = copy.deepcopy(bridge.pending)
+    atomic_create_json(
+        Path(pending["response_path"]),
+        {
+            "schema_version": "9.9.9",
+            "request_hash": "sha256:" + "f" * 64,
+            "stage": "layout_plans",
+            "proposal": [],
+            "unexpected": True,
+        },
+    )
+
+    with pytest.raises(PlanningError) as failure:
+        bridge.exchange("narrative_blueprint", {"title": "A"}, PlanningLimits())
+
+    message = str(failure.value)
+    assert "Invalid host response" in message
+    assert "schema_version" in message
+    assert "proposal" in message
+    assert "request_hash" in message
+    assert "stage" in message
+    assert "unexpected" in message
+
+
+def test_host_narrative_proposal_aggregates_all_deterministic_findings(
+    tmp_path: Path,
+) -> None:
+    bridge = HostDesignBridge(tmp_path)
+    provider = HostPlanningProvider(bridge)
+    with pytest.raises(HostDesignRequired):
+        provider.propose("narrative_blueprint", {"title": "A"}, PlanningLimits())
+    _respond(
+        bridge.pending,
+        {
+            "content": {
+                "story_arc": "invalid-arc",
+                "audience_journey": ["only-one-stage"],
+                "sections": [{}],
+            },
+            "warnings": "not-a-list",
+            "assumptions": [],
+        },
+    )
+
+    with pytest.raises(PlanningError) as failure:
+        provider.propose("narrative_blueprint", {"title": "A"}, PlanningLimits())
+
+    message = str(failure.value)
+    for field in (
+        "central_thesis",
+        "story_rationale",
+        "proof_strategy",
+        "story_arc",
+        "audience_journey",
+        "sections",
+        "sections[0].title",
+        "sections[0].purpose",
+        "sections[0].key_questions",
+        "sections[0].evidence_ids",
+        "warnings",
+    ):
+        assert field in message
+    assert bridge.pending is not None
+    assert bridge.pending["stage"] == "narrative_blueprint"
+
+
+def test_host_specs_proposal_aggregates_family_density_and_block_findings(
+    tmp_path: Path,
+) -> None:
+    bridge = HostDesignBridge(tmp_path)
+    provider = HostPlanningProvider(bridge)
+    context = {
+        "deck_outline": {
+            "slides": [{"slide_id": "S-001", "status": "approved"}]
+        }
+    }
+    with pytest.raises(HostDesignRequired):
+        provider.propose("slide_specs", context, PlanningLimits())
+    _respond(
+        bridge.pending,
+        {
+            "content": {
+                "slides": [
+                    {
+                        "slide_id": "S-001",
+                        "content_blocks": [{"content": "A dense claim"}],
+                        "visual_intent": {
+                            "suggested_layout_families": ["Editorial / Invalid"]
+                        },
+                        "density_budget": {
+                            "max_blocks": 0,
+                            "max_words": 0,
+                            "min_body_pt": 0,
+                        },
+                    }
+                ]
+            },
+            "warnings": [],
+            "assumptions": [],
+        },
+    )
+
+    with pytest.raises(PlanningError) as failure:
+        provider.propose("slide_specs", context, PlanningLimits())
+
+    message = str(failure.value)
+    assert "speaker_notes" in message
+    assert "editability_intent" in message
+    assert "semantic_role" in message
+    assert "content_type" in message
+    assert "evidence_requirement" in message
+    assert "claim_mode" in message
+    assert "suggested_layout_families" in message
+    assert "density_budget.max_blocks" in message
+    assert "density_budget.max_words" in message
+    assert "density_budget.min_body_pt" in message
+    assert bridge.pending is not None
 
 
 def test_artifact_tool_missing_capability_does_not_install_or_fallback(tmp_path: Path) -> None:
@@ -158,10 +301,9 @@ def test_same_host_request_records_distinct_response_and_proposal_hashes(
     tmp_path: Path,
 ) -> None:
     bridge = HostDesignBridge(tmp_path)
-    provider = HostPlanningProvider(bridge)
     context = {"title": "Stable request"}
     with pytest.raises(HostDesignRequired):
-        provider.propose("narrative_blueprint", context, PlanningLimits())
+        bridge.exchange("narrative_blueprint", context, PlanningLimits())
     pending = copy.deepcopy(bridge.pending)
 
     first_response = {
@@ -171,17 +313,17 @@ def test_same_host_request_records_distinct_response_and_proposal_hashes(
         "proposal": {"content": {"version": "first"}, "warnings": [], "assumptions": []},
     }
     atomic_write_json(Path(pending["response_path"]), first_response)
-    assert provider.propose(
+    assert bridge.exchange(
         "narrative_blueprint", context, PlanningLimits()
-    ).content == {"version": "first"}
+    )["content"] == {"version": "first"}
     first = copy.deepcopy(bridge.last_submission)
 
     second_response = copy.deepcopy(first_response)
     second_response["proposal"]["content"]["version"] = "second"
     atomic_write_json(Path(pending["response_path"]), second_response)
-    assert provider.propose(
+    assert bridge.exchange(
         "narrative_blueprint", context, PlanningLimits()
-    ).content == {"version": "second"}
+    )["content"] == {"version": "second"}
     second = bridge.last_submission
 
     assert first["request_hash"] == second["request_hash"]
@@ -434,6 +576,386 @@ def _fixture_proposal(
     return proposal
 
 
+def test_existing_workspace_without_session_is_not_silently_adopted(
+    authored_workspace: Path,
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "legacy-workspace"
+    shutil.copytree(authored_workspace, workspace)
+    shutil.rmtree(workspace / ".slidethus/host-create")
+    before = (workspace / "project_state.json").read_bytes()
+
+    with pytest.raises(HostCreateConflictError, match="no canonical Host Create Session"):
+        HostCreateService(workspace).run()
+
+    assert (workspace / "project_state.json").read_bytes() == before
+    assert not (workspace / ".slidethus/host-create").exists()
+
+
+def test_host_create_plain_resume_reuses_the_persisted_initial_config(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.txt"
+    source.write_text(
+        "# Evidence\nSynthetic A is 2 and B is 5.\n\n# Decision\nReview the fixture.",
+        encoding="utf-8",
+    )
+    workspace = tmp_path / "workspace"
+    hints = BriefCompletionHints(
+        request_text="Create a four-page engineering fixture",
+        purpose="Check stable resume",
+        desired_outcome="Inspect the candidate",
+        call_to_action="Review the fixture",
+        audience_role="Engineers",
+        delivery_context="Engineering test",
+        page_target=4,
+    )
+    first = HostCreateService(workspace).run((source,), hints=hints)
+    assert first["status"] == "host_input_required"
+    assert first["pending"]["stage"] == "narrative_blueprint"
+    request = read_json(Path(first["pending"]["request_path"]))
+    _respond(
+        first["pending"],
+        _fixture_proposal(request["stage"], request["context"], request["limits"]),
+    )
+
+    resumed = HostCreateService(workspace).run()
+
+    assert resumed["status"] == "host_input_required"
+    assert resumed["pending"]["stage"] == "deck_outline"
+    requests = [
+        read_json(path)["stage"]
+        for path in (workspace / ".slidethus/host-design/requests").glob("*.json")
+    ]
+    assert requests.count("narrative_blueprint") == 1
+    received = list((workspace / ".slidethus/host-design/received").glob("*.json"))
+    assert len(received) == 1
+    session = read_json(workspace / ".slidethus/host-create/session.json")
+    assert session["config"]["brief_hints"]["request_text"] == hints.request_text
+    assert session["pending_request"]["request_hash"] == resumed["pending"]["request_hash"]
+
+
+def test_cli_plain_resume_preserves_omitted_source_arguments(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    source = tmp_path / "source.txt"
+    source.write_text(
+        "# Evidence\nStable evidence for a decision.\n",
+        encoding="utf-8",
+    )
+    workspace = tmp_path / "workspace"
+
+    first_code = main(
+        [
+            "create",
+            str(workspace),
+            "--title",
+            "CLI resume",
+            "--source",
+            str(source),
+            "--request",
+            "给管理层做一份 4 页方案汇报，推动立项决策",
+        ]
+    )
+    first = json.loads(capsys.readouterr().out)
+    assert first_code == 1
+    assert first["status"] == "host_input_required"
+    assert first["pending"]["stage"] == "narrative_blueprint"
+    request = read_json(Path(first["pending"]["request_path"]))
+    _respond(
+        first["pending"],
+        _fixture_proposal(
+            request["stage"],
+            request["context"],
+            request["limits"],
+        ),
+    )
+
+    resumed_code = main(["create", str(workspace)])
+    resumed = json.loads(capsys.readouterr().out)
+
+    assert resumed_code == 1
+    assert resumed["status"] == "host_input_required"
+    assert resumed["pending"]["stage"] == "deck_outline"
+    session = read_json(workspace / ".slidethus/host-create/session.json")
+    assert [Path(item["path"]) for item in session["config"]["sources"]] == [
+        source.resolve()
+    ]
+
+
+def test_stage_revision_cannot_replace_an_unanswered_host_request(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.txt"
+    source.write_text("# Evidence\nStable fact.\n", encoding="utf-8")
+    workspace = tmp_path / "workspace"
+    hints = BriefCompletionHints(
+        request_text="Create a four-page decision presentation",
+        purpose="Preserve the pending request",
+        desired_outcome="Reach a stable candidate",
+        call_to_action="Review",
+        audience_role="Decision makers",
+        delivery_context="Review meeting",
+        page_target=4,
+    )
+    first = HostCreateService(workspace).run((source,), hints=hints)
+    assert first["status"] == "host_input_required"
+
+    blocked = HostCreateService(workspace).run(revise_stage="slide_specs")
+
+    assert blocked["status"] == "blocked"
+    assert "current Host request" in blocked["error"]
+    assert blocked["pending"]["request_hash"] == first["pending"]["request_hash"]
+    session = read_json(workspace / ".slidethus/host-create/session.json")
+    assert session["pending_revision"] is None
+    assert session["pending_request"]["request_hash"] == first["pending"]["request_hash"]
+    terminal = read_json(Path(blocked["operation_path"]))
+    assert terminal["action"] == "revise_stage"
+    assert terminal["status"] == "blocked"
+
+
+def test_explicit_brief_revision_replaces_session_intent_and_restarts_at_p0_owner(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.txt"
+    source.write_text("# Evidence\nStable fact.\n", encoding="utf-8")
+    workspace = tmp_path / "workspace"
+    hints = BriefCompletionHints(
+        request_text="Create the original presentation",
+        purpose="Preserve the original intent",
+        desired_outcome="Reach a stable candidate",
+        call_to_action="Review",
+        audience_role="Decision makers",
+        delivery_context="Review meeting",
+        page_target=4,
+    )
+    first = HostCreateService(workspace).run((source,), hints=hints)
+    assert first["status"] == "host_input_required"
+    original_request_hash = first["pending"]["request_hash"]
+    before = read_json(workspace / ".slidethus/host-create/session.json")
+
+    revised = HostCreateService(workspace).run(
+        hints=BriefCompletionHints(
+            request_text="Reframe the presentation for an implementation decision",
+            desired_outcome="Approve an implementation pilot",
+        ),
+        revise_brief=True,
+    )
+
+    assert revised["status"] == "host_input_required"
+    assert revised["pending"]["stage"] == "narrative_blueprint"
+    assert revised["pending"]["request_hash"] != original_request_hash
+    session = read_json(workspace / ".slidethus/host-create/session.json")
+    assert session["intent_revision"] == before["intent_revision"] + 1
+    assert (
+        session["config"]["brief_hints"]["request_text"]
+        == "Reframe the presentation for an implementation decision"
+    )
+    assert (
+        session["config"]["brief_hints"]["purpose"]
+        == "Preserve the original intent"
+    )
+    assert (
+        session["config"]["brief_hints"]["desired_outcome"]
+        == "Approve an implementation pilot"
+    )
+    terminal = read_json(Path(revised["operation_path"]))
+    assert terminal["action"] == "revise_brief"
+    assert terminal["status"] == "host_input_required"
+
+
+def test_explicit_source_revision_adds_source_and_rebinds_session(
+    tmp_path: Path,
+) -> None:
+    source_a = tmp_path / "source-a.txt"
+    source_a.write_text("# Evidence\nFact A.\n", encoding="utf-8")
+    source_b = tmp_path / "source-b.txt"
+    source_b.write_text("# Evidence\nFact B.\n", encoding="utf-8")
+    workspace = tmp_path / "workspace"
+    hints = BriefCompletionHints(
+        request_text="Create a sourced presentation",
+        purpose="Compare the available facts",
+        desired_outcome="Reach a decision",
+        call_to_action="Review",
+        audience_role="Decision makers",
+        delivery_context="Review meeting",
+        page_target=4,
+    )
+    first = HostCreateService(workspace).run((source_a,), hints=hints)
+    assert first["status"] == "host_input_required"
+    before = read_json(workspace / ".slidethus/host-create/session.json")
+
+    revised = HostCreateService(workspace).run(
+        sources=(source_b,),
+        revise_sources=True,
+    )
+
+    assert revised["status"] == "host_input_required"
+    assert revised["pending"]["stage"] == "narrative_blueprint"
+    session = read_json(workspace / ".slidethus/host-create/session.json")
+    assert session["intent_revision"] == before["intent_revision"] + 1
+    assert {Path(item["path"]).name for item in session["config"]["sources"]} == {
+        "source-a.txt",
+        "source-b.txt",
+    }
+    ledger = ArtifactRuntime(workspace).show_artifact("source_ledger")
+    assert {Path(item["path_or_url"]).name for item in ledger["sources"]} == {
+        "source-a.txt",
+        "source-b.txt",
+    }
+    terminal = read_json(Path(revised["operation_path"]))
+    assert terminal["action"] == "revise_sources"
+    assert terminal["status"] == "host_input_required"
+
+
+def test_rework_result_exposes_review_target_issues_and_allowed_actions(
+    tmp_path: Path,
+) -> None:
+    class CompetingPrimaryBlocksProvider(DeterministicPlanningProvider):
+        name = "host-rework-fixture-provider"
+
+        def propose(self, artifact_type, context, limits):
+            proposal = super().propose(artifact_type, context, limits)
+            if artifact_type != "slide_specs":
+                return proposal
+            content = copy.deepcopy(proposal.content)
+            target = next(
+                item
+                for item in content["slides"]
+                if len(item["content_blocks"]) >= 2
+            )
+            for block in target["content_blocks"]:
+                block["priority"] = "primary"
+            target["content_blocks"].append(
+                {
+                    "semantic_role": "body",
+                    "content_type": "text",
+                    "priority": "primary",
+                    "content": "A second primary explanation competes with the core message.",
+                    "evidence_ids": [],
+                    "evidence_requirement": "none",
+                    "claim_mode": "interpretation",
+                    "evidence_qualification": None,
+                }
+            )
+            return PlanningProposal(
+                artifact_type=proposal.artifact_type,
+                content=content,
+                warnings=proposal.warnings,
+                assumptions=proposal.assumptions,
+            )
+
+    source = tmp_path / "source.txt"
+    source.write_text(
+        "# Evidence\nSynthetic A is 2 and B is 5.\n\n# Decision\nReview the controlled fixture.",
+        encoding="utf-8",
+    )
+    workspace = init_workspace(tmp_path / "workspace", title="Structured rework")
+    hints = BriefCompletionHints(
+        request_text="Create a six-page engineering decision deck",
+        purpose="Test structured rework",
+        desired_outcome="Identify the correct repair owner",
+        call_to_action="Revise the responsible planning phase",
+        audience_role="Engineers",
+        delivery_context="Engineering review",
+        page_target=6,
+    )
+    m3 = M3ApplicationService(
+        workspace,
+        planning_provider=CompetingPrimaryBlocksProvider(),
+    ).run((source,), brief_hints=hints, auto_repair=False)
+    assert m3.report["status"] == "rework_required"
+    service = HostCreateService(workspace)
+    create_host_create_session(
+        workspace,
+        build_host_create_config(
+            title="Structured rework",
+            source_fingerprints=fingerprint_sources((source,)),
+            brief_hints=hints,
+            planning_limits=PlanningLimits(),
+            m2_limits=M2ApplicationLimits(),
+            allow_research_degraded=False,
+            approve_external_disclosure=False,
+            allow_high_risk_source_evidence=False,
+            planning_provider=service.planning,
+            research_provider=service.research_provider,
+            art_direction_provider=service.art_direction,
+        ),
+    )
+    service._advance = lambda _config, **_kwargs: {
+        "status": "rework_required",
+        "pending": None,
+        "planning_report": str(m3.path),
+        "blockers": m3.report["blockers"],
+        "release_approved": False,
+        "revision_completed": False,
+    }
+
+    result = service.run((source,), hints=hints)
+
+    assert result["status"] == "rework_required"
+    assert result["rework"]["target_phase"] == "P5A"
+    assert result["rework"]["issue_ids"]
+    assert all(item.startswith("PRI-") for item in result["rework"]["issue_ids"])
+    assert result["rework"]["allowed_next_actions"] == [
+        "inspect_report",
+        "revise_stage",
+        "resume",
+    ]
+    assert Path(result["rework"]["review_path"]).is_file()
+    terminal = read_json(Path(result["operation_path"]))
+    assert terminal["result"]["target_phase"] == "P5A"
+    assert terminal["result"]["issue_ids"] == result["rework"]["issue_ids"]
+    assert {item["kind"] for item in terminal["result"]["refs"]} >= {
+        "m3_report",
+        "planning_review",
+    }
+
+
+def test_conflicting_resume_input_blocks_before_artifact_mutation(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.txt"
+    source.write_text("# Evidence\nStable fact.\n", encoding="utf-8")
+    workspace = tmp_path / "workspace"
+    hints = BriefCompletionHints(
+        request_text="Create the original presentation",
+        purpose="Preserve the original intent",
+        desired_outcome="Reach a stable candidate",
+        call_to_action="Review",
+        audience_role="Decision makers",
+        delivery_context="Review meeting",
+        page_target=4,
+    )
+    first = HostCreateService(workspace).run((source,), hints=hints)
+    assert first["status"] == "host_input_required"
+    tracked = {
+        relative: (workspace / relative).read_bytes()
+        for relative in (
+            "project_state.json",
+            "brief/project_brief.json",
+            "sources/source_ledger.json",
+            "evidence/evidence_ledger.json",
+        )
+    }
+    session_before = read_json(workspace / ".slidethus/host-create/session.json")
+
+    conflict = HostCreateService(workspace).run(
+        hints=BriefCompletionHints(request_text="Replace the original request")
+    )
+
+    assert conflict["status"] == "blocked"
+    assert "conflicts with the persisted session" in conflict["error"]
+    assert conflict["pending"]["request_hash"] == first["pending"]["request_hash"]
+    for relative, payload in tracked.items():
+        assert (workspace / relative).read_bytes() == payload
+    session_after = read_json(workspace / ".slidethus/host-create/session.json")
+    assert session_after["config"] == session_before["config"]
+    assert session_after["pending_request"] == session_before["pending_request"]
+    assert Path(conflict["operation_path"]).is_file()
+
+
 @pytest.fixture(scope="module")
 def authored_workspace(tmp_path_factory) -> Path:
     """Exercise actual pause/resume admission for every stage, without a model API."""
@@ -532,6 +1054,190 @@ def test_host_create_can_request_seed_revision_without_outline_perturbation(
     assert ArtifactRuntime(workspace).show_artifact("deck_outline") == ArtifactRuntime(
         authored_workspace
     ).show_artifact("deck_outline")
+
+
+def test_slide_specs_revision_is_persistent_phase_local_and_cross_process(
+    authored_workspace: Path,
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "specs-revision"
+    shutil.copytree(authored_workspace, workspace)
+    runtime = ArtifactRuntime(workspace)
+    protected_types = (
+        "project_brief",
+        "source_ledger",
+        "evidence_ledger",
+        "narrative_blueprint",
+        "deck_outline",
+    )
+    before = {
+        item["artifact_type"]: (item["version"], item["content_hash"])
+        for item in runtime.list_artifacts()
+        if item["artifact_type"] in protected_types
+    }
+    original_specs = next(
+        item for item in runtime.list_artifacts() if item["artifact_type"] == "slide_specs"
+    )
+
+    requested = HostCreateService(workspace).run(revise_stage="slide_specs")
+
+    assert requested["status"] == "host_input_required"
+    assert requested["pending"]["stage"] == "slide_specs"
+    request = read_json(Path(requested["pending"]["request_path"]))
+    assert request["context"]["revision_request"]["supersedes"] == {
+        "artifact_type": "slide_specs",
+        "version": original_specs["version"],
+        "content_hash": original_specs["content_hash"],
+    }
+    session = read_json(workspace / ".slidethus/host-create/session.json")
+    assert session["pending_revision"]["stage"] == "slide_specs"
+    proposal = _fixture_proposal(
+        request["stage"], request["context"], request["limits"]
+    )
+    proposal["content"]["slides"][0]["speaker_notes"] += " Revised intentionally."
+    _respond(requested["pending"], proposal)
+
+    resumed = HostCreateService(workspace).run()
+
+    assert resumed["status"] == "host_input_required"
+    assert resumed["pending"]["stage"] == "layout_plans"
+    session = read_json(workspace / ".slidethus/host-create/session.json")
+    assert session["pending_revision"] is None
+    after = {
+        item["artifact_type"]: (item["version"], item["content_hash"])
+        for item in runtime.list_artifacts()
+        if item["artifact_type"] in protected_types
+    }
+    assert after == before
+    revised_specs = next(
+        item for item in runtime.list_artifacts() if item["artifact_type"] == "slide_specs"
+    )
+    assert revised_specs["version"] == original_specs["version"] + 1
+
+
+def test_committed_stage_revision_is_checkpointed_before_downstream_failure(
+    authored_workspace: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace = tmp_path / "revision-checkpoint"
+    shutil.copytree(authored_workspace, workspace)
+    runtime = ArtifactRuntime(workspace)
+    original_specs = next(
+        item
+        for item in runtime.list_artifacts()
+        if item["artifact_type"] == "slide_specs"
+    )
+    requested = HostCreateService(workspace).run(revise_stage="slide_specs")
+    request = read_json(Path(requested["pending"]["request_path"]))
+    proposal = _fixture_proposal(
+        request["stage"],
+        request["context"],
+        request["limits"],
+    )
+    proposal["content"]["slides"][0]["speaker_notes"] += " Checkpointed revision."
+    _respond(requested["pending"], proposal)
+
+    def fail_after_revision(*_args, **_kwargs):
+        raise RuntimeError("synthetic downstream interruption")
+
+    monkeypatch.setattr(M3ApplicationService, "run", fail_after_revision)
+    with pytest.raises(RuntimeError, match="downstream interruption"):
+        HostCreateService(workspace).run()
+
+    session = read_json(workspace / ".slidethus/host-create/session.json")
+    assert session["pending_revision"] is None
+    assert session["pending_request"] is None
+    revised_specs = next(
+        item
+        for item in runtime.list_artifacts()
+        if item["artifact_type"] == "slide_specs"
+    )
+    assert revised_specs["version"] == original_specs["version"] + 1
+    terminal = read_json(workspace / session["last_terminal"]["path"])
+    assert terminal["status"] == "failed"
+    assert terminal["result"]["message"] == "synthetic downstream interruption"
+
+
+def test_pending_stage_revision_must_finish_before_render(
+    authored_workspace: Path,
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "pending-revision-render"
+    shutil.copytree(authored_workspace, workspace)
+    requested = HostCreateService(workspace).run(revise_stage="slide_specs")
+    assert requested["status"] == "host_input_required"
+    before = read_json(workspace / ".slidethus/host-create/session.json")
+
+    blocked = HostCreateService(workspace).run(render=True)
+
+    assert blocked["status"] == "blocked"
+    assert "pending stage revision" in blocked["error"]
+    assert blocked["pending"]["request_hash"] == requested["pending"]["request_hash"]
+    after = read_json(workspace / ".slidethus/host-create/session.json")
+    assert after["pending_revision"] == before["pending_revision"]
+    assert after["pending_request"] == before["pending_request"]
+    terminal = read_json(Path(blocked["operation_path"]))
+    assert terminal["action"] == "render"
+    assert terminal["status"] == "blocked"
+    assert not (workspace / "outputs/host-candidates").exists()
+
+
+def test_phase_rollback_cannot_reuse_structurally_valid_layout_for_g6(
+    authored_workspace: Path,
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "phase-rollback"
+    shutil.copytree(authored_workspace, workspace)
+    runtime = ArtifactRuntime(workspace)
+    runtime.route_rework(
+        Phase.OUTLINE_READY,
+        reason="Regression fixture rolls planning back before Slide Specs.",
+    )
+    assert (workspace / "layout/layout_plans.json").is_file()
+
+    result = HostCreateService(workspace).run()
+
+    assert result["status"] == "host_input_required"
+    assert result["pending"]["stage"] == "slide_specs"
+    state = runtime.show_artifact("project_state")
+    assert state["current_phase"] == "OUTLINE_READY"
+    assert "G6" not in {item["gate_id"] for item in state["completed_gates"]}
+
+
+def test_host_create_never_claims_design_ready_when_g6_fails(
+    authored_workspace: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace = tmp_path / "g6-failure"
+    shutil.copytree(authored_workspace, workspace)
+    service = HostCreateService(workspace)
+    current_gate = service._gate_is_current
+    monkeypatch.setattr(
+        service,
+        "_gate_is_current",
+        lambda state, gate_id: (
+            False if gate_id == "G6" else current_gate(state, gate_id)
+        ),
+    )
+    monkeypatch.setattr(
+        "slidethus.services.host_create.ArtifactRuntime.record_gate",
+        lambda *args, **kwargs: GateResult(
+            "G6",
+            "fail",
+            ("synthetic G6 failure",),
+        ),
+    )
+
+    result = service.run()
+
+    assert result["status"] == "blocked"
+    assert result["error"] == "G6 did not pass: synthetic G6 failure"
+    assert result["release_approved"] is False
+    terminal = read_json(Path(result["operation_path"]))
+    assert terminal["status"] == "blocked"
+    assert terminal["result"]["message"] == result["error"]
 
 
 def test_artifact_tool_failure_writes_terminal_receipt(
@@ -656,6 +1362,148 @@ def test_tampered_taste_prototype_invalidates_the_final_visual_system(
     assert any("prototype hash mismatch" in reason for reason in gate.reasons)
 
 
+def test_fresh_create_controlled_revision_reaches_candidate_and_terminal_fact(
+    tmp_path: Path,
+) -> None:
+    """Exercise one fresh multi-response Create, one phase revision, and candidate closure."""
+
+    import base64
+
+    source = tmp_path / "source.txt"
+    source.write_text(
+        "# Evidence\nSynthetic A is 2 and B is 5.\n\n"
+        "# Decision\nReview the controlled fixture before adoption.\n",
+        encoding="utf-8",
+    )
+    workspace = tmp_path / "workspace"
+    hints = BriefCompletionHints(
+        request_text="Create a four-page engineering decision presentation",
+        purpose="Exercise a fresh Host Create transaction",
+        desired_outcome="Produce a candidate after one controlled revision",
+        call_to_action="Review the generated candidate",
+        audience_role="Engineers",
+        delivery_context="Engineering acceptance",
+        page_target=4,
+    )
+    service = HostCreateService(workspace)
+    result = service.run((source,), hints=hints)
+    runtime = ArtifactRuntime(workspace)
+    image = workspace / "assets/test.png"
+    image.parent.mkdir(exist_ok=True)
+    image.write_bytes(
+        base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+    )
+    manifest, version = runtime.read_artifact_snapshot("asset_manifest")
+    manifest["assets"] = [
+        {
+            "asset_id": "AST-001",
+            "kind": "image",
+            "source_type": "internal",
+            "path_or_url": "assets/test.png",
+            "license": "test fixture",
+            "allowed_use": "full",
+            "status": "available",
+        }
+    ]
+    runtime.write_artifact("asset_manifest", manifest, expected_version=version)
+
+    visited: list[str] = []
+    for _ in range(8):
+        assert result["status"] == "host_input_required", result
+        pending = result["pending"]
+        visited.append(pending["stage"])
+        request = read_json(Path(pending["request_path"]))
+        prototype = None
+        if pending["stage"] == "art_direction_seed":
+            prototype_path = workspace / "design/prototypes/fresh.html"
+            prototype_path.parent.mkdir(parents=True, exist_ok=True)
+            prototype_path.write_text(
+                "<main>fresh acceptance prototype</main>\n",
+                encoding="utf-8",
+            )
+            prototype = {
+                "medium": "html-css",
+                "path": "design/prototypes/fresh.html",
+                "content_hash": f"sha256:{sha256_file(prototype_path)}",
+            }
+        _respond(
+            pending,
+            _fixture_proposal(
+                request["stage"],
+                request["context"],
+                request["limits"],
+                prototype=prototype,
+            ),
+        )
+        result = HostCreateService(workspace).run()
+        if result["status"] == "design_ready":
+            break
+    assert visited == [
+        "narrative_blueprint",
+        "deck_outline",
+        "art_direction_seed",
+        "slide_specs",
+        "layout_plans",
+        "art_direction",
+    ]
+    assert result["status"] == "design_ready", result
+
+    revision = HostCreateService(workspace).run(revise_stage="slide_specs")
+    assert revision["status"] == "host_input_required"
+    assert revision["pending"]["stage"] == "slide_specs"
+    request = read_json(Path(revision["pending"]["request_path"]))
+    proposal = _fixture_proposal(
+        request["stage"], request["context"], request["limits"]
+    )
+    proposal["content"]["slides"][0]["speaker_notes"] += " Controlled revision."
+    _respond(revision["pending"], proposal)
+
+    resumed = HostCreateService(workspace).run()
+    assert resumed["status"] == "host_input_required"
+    assert resumed["pending"]["stage"] == "layout_plans"
+    for expected_stage in ("layout_plans", "art_direction"):
+        pending = resumed["pending"]
+        assert pending["stage"] == expected_stage
+        request = read_json(Path(pending["request_path"]))
+        _respond(
+            pending,
+            _fixture_proposal(
+                request["stage"], request["context"], request["limits"]
+            ),
+        )
+        resumed = HostCreateService(workspace).run()
+    assert resumed["status"] == "design_ready", resumed
+
+    node, modules = _fake_successful_artifact_tool_runtime(tmp_path)
+    fonts = write_fontconfig_tools(tmp_path)
+    candidate = HostCreateService(
+        workspace,
+        node=str(node),
+        modules=modules,
+        font_match=str(fonts),
+    ).run(render=True)
+
+    assert candidate["status"] == "candidate_office_review_pending", candidate
+    assert Path(candidate["receipt_path"]).is_file()
+    assert Path(candidate["operation_path"]).is_file()
+    operation = read_json(Path(candidate["operation_path"]))
+    assert operation["status"] == "candidate_office_review_pending"
+    assert {item["kind"] for item in operation["result"]["refs"]} >= {
+        "render_receipt",
+        "candidate",
+    }
+    session = read_json(Path(candidate["session_path"]))
+    assert session["pending_revision"] is None
+    assert session["pending_request"] is None
+    assert session["last_terminal"]["attempt_id"] == candidate["attempt_id"]
+    assert session["last_terminal"]["status"] == "candidate_office_review_pending"
+    assert host_create_workspace_errors(
+        workspace, SchemaRegistry().schema_dir
+    ) == ()
+
+
 @pytest.mark.skipif(not os.environ.get("RUNTIME_NODE_MODULES"), reason="optional host Artifact Tool runtime")
 def test_real_artifact_sample_and_full_share_ir_and_embed_media(authored_workspace: Path, tmp_path: Path) -> None:
     fonts = write_fontconfig_tools(tmp_path)
@@ -703,3 +1551,43 @@ def test_real_artifact_sample_and_full_share_ir_and_embed_media(authored_workspa
     changed.compiled.ir["slides"][0]["background"] = "#FFFFFF"
     with pytest.raises(RenderBackendError, match="snapshots"):
         backend.render(authored_workspace, changed)
+
+
+def test_brief_revision_terminal_binds_the_resulting_session_config(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.txt"
+    source.write_text("A bounded source for Host Create revision lineage.\n", encoding="utf-8")
+    workspace = tmp_path / "workspace"
+    first = HostCreateService(workspace).run(
+        (source,),
+        title="Original intent",
+        hints=BriefCompletionHints(
+            request_text="Create a four-page internal briefing",
+            purpose="Explain the original intent",
+            desired_outcome="Reach an initial decision",
+            delivery_context="Internal review",
+            audience_role="Decision makers",
+            page_target=4,
+        ),
+    )
+    assert first["status"] == "host_input_required"
+
+    revised = HostCreateService(workspace).run(
+        hints=BriefCompletionHints(
+            request_text="Create a revised six-page internal briefing",
+            purpose="Explain the revised intent",
+            desired_outcome="Reach a revised decision",
+            delivery_context="Internal review",
+            audience_role="Decision makers",
+            page_target=6,
+        ),
+        revise_brief=True,
+    )
+
+    assert revised["status"] == "host_input_required"
+    session = read_json(Path(revised["session_path"]))
+    terminal = read_json(Path(revised["operation_path"]))
+    assert terminal["action"] == "revise_brief"
+    assert terminal["config_hash"] != terminal["resulting_config_hash"]
+    assert terminal["resulting_config_hash"] == session["config"]["config_hash"]

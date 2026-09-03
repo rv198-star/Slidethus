@@ -241,6 +241,17 @@ M3 Production Layout 还绑定 current Slide Specs semantic hashes、stable `REG
 
 Packet 写入 `.slidethus/art-direction/packets/<sha256>.json` 后不可覆盖。Visual System 只引用 Packet ID/path/hash、provider identity 和（若有）Seed reference，并把已准入方向编译为正式 tokens/page designs。Taste 是默认 provider，但 Packet schema 不出现供应商专属字段。
 
+#### 4.8.2 Host Create Session 与 Operation
+
+Designed Create 使用两类非 catalog supporting facts：
+
+- `.slidethus/host-create/session.json`：一次用户意图的 canonical config，包含 Source fingerprints、Brief hints、Planning/M2 limits、policy flags、provider identities、pending revision/request、可复用 M2 refs、最近 M3 report 与最近终态；
+- `.slidethus/host-create/operations/HCO-*/started.json|terminal.json`：每次 invocation 的 config/invocation hash、动作、状态前后、耗时、pending request、结果引用和恢复动作。
+
+Session 可版本化更新但不能改变 `session_id` 或 `created_at`；`intent_revision` 只在显式 Brief/Source revision 时递增。普通参数省略复用 Session，显式冲突不能修改 Project State、Brief、Source、Evidence 或 planning artifacts。Stage revision 在 owning artifact 提交后立即更新 Session、清除 pending revision/request，再继续 dependents；pending revision 不能与 Render 合并。Operation started/terminal 使用 immutable create-if-absent 文件；每个 attempt 只能有一个终态，后续持锁调用会把中断的 started fact 关闭为 failed。
+
+这些事实不进入 Artifact Runtime catalog，不满足 G0–G9，也不替代 M2/M3 Application Report、Planning Review、Render Manifest 或 Host Candidate Receipt。`rework_required` 的 terminal fact 必须引用真实 Planning Review，并携带 earliest phase 与具体 `PRI-*` issue IDs。详细决策见 ADR-0033。
+
 ### 4.9 Asset Manifest
 
 回答：图片、图标、字体、图表和模板资产从哪里来、能否使用。

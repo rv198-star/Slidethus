@@ -124,19 +124,8 @@
           },
           "revision_note": {"type": "string"},
           "layout_family": {
-            "enum": [
-              "hero",
-              "split",
-              "process",
-              "timeline",
-              "matrix",
-              "architecture",
-              "chart-story",
-              "case",
-              "full-bleed",
-              "bento",
-              "custom"
-            ]
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
           },
           "reading_order": {
             "type": "array",

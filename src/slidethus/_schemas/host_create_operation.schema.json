@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/host-create-operation.schema.json",
+  "title": "Host Create Operation Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "session_id",
+    "attempt_id",
+    "event_kind",
+    "status",
+    "action",
+    "occurred_at",
+    "started_at",
+    "finished_at",
+    "duration_ms",
+    "config_hash",
+    "resulting_config_hash",
+    "invocation_hash",
+    "state_before",
+    "state_after",
+    "pending_request",
+    "result"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "session_id": {"type": "string", "pattern": "^HCS-[A-F0-9]{16}$"},
+    "attempt_id": {"type": "string", "pattern": "^HCO-[A-F0-9]{16}$"},
+    "event_kind": {"enum": ["started", "terminal"]},
+    "status": {
+      "enum": [
+        "started",
+        "host_input_required",
+        "rework_required",
+        "blocked",
+        "failed",
+        "design_ready",
+        "candidate_office_review_pending",
+        "render_failed",
+        "render_timed_out"
+      ]
+    },
+    "action": {
+      "enum": ["start", "resume", "revise_stage", "revise_brief", "revise_sources", "render"]
+    },
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "started_at": {"type": "string", "format": "date-time"},
+    "finished_at": {"type": ["string", "null"], "format": "date-time"},
+    "duration_ms": {"type": ["integer", "null"], "minimum": 0},
+    "config_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "resulting_config_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "invocation_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "state_before": {"$ref": "#/$defs/stateRef"},
+    "state_after": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/stateRef"}]
+    },
+    "pending_request": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/pendingRequest"}]
+    },
+    "result": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/result"}]
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"event_kind": {"const": "started"}}},
+      "then": {
+        "properties": {
+          "status": {"const": "started"},
+          "finished_at": {"type": "null"},
+          "duration_ms": {"type": "null"},
+          "resulting_config_hash": {"type": "null"},
+          "state_after": {"type": "null"},
+          "pending_request": {"type": "null"},
+          "result": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"event_kind": {"const": "terminal"}}},
+      "then": {
+        "properties": {
+          "status": {
+            "enum": [
+              "host_input_required",
+              "rework_required",
+              "blocked",
+              "failed",
+              "design_ready",
+              "candidate_office_review_pending",
+              "render_failed",
+              "render_timed_out"
+            ]
+          },
+          "finished_at": {"type": "string", "format": "date-time"},
+          "duration_ms": {"type": "integer", "minimum": 0},
+          "resulting_config_hash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "state_after": {"$ref": "#/$defs/stateRef"},
+          "result": {"$ref": "#/$defs/result"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "host_input_required"}}},
+      "then": {"properties": {"pending_request": {"$ref": "#/$defs/pendingRequest"}}}
+    }
+  ],
+  "$defs": {
+    "stateRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "current_phase", "status"],
+      "properties": {
+        "revision": {"type": "integer", "minimum": 1},
+        "current_phase": {
+          "enum": [
+            "CREATED",
+            "BRIEF_READY",
+            "SOURCES_READY",
+            "EVIDENCE_READY",
+            "NARRATIVE_READY",
+            "OUTLINE_READY",
+            "SLIDE_SPECS_READY",
+            "LAYOUT_READY",
+            "VISUAL_SYSTEM_READY",
+            "DRAFT_RENDERED",
+            "REVIEWED",
+            "DELIVERY_READY",
+            "COMPLETED"
+          ]
+        },
+        "status": {"enum": ["active", "blocked", "failed", "cancelled", "completed", "degraded"]}
+      }
+    },
+    "pendingRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "request_hash", "request_path", "response_path"],
+      "properties": {
+        "stage": {
+          "enum": [
+            "narrative_blueprint",
+            "deck_outline",
+            "art_direction_seed",
+            "slide_specs",
+            "layout_plans",
+            "art_direction"
+          ]
+        },
+        "request_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "request_path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "response_path": {"type": "string", "minLength": 1, "maxLength": 4096}
+      }
+    },
+    "fileRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "sha256"],
+      "properties": {
+        "kind": {
+          "enum": ["m2_report", "m3_report", "planning_review", "preflight", "render_receipt", "candidate"]
+        },
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message", "target_phase", "issue_ids", "allowed_next_actions", "refs"],
+      "properties": {
+        "message": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "target_phase": {
+          "type": ["string", "null"],
+          "enum": [null, "P0", "P1", "P2", "P3", "P4", "P5A", "P5B", "P6", "P7"]
+        },
+        "issue_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 128}
+        },
+        "allowed_next_actions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "resume",
+              "submit_host_response",
+              "revise_brief",
+              "revise_sources",
+              "revise_stage",
+              "inspect_report",
+              "repair_capability",
+              "render",
+              "review_candidate"
+            ]
+          }
+        },
+        "refs": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/fileRef"}
+        }
+      }
+    }
+  }
+}

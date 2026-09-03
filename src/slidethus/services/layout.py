@@ -23,6 +23,7 @@ from slidethus.planning_limits import (
     validate_planning_limits,
 )
 from slidethus.planning_lineage import (
+    accepted_gate_current,
     build_planning_lineage,
     planning_artifact_reusable,
     reuse_semantically_current_lineage,
@@ -210,7 +211,7 @@ class LayoutPlanningService:
             )
             if not family:
                 family = str(suggested[0]) if suggested else "custom"
-            if family not in set(suggested) and family != "custom":
+            if family not in set(suggested):
                 raise LayoutPlanningError(
                     f"Layout provider selected {family} outside Slide Spec intent for {slide_id}"
                 )
@@ -309,6 +310,10 @@ class LayoutPlanningService:
             and planning_artifact_reusable(
                 existing["data"],
                 graph,
+                artifact_status=str(existing["status"]),
+                gate_current=accepted_gate_current(
+                    self.runtime.show_artifact("project_state"), "G5B"
+                ),
                 required_inputs=("deck_outline", "project_brief", "slide_specs"),
                 provider_name=self.provider_name,
                 provider_version=self.provider_version,

@@ -15,6 +15,7 @@ from slidethus.errors import (
 from slidethus.gates import evaluate_gate
 from slidethus.ingestion import validate_source_parse_limits
 from slidethus.io_utils import atomic_create_json, read_json, sha256_file, sha256_json
+from slidethus.m2_application_reports import m2_report_reference_errors
 from slidethus.m3_application_reports import (
     m3_finding_id,
     m3_report_file_key,
@@ -383,6 +384,108 @@ class M3ApplicationService:
             "status": str(result.report["status"]),
         }
 
+    def _reusable_m2_report(
+        self,
+        reference: dict[str, Any] | None,
+        *,
+        stage: str,
+        requested_sources: list[dict[str, Any]],
+        limits: M2ApplicationLimits,
+        allow_research_degraded: bool,
+        approve_external_disclosure: bool,
+        allow_high_risk_source_evidence: bool,
+    ) -> dict[str, Any] | None:
+        """Return an exact current M2 fact; historical validity alone is insufficient."""
+
+        if not isinstance(reference, dict) or stage not in {"orientation", "targeted"}:
+            return None
+        relative = Path(str(reference.get("path", "")))
+        if relative.is_absolute() or ".." in relative.parts:
+            return None
+        path = (self.workspace / relative).resolve()
+        report_root = (self.workspace / ".slidethus/m2/runs").resolve()
+        if path.parent != report_root or not path.is_file():
+            return None
+        if sha256_file(path) != reference.get("sha256"):
+            return None
+        if m2_report_reference_errors(self.workspace, path, self.schemas.schema_dir):
+            return None
+        report = read_json(path)
+        if (
+            report.get("report_id") != reference.get("report_id")
+            or report.get("status") != reference.get("status")
+            or report.get("status") not in {"ready", "degraded"}
+        ):
+            return None
+        targeted = stage == "targeted"
+        expected_config = {
+            "limits": asdict(limits),
+            "allow_research_degraded": allow_research_degraded,
+            "approve_external_disclosure": approve_external_disclosure,
+            "allow_high_risk_source_evidence": allow_high_risk_source_evidence,
+            "advance_existing_planning": targeted,
+            "provider": self.research_provider_identity,
+        }
+        inputs = report.get("inputs", {})
+        if inputs.get("config") != expected_config:
+            return None
+        expected_sources = [] if targeted else requested_sources
+        if inputs.get("requested_sources") != expected_sources:
+            return None
+
+        state = self.runtime.show_artifact("project_state")
+        phase = Phase(str(state["current_phase"]))
+        minimum = Phase.SLIDE_SPECS_READY if targeted else Phase.EVIDENCE_READY
+        if _phase_index(phase) < _phase_index(minimum):
+            return None
+        required_gates = ("G2", "G4", "G5A") if targeted else ("G2",)
+        if any(self._current_gate_summary(gate_id) is None for gate_id in required_gates):
+            return None
+        required_types = {"project_brief", "source_ledger", "evidence_ledger"}
+        if targeted:
+            required_types.update({"deck_outline", "slide_specs"})
+        refs = {
+            str(item.get("artifact_type")): item
+            for item in report.get("outputs", {}).get("artifact_refs", [])
+        }
+        current = {
+            str(item.get("artifact_type")): item
+            for item in state.get("artifacts", [])
+        }
+        for artifact_type in required_types:
+            ref = refs.get(artifact_type)
+            entry = current.get(artifact_type)
+            if ref is None or entry is None:
+                return None
+            exact = (
+                int(entry.get("version", 0)) == int(ref.get("version", -1))
+                and entry.get("content_hash") == ref.get("content_hash")
+            )
+            if exact:
+                continue
+            if artifact_type != "evidence_ledger":
+                return None
+            prior_version = int(ref.get("version", 0))
+            current_version = int(entry.get("version", 0))
+            if prior_version == current_version:
+                prior_path = self.workspace / str(entry["path"])
+            elif 1 <= prior_version < current_version:
+                prior_path = (
+                    self.workspace
+                    / ".slidethus/history/evidence_ledger"
+                    / f"{prior_version:06d}.json"
+                )
+            else:
+                return None
+            current_path = self.workspace / str(entry["path"])
+            if not prior_path.is_file() or not current_path.is_file():
+                return None
+            if sha256_json(read_json(prior_path).get("claims", [])) != sha256_json(
+                read_json(current_path).get("claims", [])
+            ):
+                return None
+        return report
+
     def _review_ref(self, result: Any) -> dict[str, Any]:
         summary = result.report["summary"]
         return {
@@ -611,6 +714,7 @@ class M3ApplicationService:
         allow_high_risk_source_evidence: bool = False,
         auto_repair: bool = True,
         max_repair_passes: int = 2,
+        reusable_m2_reports: dict[str, dict[str, Any] | None] | None = None,
     ) -> M3ApplicationRunResult:
         """Run/resume M3 from Brief completion through reviewed Layout Plans."""
 
@@ -812,65 +916,96 @@ class M3ApplicationService:
                 planning_level="P0",
             )
 
-        try:
-            orientation = M2ApplicationService(
-                self.workspace,
-                research_provider=self.research_provider,
-            ).run(
-                source_paths,
-                limits=admitted_m2_limits,
-                allow_research_degraded=allow_research_degraded,
-                approve_external_disclosure=approve_external_disclosure,
-                allow_high_risk_source_evidence=allow_high_risk_source_evidence,
-                advance_existing_planning=False,
+        reusable_orientation_ref = (reusable_m2_reports or {}).get("orientation")
+        orientation_report = self._reusable_m2_report(
+            reusable_orientation_ref,
+            stage="orientation",
+            requested_sources=requested_sources,
+            limits=admitted_m2_limits,
+            allow_research_degraded=allow_research_degraded,
+            approve_external_disclosure=approve_external_disclosure,
+            allow_high_risk_source_evidence=allow_high_risk_source_evidence,
+        )
+        if orientation_report is not None:
+            m2_reports.append(copy.deepcopy(reusable_orientation_ref))
+            requested_sources = list(
+                orientation_report["inputs"]["requested_sources"]
             )
-        except SlidethusError as exc:
             self._add_action(
                 actions,
                 stage="m2_orientation",
-                status="failed",
-                detail=str(exc),
+                status="complete",
+                detail=(
+                    "Reused the exact current M2 orientation report bound to "
+                    "the current Brief/Source/Evidence facts."
+                ),
+                refs=(str(orientation_report["report_id"]),),
             )
-            self._add_finding(
-                blockers,
-                kind="blocker",
-                code="m2_orientation_failed",
-                message=str(exc),
+        else:
+            try:
+                orientation = M2ApplicationService(
+                    self.workspace,
+                    research_provider=self.research_provider,
+                ).run(
+                    source_paths,
+                    limits=admitted_m2_limits,
+                    allow_research_degraded=allow_research_degraded,
+                    approve_external_disclosure=approve_external_disclosure,
+                    allow_high_risk_source_evidence=allow_high_risk_source_evidence,
+                    advance_existing_planning=False,
+                )
+            except SlidethusError as exc:
+                self._add_action(
+                    actions,
+                    stage="m2_orientation",
+                    status="failed",
+                    detail=str(exc),
+                )
+                self._add_finding(
+                    blockers,
+                    kind="blocker",
+                    code="m2_orientation_failed",
+                    message=str(exc),
+                )
+                return self._finalize(
+                    initial_brief_ref=initial_brief_ref,
+                    requested_sources=requested_sources,
+                    config=config,
+                    actions=actions,
+                    blockers=blockers,
+                    warnings=warnings,
+                    m2_reports=m2_reports,
+                    planning_review=None,
+                    planning_repairs=repair_refs,
+                    status="failed",
+                )
+            orientation_report = orientation.report
+            m2_reports.append(self._m2_ref(orientation))
+            requested_sources = list(
+                orientation_report["inputs"]["requested_sources"]
             )
-            return self._finalize(
-                initial_brief_ref=initial_brief_ref,
-                requested_sources=requested_sources,
-                config=config,
-                actions=actions,
-                blockers=blockers,
-                warnings=warnings,
-                m2_reports=m2_reports,
-                planning_review=None,
-                planning_repairs=repair_refs,
-                status="failed",
+            self._add_action(
+                actions,
+                stage="m2_orientation",
+                status=(
+                    "complete"
+                    if orientation_report["status"] in {"ready", "degraded"}
+                    else "blocked"
+                ),
+                detail=(
+                    "M2 orientation completed with "
+                    f"status={orientation_report['status']}."
+                ),
+                refs=(str(orientation_report["report_id"]),),
             )
-        m2_reports.append(self._m2_ref(orientation))
-        requested_sources = list(orientation.report["inputs"]["requested_sources"])
-        self._add_action(
-            actions,
-            stage="m2_orientation",
-            status=(
-                "complete"
-                if orientation.report["status"] in {"ready", "degraded"}
-                else "blocked"
-            ),
-            detail=(
-                f"M2 orientation completed with status={orientation.report['status']}."
-            ),
-            refs=(orientation.report["report_id"],),
-        )
-        if orientation.report["status"] not in {"ready", "degraded"}:
+        if orientation_report["status"] not in {"ready", "degraded"}:
             self._add_finding(
                 blockers,
                 kind="blocker",
                 code="m2_orientation_not_ready",
                 message=(
-                    f"M2 orientation cannot support planning: {orientation.report['status']}"
+                    "M2 orientation cannot support planning: "
+                    f"{orientation_report['status']}"
                 ),
             )
             return self._finalize(
@@ -886,7 +1021,7 @@ class M3ApplicationService:
                 status="blocked",
                 planning_level="P2",
             )
-        if orientation.report["status"] == "degraded":
+        if orientation_report["status"] == "degraded":
             self._add_finding(
                 warnings,
                 kind="warning",
@@ -973,60 +1108,90 @@ class M3ApplicationService:
                 status="failed",
             )
 
-        try:
-            targeted = M2ApplicationService(
-                self.workspace,
-                research_provider=self.research_provider,
-            ).run(
-                (),
-                limits=admitted_m2_limits,
-                allow_research_degraded=allow_research_degraded,
-                approve_external_disclosure=approve_external_disclosure,
-                allow_high_risk_source_evidence=allow_high_risk_source_evidence,
-                advance_existing_planning=True,
-            )
-        except SlidethusError as exc:
+        reusable_targeted_ref = (reusable_m2_reports or {}).get("targeted")
+        targeted_report = self._reusable_m2_report(
+            reusable_targeted_ref,
+            stage="targeted",
+            requested_sources=requested_sources,
+            limits=admitted_m2_limits,
+            allow_research_degraded=allow_research_degraded,
+            approve_external_disclosure=approve_external_disclosure,
+            allow_high_risk_source_evidence=allow_high_risk_source_evidence,
+        )
+        if targeted_report is not None:
+            m2_reports.append(copy.deepcopy(reusable_targeted_ref))
             self._add_action(
                 actions,
                 stage="m2_targeted",
-                status="failed",
-                detail=str(exc),
+                status="complete",
+                detail=(
+                    "Reused the exact current targeted M2 report bound to the "
+                    "current Outline/Slide Specs/Evidence facts."
+                ),
+                refs=(str(targeted_report["report_id"]),),
             )
-            self._add_finding(
-                blockers,
-                kind="blocker",
-                code="m2_targeted_failed",
-                message=str(exc),
+        else:
+            try:
+                targeted = M2ApplicationService(
+                    self.workspace,
+                    research_provider=self.research_provider,
+                ).run(
+                    (),
+                    limits=admitted_m2_limits,
+                    allow_research_degraded=allow_research_degraded,
+                    approve_external_disclosure=approve_external_disclosure,
+                    allow_high_risk_source_evidence=allow_high_risk_source_evidence,
+                    advance_existing_planning=True,
+                )
+            except SlidethusError as exc:
+                self._add_action(
+                    actions,
+                    stage="m2_targeted",
+                    status="failed",
+                    detail=str(exc),
+                )
+                self._add_finding(
+                    blockers,
+                    kind="blocker",
+                    code="m2_targeted_failed",
+                    message=str(exc),
+                )
+                return self._finalize(
+                    initial_brief_ref=initial_brief_ref,
+                    requested_sources=requested_sources,
+                    config=config,
+                    actions=actions,
+                    blockers=blockers,
+                    warnings=warnings,
+                    m2_reports=m2_reports,
+                    planning_review=None,
+                    planning_repairs=repair_refs,
+                    status="failed",
+                )
+            targeted_report = targeted.report
+            m2_reports.append(self._m2_ref(targeted))
+            self._add_action(
+                actions,
+                stage="m2_targeted",
+                status=(
+                    "complete"
+                    if targeted_report["status"] in {"ready", "degraded"}
+                    else "blocked"
+                ),
+                detail=(
+                    "M2 targeted Evidence integration ended with "
+                    f"status={targeted_report['status']}."
+                ),
+                refs=(str(targeted_report["report_id"]),),
             )
-            return self._finalize(
-                initial_brief_ref=initial_brief_ref,
-                requested_sources=requested_sources,
-                config=config,
-                actions=actions,
-                blockers=blockers,
-                warnings=warnings,
-                m2_reports=m2_reports,
-                planning_review=None,
-                planning_repairs=repair_refs,
-                status="failed",
-            )
-        m2_reports.append(self._m2_ref(targeted))
-        self._add_action(
-            actions,
-            stage="m2_targeted",
-            status=(
-                "complete" if targeted.report["status"] in {"ready", "degraded"} else "blocked"
-            ),
-            detail=f"M2 targeted Evidence integration ended with status={targeted.report['status']}.",
-            refs=(targeted.report["report_id"],),
-        )
-        if targeted.report["status"] not in {"ready", "degraded"}:
+        if targeted_report["status"] not in {"ready", "degraded"}:
             self._add_finding(
                 blockers,
                 kind="blocker",
                 code="m2_targeted_not_ready",
                 message=(
-                    f"Targeted Evidence integration requires rework: {targeted.report['status']}"
+                    "Targeted Evidence integration requires rework: "
+                    f"{targeted_report['status']}"
                 ),
             )
             return self._finalize(
@@ -1041,7 +1206,7 @@ class M3ApplicationService:
                 planning_repairs=repair_refs,
                 status=(
                     "rework_required"
-                    if targeted.report["status"] == "rework_required"
+                    if targeted_report["status"] == "rework_required"
                     else "blocked"
                 ),
             )

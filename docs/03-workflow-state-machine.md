@@ -156,6 +156,26 @@ M3 将策划返工拆成两类：
 
 上游写入、阶段/Gate 回滚与下游 `draft` 标记属于同一 journaled graph transaction。`draft` 下游保留自身 Schema/hash/registry 约束，但其过时的跨 artifact 引用只形成 warning；重建并批准时恢复 error 级约束。Host Create 还允许直接修订 `ArtDirectionSeed`，请求显式绑定被替代的 Seed，不再通过扰动 Outline 间接触发。
 
+### 5.1 Host Create 会话、续跑与显式修订
+
+一次 designed Create 的初始输入写入 schema-backed Session。首次命令可携带 title、Sources 和 request；之后普通续跑只需：
+
+```bash
+slidethus create <workspace>
+```
+
+省略表示复用，显式差异不表示“新的补充说明”。若普通续跑传入不同 request、Source、limit 或 provider identity，调用会在生产 artifact mutation 前失败，并提示使用下列明确事务：
+
+- `--revise-brief --request ...`：修改 Brief intent，重新进入 P0 owner；
+- `--revise-sources --source ...`：显式新增或更新 canonical Sources，重新进入 P1/P2；
+- `--revise-stage ...`：只修改指定 planning owner，原子失效正确 dependents，并可跨进程继续同一 revision；其他 Host request 未回答或该 revision 未完成时不得开始另一 revision/Render。
+
+每个 planning revision request 都绑定被替代 artifact 的 version/content hash；旧 response 不能因为 stage 名相同而再次生效。Owning artifact 一旦提交，Session 立即清除 pending revision/request，再继续下游重建；后续失败不会重复提交同一修订。Source omission 不执行删除。
+
+Resume 只能复用已被 current Gate 重新认可的 artifact。正文仍存在、Schema 通过或历史报告有效都不足以跳过阶段；必须同时满足 current Phase、accepted Gate、registry version/hash、provider/policy 和 upstream lineage。Targeted M2 report 还必须绑定 current Outline/Slide Specs。
+
+每次 Create invocation 都先写 started operation，再闭合为一个 terminal operation。Planning Review 的 `rework_required` 必须直接返回 earliest target phase、Review path、具体 `PRI-*` issues 和允许的下一动作。Renderer attempt 仍由独立 candidate receipt 负责，二者不互相冒充。
+
 ## 6. 局部重生成
 
 每个 slide 和 block 都有稳定 ID。局部修改流程：

@@ -7,9 +7,10 @@ import pytest
 from slidethus.artifact_runtime import ArtifactRuntime
 from slidethus.errors import ArtifactConflictError, LayoutPlanningError
 from slidethus.gates import evaluate_gate
-from slidethus.layout_geometry import build_layout_plan
+from slidethus.layout_geometry import admit_authored_layout, build_layout_plan
 from slidethus.planning_provider import DeterministicPlanningProvider
 from slidethus.protocols import BriefCompletionHints, PlanningProposal
+from slidethus.schema_registry import SchemaRegistry
 from slidethus.services.brief_completion import BriefCompletionService
 from slidethus.services.evidence_binding import EvidenceBindingService
 from slidethus.services.layout import LayoutPlanningService
@@ -134,6 +135,111 @@ def test_layout_provider_cannot_override_declared_family_with_unrelated_choice(
             workspace,
             provider=WrongFamilyProvider(),
         ).generate()
+
+
+def test_authored_layout_accepts_provider_neutral_semantic_family() -> None:
+    slide = {
+        "slide_id": "S-001",
+        "density_budget": {"min_body_pt": 18},
+        "content_blocks": [
+            {
+                "block_id": "BLK-S001-01",
+                "semantic_role": "headline",
+                "content_type": "text",
+                "content": "Decision headline",
+                "content_hash": "sha256:" + "a" * 64,
+            },
+            {
+                "block_id": "BLK-S001-02",
+                "semantic_role": "evidence",
+                "content_type": "text",
+                "content": "Evidence support",
+                "content_hash": "sha256:" + "b" * 64,
+            },
+        ],
+    }
+    plan = admit_authored_layout(
+        slide,
+        {
+            "slide_id": "S-001",
+            "layout_family": "editorial-ledger",
+            "rationale": "The semantic family describes an editorial evidence relationship.",
+            "regions": [
+                {
+                    "block_id": "BLK-S001-01",
+                    "x": 80,
+                    "y": 60,
+                    "w": 1120,
+                    "h": 140,
+                    "z": 0,
+                    "align": "left",
+                    "valign": "top",
+                    "overflow_strategy": "fail",
+                },
+                {
+                    "block_id": "BLK-S001-02",
+                    "x": 80,
+                    "y": 224,
+                    "w": 1120,
+                    "h": 416,
+                    "z": 1,
+                    "align": "left",
+                    "valign": "top",
+                    "overflow_strategy": "fail",
+                },
+            ],
+        },
+    )
+    payload = {
+        "schema_version": "0.1.0",
+        "project_id": "LAYOUT_TEST",
+        "deck_id": "DECK-LAYOUT_TEST",
+        "canvas": {"width": 1280, "height": 720},
+        "safe_area": {"top": 60, "right": 80, "bottom": 60, "left": 80},
+        "plans": [plan],
+    }
+
+    assert plan["layout_family"] == "editorial-ledger"
+    assert list(SchemaRegistry().validator("layout_plans").iter_errors(payload)) == []
+
+
+def test_authored_layout_rejects_unbounded_family_name() -> None:
+    slide = {
+        "slide_id": "S-001",
+        "density_budget": {"min_body_pt": 18},
+        "content_blocks": [
+            {
+                "block_id": "BLK-S001-01",
+                "semantic_role": "headline",
+                "content_type": "text",
+                "content": "Decision headline",
+                "content_hash": "sha256:" + "a" * 64,
+            }
+        ],
+    }
+
+    with pytest.raises(LayoutPlanningError, match="bounded semantic name"):
+        admit_authored_layout(
+            slide,
+            {
+                "slide_id": "S-001",
+                "layout_family": "Editorial Ledger / custom",
+                "rationale": "Invalid semantic family syntax.",
+                "regions": [
+                    {
+                        "block_id": "BLK-S001-01",
+                        "x": 80,
+                        "y": 60,
+                        "w": 1120,
+                        "h": 580,
+                        "z": 0,
+                        "align": "left",
+                        "valign": "top",
+                        "overflow_strategy": "fail",
+                    }
+                ],
+            },
+        )
 
 
 def test_high_cardinality_process_preserves_ordered_topology_and_setup_space() -> None:

@@ -349,6 +349,8 @@ M3ApplicationService
 
 Designed Host Create 在 P5A 前先冻结 `.slidethus/art-direction/seeds/<sha256>.json` 的 `ArtDirectionSeed`。Seed 不拥有文案、证据或 Region，只记录视觉载体、表面节奏、图片处理和原生样板出处；required carrier 必须由 Specs/Layouts 正式兑现。Host Seed/Specs 请求同时携带所选 backend 的可验证能力合同；`diagram` 可由归一化 nodes/edges 生成可编辑形状，也可显式绑定一个 PNG/JPEG，不再等同于位图。Seed 可通过独立 revise 路径变更载体。P6 的 `ArtDirectionProvider` 再提交受限视觉方向 proposal。确定性核心将其绑定 Brief、Outline、Slide Specs、Layout Plans、Asset Manifest 和同一 Seed，校验后冻结为 `.slidethus/art-direction/packets/<sha256>.json`。Visual System 引用 Packet；renderer 不感知 provider。默认 adapter 使用随包分发、固定 commit 与 MIT provenance 的 Taste Skill，但只能标为 Taste-informed；只有带 workspace-local hash-bound 原生样板的 Host Seed 才是 Taste-generated。详见 ADR-0028、ADR-0031、ADR-0032。
 
+Host Create 的跨调用任务身份由 `.slidethus/host-create/session.json` 单独持久化。Session 冻结初始 Source 指纹、Brief hints、limits、policy flags 与 provider identity；普通调用省略这些参数即表示继续同一任务，显式差异必须走 Brief、Source 或 stage revision。每次调用在 `.slidethus/host-create/operations/HCO-*` 下形成 started/terminal 事实，规划阶段的 `host_input_required`、`rework_required` 和失败也可追溯。Session 与 operation 都是 supporting runtime facts，不进入 catalog、不推进 Gate，也不替代 M3/M4 报告。Planning/M2 复用同时校验 current Phase、accepted Gate、version/hash、provider 和相关 artifact lineage，而不是根据文件存在性猜测完成状态。详见 ADR-0033。
+
 ### 7.7 M5 Independent Review / Repair 边界
 
 ```text

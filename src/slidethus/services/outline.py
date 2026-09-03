@@ -13,6 +13,7 @@ from slidethus.planning_limits import (
     validate_planning_limits,
 )
 from slidethus.planning_lineage import (
+    accepted_gate_current,
     build_planning_lineage,
     planning_artifact_reusable,
     reuse_semantically_current_lineage,
@@ -395,6 +396,10 @@ class OutlinePlanningService:
             and planning_artifact_reusable(
                 existing["data"],
                 graph,
+                artifact_status=str(existing["status"]),
+                gate_current=accepted_gate_current(
+                    self.runtime.show_artifact("project_state"), "G4"
+                ),
                 required_inputs=(
                     "evidence_ledger",
                     "narrative_blueprint",

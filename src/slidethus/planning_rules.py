@@ -144,7 +144,7 @@ def layout_gate_reasons(
         ) != slide_spec_content_hash(spec):
             reasons.append(f"Layout Plan {slide_id} has stale Slide Spec binding")
         families = set(spec.get("visual_intent", {}).get("suggested_layout_families", []))
-        if plan.get("layout_family") not in families and plan.get("layout_family") != "custom":
+        if plan.get("layout_family") not in families:
             reasons.append(f"Layout Plan {slide_id} ignores declared layout-family intent")
         blocks = {str(item["block_id"]): item for item in spec.get("content_blocks", [])}
         regions = list(plan.get("regions", []))

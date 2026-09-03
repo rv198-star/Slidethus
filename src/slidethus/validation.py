@@ -15,6 +15,7 @@ from slidethus.errors import WorkspaceError
 from slidethus.evidence_gaps import evidence_gap_workspace_errors
 from slidethus.evidence_identity import candidate_id_for, claim_key, conflict_group_id
 from slidethus.gate_contracts import GATE_REQUIRED_PATHS
+from slidethus.host_create_records import host_create_workspace_errors
 from slidethus.io_utils import ensure_within, read_json, sha256_file, sha256_json
 from slidethus.m2_application_reports import m2_application_workspace_errors
 from slidethus.m3_application_reports import m3_application_workspace_errors
@@ -183,6 +184,8 @@ def validate_workspace(workspace: Path, registry: SchemaRegistry | None = None, 
         report.add("invalid_m2_application_report", message, path)
     for path, message in m3_application_workspace_errors(workspace, registry.schema_dir):
         report.add("invalid_m3_application_report", message, path)
+    for path, message in host_create_workspace_errors(workspace, registry.schema_dir):
+        report.add("invalid_host_create_record", message, path)
     for path, message in m4_application_workspace_errors(workspace, registry.schema_dir):
         report.add("invalid_m4_application_report", message, path)
     for path, message in m5_application_workspace_errors(workspace, registry.schema_dir):

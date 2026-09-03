@@ -194,6 +194,18 @@ class WorkflowApplicationError(WorkflowError):
     """Raised when a workflow request/report is unsafe or inconsistent."""
 
 
+class HostCreateError(WorkflowError):
+    """Raised when the host-led Create transaction cannot continue safely."""
+
+
+class HostCreateConflictError(HostCreateError):
+    """Raised before artifact mutation when an invocation conflicts with its session."""
+
+
+class HostCreateRecordError(HostCreateError):
+    """Raised when persisted Host Create session or operation facts are invalid."""
+
+
 class SchemaError(SlidethusError):
     """Raised when a schema registry cannot be loaded."""
 

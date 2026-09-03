@@ -113,10 +113,20 @@ def _parser() -> argparse.ArgumentParser:
     create = sub.add_parser("create", help="host-led design entry; missing decisions pause, never fall back")
     create.add_argument("workspace", type=Path)
     create.add_argument("--source", action="append", dest="sources", type=Path)
-    create.add_argument("--title", default="Slidethus Create")
-    create.add_argument("--request", default="")
+    create.add_argument("--title")
+    create.add_argument("--request")
     create.add_argument("--render", action="store_true", help="export a candidate, not release approval")
     create.add_argument("--slide-id", action="append", dest="slide_ids", help="sample from the same full-deck IR")
+    create.add_argument(
+        "--revise-brief",
+        action="store_true",
+        help="explicitly replace persisted Brief hints; requires --request",
+    )
+    create.add_argument(
+        "--revise-sources",
+        action="store_true",
+        help="explicitly add or update canonical Sources; requires --source",
+    )
     create.add_argument(
         "--revise-stage",
         choices=[
@@ -617,9 +627,22 @@ def main(argv: list[str] | None = None) -> int:
             result = HostCreateService(
                 args.workspace, node=args.node, modules=args.node_modules, font_match=args.font_match,
             ).run(
-                tuple(args.sources or ()), title=args.title,
-                hints=BriefCompletionHints(request_text=args.request) if args.request else None,
-                render=args.render, slide_ids=tuple(args.slide_ids or ()), revise_stage=args.revise_stage,
+                (
+                    tuple(args.sources)
+                    if args.sources is not None
+                    else None
+                ),
+                title=args.title,
+                hints=(
+                    BriefCompletionHints(request_text=args.request)
+                    if args.request is not None
+                    else None
+                ),
+                render=args.render,
+                slide_ids=tuple(args.slide_ids or ()),
+                revise_stage=args.revise_stage,
+                revise_brief=args.revise_brief,
+                revise_sources=args.revise_sources,
             )
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0 if result["status"] in {"design_ready", "candidate_office_review_pending"} else 1

@@ -828,6 +828,7 @@ class DeterministicPlanningProvider:
                 "headline": _shorten(brief["title"], 80),
                 "takeaway": _cover_takeaway(brief, narrative),
                 "purpose": "建立主题、核心主张和受众预期。",
+                "audience_question": "这份演示要帮助我们形成什么判断？",
                 "evidence_ids": [],
                 "evidence_requirement": "none",
             }

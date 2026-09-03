@@ -94,10 +94,41 @@ def build_planning_lineage(
     return lineage
 
 
+def accepted_gate_current(state: dict[str, Any], gate_id: str) -> bool:
+    """Return whether an accepted Gate still binds the current registry versions."""
+
+    summary = next(
+        (
+            item
+            for item in state.get("completed_gates", [])
+            if item.get("gate_id") == gate_id
+            and item.get("status") in {"pass", "waived"}
+        ),
+        None,
+    )
+    if summary is None:
+        return False
+    entries = {
+        str(item.get("artifact_type")): item
+        for item in state.get("artifacts", [])
+    }
+    for reference in summary.get("artifact_versions", []):
+        entry = entries.get(str(reference.get("artifact_type")))
+        if entry is None:
+            return False
+        if int(entry.get("version", 0)) != int(reference.get("version", -1)):
+            return False
+        if entry.get("sha256") != reference.get("sha256"):
+            return False
+    return True
+
+
 def planning_artifact_reusable(
     artifact: dict[str, Any] | None,
     graph: dict[str, dict[str, Any]],
     *,
+    artifact_status: str,
+    gate_current: bool,
     required_inputs: tuple[str, ...],
     provider_name: str,
     provider_version: str,
@@ -106,7 +137,14 @@ def planning_artifact_reusable(
 ) -> bool:
     """Return whether one approved/frozen planning artifact can be reused as current."""
 
-    if artifact is None or artifact.get("status") != "approved":
+    if (
+        artifact is None
+        or artifact.get("status") != "approved"
+        or (
+            artifact_status not in {"approved", "frozen"}
+            and not gate_current
+        )
+    ):
         return False
     lineage = artifact.get("planning_lineage")
     if not isinstance(lineage, dict):

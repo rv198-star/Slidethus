@@ -106,6 +106,80 @@ def test_outline_review_rejects_truncated_fragment_headline() -> None:
     assert "headline_contains_truncation_marker" in {item["code"] for item in issues}
 
 
+def _rhythm_fixture(*, same_geometry: bool) -> tuple[dict, dict]:
+    plans = []
+    specs = []
+    relationships = ["sequence", "comparison", "hierarchy", "evidence", "decision"]
+    for index, relationship in enumerate(relationships, start=1):
+        slide_id = f"S-{index:03d}"
+        body_y = 230 if same_geometry else 180 + index * 72
+        body_x = 120 if same_geometry else 40 + index * 120
+        body_w = 1040 if same_geometry else 1200 - index * 120
+        plans.append(
+            {
+                "slide_id": slide_id,
+                "layout_family": (
+                    f"semantic-{index}" if same_geometry else "editorial-ledger"
+                ),
+                "regions": [
+                    {
+                        "region_id": f"REG-S{index:03d}-01",
+                        "role": "headline",
+                        "x": 80,
+                        "y": 60,
+                        "w": 1120,
+                        "h": 120,
+                    },
+                    {
+                        "region_id": f"REG-S{index:03d}-02",
+                        "role": "body",
+                        "x": body_x,
+                        "y": body_y,
+                        "w": body_w,
+                        "h": 300,
+                    },
+                ],
+                "diagnostics": {"content_units": 10, "capacity_units": 100},
+            }
+        )
+        specs.append(
+            {
+                "slide_id": slide_id,
+                "slide_type": "evidence",
+                "visual_intent": {"relationship": relationship},
+            }
+        )
+    return {"plans": plans}, {"slides": specs}
+
+
+def test_layout_rhythm_uses_geometry_not_shared_semantic_family() -> None:
+    layout, specs = _rhythm_fixture(same_geometry=False)
+
+    issues = PlanningReviewService._layout_issues(
+        object.__new__(PlanningReviewService),
+        layout,
+        specs,
+    )
+
+    codes = {item["code"] for item in issues}
+    assert "repetitive_layout_rhythm" not in codes
+    assert "layout_relationship_topology_collapse" not in codes
+
+
+def test_layout_rhythm_cannot_be_gamed_by_renaming_identical_geometry() -> None:
+    layout, specs = _rhythm_fixture(same_geometry=True)
+
+    issues = PlanningReviewService._layout_issues(
+        object.__new__(PlanningReviewService),
+        layout,
+        specs,
+    )
+
+    by_code = {item["code"]: item for item in issues}
+    assert by_code["repetitive_layout_rhythm"]["severity"] == "major"
+    assert by_code["layout_relationship_topology_collapse"]["severity"] == "major"
+
+
 def test_review_routes_outline_contract_break_to_p4(tmp_path: Path) -> None:
     workspace = _layout_ready_workspace(tmp_path)
     runtime = ArtifactRuntime(workspace)

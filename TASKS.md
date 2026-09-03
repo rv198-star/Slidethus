@@ -1,5 +1,23 @@
 # Slidethus Build Roadmap
 
+## Issue #3 — Host Create 权威会话与阶段恢复
+
+v0.9.1 发布后的独立冷启动实验暴露：一般 Host-led Create 在多轮 response、拒绝和阶段修订中仍可能重新解释初始请求、复用 stale Gate/M2 事实或无法留下 P7 前的终态证据。当前修复从 `origin/main@b1af33c` 干净重建，不合并两套未提交半成品。
+
+- [x] schema-backed Host Create Session 冻结初始 Source/Brief/limits/provider identity；普通省略参数稳定续跑
+- [x] 显式冲突在 production artifact mutation 前阻断，并形成 create-level terminal fact
+- [x] `--revise-brief`、`--revise-sources`、`--revise-stage` 分离；stage revision 可跨进程继续并绑定 superseded version/hash
+- [x] Planning/M2 reuse 绑定 current Phase、accepted Gate、registry version/hash、provider/policy 和相关 artifact lineage
+- [x] Slide Specs / Layout Plans 使用同一 provider-neutral semantic family；Review 依据 observable geometry 判断节奏
+- [x] Host response 聚合 envelope、字段、枚举、coverage、family、density 和基础 geometry findings
+- [x] `rework_required` 返回 earliest phase、Planning Review、具体 `PRI-*` issues 和 allowed next actions
+- [ ] 以独立全新工作区执行真实 Host Artifact Tool candidate 与 PDF 输出验收
+- [ ] 在真实 Microsoft PowerPoint 中逐页检查 fresh candidate
+
+工程执行计划：`plans/issue-3-authoritative-rebuild.md`。Codex Artifact Tool / PowerPoint 验收计划：`plans/issue-3-codex-powerpoint-acceptance.md`。架构决策：`docs/adr/ADR-0033-host-create-authoritative-session-and-resume.md`。
+
+当前 OCI 未提供 Host Artifact Tool 包，因此自动化与结构恢复可以验收，真实 candidate/Office 结论仍保持 blocker。Issue #3 在这些外部验收完成前保持 Open；M6 Exit 继续 Reopened，v1.0 继续 `DO NOT RELEASE`。
+
 ## v0.9.0 候选发布
 
 44 套设计参考库能力冻结为 Pre-release，暂未完成新案例与真实 PowerPoint 全篇验收。仅做发布收尾，实测待后续真实任务；不新增优化、行业验证或多 Python 审计。范围与待验项见 `plans/v0.9.0-release.md`、`release/v0.9.0.md`，不改变 M6.6 / v1.0 Gate。

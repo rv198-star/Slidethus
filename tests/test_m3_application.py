@@ -13,7 +13,7 @@ from slidethus.errors import (
     PlanningLimitError,
     SourceIngestionError,
 )
-from slidethus.io_utils import sha256_json
+from slidethus.io_utils import read_json, sha256_json
 from slidethus.m3_application_reports import (
     inspect_m3_application_report,
     list_m3_application_reports,
@@ -28,7 +28,7 @@ from slidethus.protocols import (
     PlanningProposal,
     SourceParseLimits,
 )
-from slidethus.services.m2_application import M2ApplicationLimits
+from slidethus.services.m2_application import M2ApplicationLimits, M2ApplicationService
 from slidethus.services.m3_application import (
     M3ApplicationService,
     evaluate_m3_workspace_gate,
@@ -96,6 +96,91 @@ def test_m3_user_material_application_reaches_reviewed_g5b_and_is_idempotent(
         second.report["report_id"],
     }
     assert inspect_m3_application_report(workspace, first.report["report_id"]) == first.report
+
+
+def _m2_report_cache(workspace: Path, result) -> dict[str, dict]:
+    cache: dict[str, dict] = {}
+    for reference in result.report["outputs"]["m2_reports"]:
+        report = read_json(workspace / reference["path"])
+        stage = (
+            "targeted"
+            if report["inputs"]["config"]["advance_existing_planning"]
+            else "orientation"
+        )
+        cache[stage] = reference
+    return cache
+
+
+def test_m3_reuses_only_current_exact_m2_facts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace = init_workspace(tmp_path / "workspace", title="Current M2 reuse")
+    source = _source(tmp_path / "source.md")
+    first = M3ApplicationService(workspace).run((source,), brief_hints=_hints())
+    cache = _m2_report_cache(workspace, first)
+
+    def unexpected_m2_run(*args, **kwargs):
+        del args, kwargs
+        raise AssertionError("Current M2 facts should have been reused")
+
+    monkeypatch.setattr(M2ApplicationService, "run", unexpected_m2_run)
+    resumed = M3ApplicationService(workspace).run(
+        (source,),
+        brief_hints=_hints(),
+        reusable_m2_reports=cache,
+    )
+
+    assert resumed.report["status"] == "ready"
+    actions = {
+        item["stage"]: item["detail"]
+        for item in resumed.report["actions"]
+        if item["stage"] in {"m2_orientation", "m2_targeted"}
+    }
+    assert "Reused" in actions["m2_orientation"]
+    assert "Reused" in actions["m2_targeted"]
+
+
+def test_stale_targeted_m2_fact_is_rejected_after_specs_revision(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace = init_workspace(tmp_path / "workspace", title="Stale M2 rejection")
+    source = _source(tmp_path / "source.md")
+    first = M3ApplicationService(workspace).run((source,), brief_hints=_hints())
+    cache = _m2_report_cache(workspace, first)
+    runtime = ArtifactRuntime(workspace)
+    specs, version = runtime.read_artifact_snapshot("slide_specs")
+    specs["slides"][0]["revision_note"] = "Intentional semantic revision"
+    runtime.write_artifact(
+        "slide_specs",
+        specs,
+        expected_version=version,
+        status="approved",
+        created_by="m2-currentness-test",
+    )
+    original_run = M2ApplicationService.run
+    calls: list[bool] = []
+
+    def tracked_run(self, source_paths=(), **kwargs):
+        calls.append(bool(kwargs.get("advance_existing_planning")))
+        return original_run(self, source_paths, **kwargs)
+
+    monkeypatch.setattr(M2ApplicationService, "run", tracked_run)
+    resumed = M3ApplicationService(workspace).run(
+        (source,),
+        brief_hints=_hints(),
+        reusable_m2_reports=cache,
+    )
+
+    assert resumed.report["status"] == "ready"
+    assert calls == [True]
+    targeted = next(
+        item
+        for item in resumed.report["actions"]
+        if item["stage"] == "m2_targeted"
+    )
+    assert "Reused" not in targeted["detail"]
 
 
 def test_m3_stops_at_p0_when_material_brief_input_is_missing(tmp_path: Path) -> None:

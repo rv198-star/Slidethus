@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import re
 from typing import Any
 
 from jsonschema import Draft202012Validator
@@ -580,8 +581,11 @@ def admit_authored_layout(slide: dict[str, Any], raw: dict[str, Any]) -> dict[st
     """Preserve proposed geometry; derive identities, bindings and capacity ourselves."""
 
     allowed = {"slide_id", "layout_family", "regions", "rationale"}
+    family = str(raw.get("layout_family", "")).strip()
     if set(raw) - allowed or not str(raw.get("rationale", "")).strip():
         raise LayoutPlanningError("Authored layout requires rationale and only declared fields")
+    if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", family) is None:
+        raise LayoutPlanningError("Authored layout_family must be a bounded semantic name")
     blocks = {block["block_id"]: block for block in slide["content_blocks"]}
     rows = raw["regions"]
     if not isinstance(rows, list) or len(rows) != len(blocks):
@@ -617,7 +621,7 @@ def admit_authored_layout(slide: dict[str, Any], raw: dict[str, Any]) -> dict[st
         regions.append(region)
     return {
         "slide_id": slide["slide_id"],
-        "layout_family": raw["layout_family"],
+        "layout_family": family,
         "regions": regions,
         "reading_order": [region["region_id"] for region in regions],
         "rationale": raw["rationale"],

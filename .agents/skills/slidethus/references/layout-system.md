@@ -1,6 +1,6 @@
 # Layout System
 
-Choose layout from information relationships:
+Choose layout from information relationships. Deterministic auto-layout implements the canonical families below; an explicitly authored Host layout may use another bounded semantic family only when the matching Slide Spec declares it and supplies complete Regions:
 
 - `hero`: one dominant statement or visual
 - `split`: two-sided comparison or before/after
@@ -16,7 +16,7 @@ Choose layout from information relationships:
 Rules:
 
 - Bento is not the default.
-- Avoid the same family on three consecutive content slides without rationale.
+- Avoid repeating the same observable geometry topology on three consecutive content slides without semantic justification; renaming a family does not create rhythm.
 - Use one primary visual focus.
 - Use at least 20 logical pixels between independent regions unless the visual system explicitly overrides it.
 - Keep reading order explicit.

@@ -2,7 +2,7 @@
 
 从一个主题到一套有依据、有设计的 PPT。
 
-v0.9.1 是 Host Create 稳定性补丁候选：原失败案例已恢复生成，既有认可案例已完成真实 PowerPoint 无回归验收。
+v0.9.1 是已发布的 Host Create 稳定性补丁：原失败案例恢复生成，既有认可案例完成真实 PowerPoint 无回归验收。随后独立新工作区实验暴露 Issue #3：一般冷启动、多轮 Host response 和阶段修订仍可能失去上下文。当前仓库正在以持久化 Create Session、显式 revision、current Gate/M2 reuse 和 create-level terminal facts 收敛该问题；完成 fresh-case 与真实 PowerPoint 验收前，不声明 Host-led Create 一般生产可用。
 
 ## 小米 YU7 · 产品介绍
 
@@ -45,7 +45,7 @@ slidethus plugin install-skill /absolute/path/to/project
 
 [发布说明与能力边界](release/v0.9.1.md) · [工作流程](docs/03-workflow-state-machine.md) · [架构](docs/02-architecture.md) · [开发路线](TASKS.md)
 
-包版本：`0.9.1` · Stable release · 本轮验证 Python 3.11 · [Apache-2.0](LICENSE)
+包版本：`0.9.1` · 已发布补丁；当前未发布修复仍需 fresh-case 验收 · Python 3.11 · [Apache-2.0](LICENSE)
 
 <details>
 <summary>版本与能力边界</summary>
