@@ -16,6 +16,7 @@ from slidethus.art_direction import TasteSkillArtDirectionProvider
 from slidethus.art_direction_seed import (
     compile_art_direction_seed,
     load_art_direction_seed,
+    validate_seed_reference_for_graph,
 )
 from slidethus.artifact_runtime import ArtifactRuntime
 from slidethus.errors import ArtifactError, PlanningError
@@ -661,6 +662,7 @@ class HostPlanningProvider:
         self.bridge = bridge
         self.art_direction_provider = art_direction_provider
         self._revision_stage: str | None = None
+        self._prepared_art_direction_seed: PreLayoutArtDirection | None = None
 
     def request_revision(self, artifact_type: str) -> None:
         """Bind the next matching proposal request to the superseded artifact."""
@@ -702,9 +704,51 @@ class HostPlanningProvider:
 
         if self.art_direction_provider is None:
             return None
-        graph = ArtifactRuntime(self.bridge.workspace).read_artifact_graph_snapshot(
+        runtime = ArtifactRuntime(self.bridge.workspace)
+        graph = runtime.read_artifact_graph_snapshot(
             ("project_brief", "deck_outline")
         )
+        prepared = self._prepared_art_direction_seed
+        if (
+            prepared is not None
+            and context.get("art_direction_seed") in (None, prepared.seed)
+        ):
+            try:
+                current = validate_seed_reference_for_graph(
+                    self.bridge.workspace,
+                    prepared.reference,
+                    graph,
+                    schema_registry=runtime.registry,
+                )
+            except ArtifactError:
+                self._prepared_art_direction_seed = None
+            else:
+                if current == prepared.seed:
+                    return copy.deepcopy(prepared)
+        if not self.art_direction_provider.seed_revision_requested:
+            try:
+                current_specs = runtime.show_artifact("slide_specs")
+                current_reference = current_specs.get("art_direction_seed")
+                if not isinstance(current_reference, dict):
+                    raise ArtifactError(
+                        "Current Slide Specs do not reference an Art Direction Seed"
+                    )
+                current_seed = validate_seed_reference_for_graph(
+                    self.bridge.workspace,
+                    current_reference,
+                    graph,
+                    schema_registry=runtime.registry,
+                )
+            except ArtifactError:
+                pass
+            else:
+                if context.get("art_direction_seed") in (None, current_seed):
+                    prepared = PreLayoutArtDirection(
+                        reference=copy.deepcopy(current_reference),
+                        seed=current_seed,
+                    )
+                    self._prepared_art_direction_seed = copy.deepcopy(prepared)
+                    return prepared
         compiled = compile_art_direction_seed(
             self.bridge.workspace,
             graph,
@@ -716,7 +760,12 @@ class HostPlanningProvider:
                 )
             ),
         )
-        return PreLayoutArtDirection(reference=compiled.reference, seed=compiled.seed)
+        prepared = PreLayoutArtDirection(
+            reference=compiled.reference,
+            seed=compiled.seed,
+        )
+        self._prepared_art_direction_seed = copy.deepcopy(prepared)
+        return prepared
 
     def propose(
         self, artifact_type: str, context: dict[str, Any], limits: PlanningLimits
@@ -783,6 +832,12 @@ class HostArtDirectionProvider:
         """Make the next Seed exchange explicit and distinct from initial admission."""
 
         self._seed_revision_requested = True
+
+    @property
+    def seed_revision_requested(self) -> bool:
+        """Return whether the next Seed exchange must bypass the frozen current Seed."""
+
+        return self._seed_revision_requested
 
     def resource_identity(self) -> dict[str, Any]:
         return TasteSkillArtDirectionProvider().resource_identity()

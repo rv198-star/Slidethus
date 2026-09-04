@@ -51,10 +51,12 @@ For the v0.8.0 release, use the single Python 3.11 baseline (including CI). Do n
 Run before considering a task complete:
 
 ```bash
-python -m pytest
-python scripts/validate_all.py
-python scripts/audit_package.py
+PYTHONPATH=$PWD/src python -m pytest
+PYTHONPATH=$PWD/src python scripts/validate_all.py
+PYTHONPATH=$PWD/src python scripts/audit_package.py
 ```
+
+This repository uses a `src/` layout. For local CLI, test, and validation commands, use `PYTHONPATH=$PWD/src`; do not use `PYTHONPATH=$PWD`, which may silently import a different installed Slidethus package.
 
 When Python source changes, also run:
 
@@ -88,4 +90,6 @@ A change is done only when:
 - Do not mark roadmap tasks complete because only interfaces or placeholders exist.
 - Do not call a workflow an MVP unless every claimed action has a distinct, inspectable output and acceptance check. Serializing a planning artifact into another file format is not a new completed stage.
 - Designed Create must use the host proposal entry and the same admitted IR/producer for samples and the full candidate. A deterministic baseline or independent hand-scripted sample cannot stand in for the formal design path. Keep full replay packaging and additional case/Office acceptance work explicitly scoped; do not expand them when the user has deferred them.
+- Treat gates as safety nets, not as the primary design strategy. Before expanding a Designed Create run to a full deck, use a small set of representative pages from the formal artifact path to prove first-pass hierarchy, composition, imagery, and semantic geometry at the requested quality bar.
+- Taste provenance alone does not prove visual quality or propagation. A Taste-driven run must show material influence in the admitted page plans, visual system, planned assets, and real rendered pages; otherwise report it only as a declared or attempted provider path, not as successful Taste use.
 - When the user corrects a recurring project rule, update this file or the closest applicable nested `AGENTS.md`.

@@ -1056,6 +1056,70 @@ def test_host_create_can_request_seed_revision_without_outline_perturbation(
     ).show_artifact("deck_outline")
 
 
+def test_seed_revision_resume_reuses_one_prepared_seed_for_slide_specs(
+    authored_workspace: Path,
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "seed-revision-resume"
+    shutil.copytree(authored_workspace, workspace)
+    requested = HostCreateService(workspace).run(
+        revise_stage="art_direction_seed"
+    )
+    assert requested["status"] == "host_input_required"
+    assert requested["pending"]["stage"] == "art_direction_seed"
+    request = read_json(Path(requested["pending"]["request_path"]))
+    prototype_path = workspace / "design/prototypes/revised-seed.html"
+    prototype_path.write_text(
+        "<main>revised seed must be reused within one Slide Specs attempt</main>\n",
+        encoding="utf-8",
+    )
+    prototype = {
+        "medium": "html-css",
+        "path": "design/prototypes/revised-seed.html",
+        "content_hash": f"sha256:{sha256_file(prototype_path)}",
+    }
+    _respond(
+        requested["pending"],
+        _fixture_proposal(
+            request["stage"],
+            request["context"],
+            request["limits"],
+            prototype=prototype,
+        ),
+    )
+
+    resumed = HostCreateService(workspace).run()
+
+    assert resumed["status"] == "host_input_required", resumed
+    assert resumed["pending"]["stage"] == "slide_specs"
+    specs_request = read_json(Path(resumed["pending"]["request_path"]))
+    assert specs_request["context"]["art_direction_seed"]["foundation"] == {
+        "kind": "taste-generated",
+        "prototype": prototype,
+    }
+    session = read_json(workspace / ".slidethus/host-create/session.json")
+    assert session["pending_revision"]["stage"] == "art_direction_seed"
+    _respond(
+        resumed["pending"],
+        _fixture_proposal(
+            specs_request["stage"],
+            specs_request["context"],
+            specs_request["limits"],
+        ),
+    )
+
+    downstream = HostCreateService(workspace).run()
+
+    assert downstream["status"] == "host_input_required", downstream
+    assert downstream["pending"]["stage"] == "layout_plans"
+    admitted_specs = ArtifactRuntime(workspace).show_artifact("slide_specs")
+    admitted_seed = read_json(workspace / admitted_specs["art_direction_seed"]["path"])
+    assert admitted_seed["foundation"] == {
+        "kind": "taste-generated",
+        "prototype": prototype,
+    }
+
+
 def test_slide_specs_revision_is_persistent_phase_local_and_cross_process(
     authored_workspace: Path,
     tmp_path: Path,
