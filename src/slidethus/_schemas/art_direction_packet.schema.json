@@ -20,7 +20,7 @@
     "assumptions"
   ],
   "properties": {
-    "schema_version": {"type": "string", "pattern": "^0\\.1\\.[0-9]+$"},
+    "schema_version": {"type": "string", "pattern": "^0\\.(1|2)\\.[0-9]+$"},
     "packet_id": {"type": "string", "pattern": "^ADP-[A-F0-9]{16}$"},
     "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
     "deck_id": {"type": "string", "pattern": "^DECK-[A-Z0-9][A-Z0-9_-]{2,63}$"},
@@ -92,6 +92,8 @@
               "surface_treatment": {
                 "enum": ["plain", "tonal", "field", "image-led"]
               },
+              "page_family_id": {"type": "string", "pattern": "^family-[a-z0-9-]{2,63}$"},
+              "component_variant_id": {"type": "string", "pattern": "^variant-[a-z0-9-]{2,63}$"},
               "background": {
                 "type": "string",
                 "pattern": "^#[a-fA-F0-9]{6}$"
@@ -112,6 +114,7 @@
                       "type": "string",
                       "pattern": "^BLK-S[0-9]{3}-[0-9]{2}$"
                     },
+                    "style_id": {"type": "string", "pattern": "^style-[a-z0-9-]{2,63}$"},
                     "style": {
                       "type": "object",
                       "additionalProperties": false,
@@ -338,6 +341,41 @@
             "variation_rule": {"type": "string", "minLength": 1}
           }
         },
+        "grammar": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["capability_id", "page_families", "component_variants", "prohibited_combinations"],
+          "properties": {
+            "capability_id": {"const": "artifact-tool-closed-grammar-v2"},
+            "page_families": {
+              "type": "array", "minItems": 1,
+              "items": {
+                "type": "object", "additionalProperties": false,
+                "required": ["family_id", "purpose"],
+                "properties": {
+                  "family_id": {"type": "string", "pattern": "^family-[a-z0-9-]{2,63}$"},
+                  "purpose": {"type": "string", "minLength": 1, "maxLength": 500}
+                }
+              }
+            },
+            "component_variants": {
+              "type": "array", "minItems": 1,
+              "items": {
+                "type": "object", "additionalProperties": false,
+                "required": ["variant_id", "representation_kind", "producer_behavior"],
+                "properties": {
+                  "variant_id": {"type": "string", "pattern": "^variant-[a-z0-9-]{2,63}$"},
+                  "representation_kind": {"enum": ["text", "typographic", "image", "chart", "table", "diagram", "mixed"]},
+                  "producer_behavior": {"enum": ["text_focus", "image_frame", "native_chart", "native_table", "editable_diagram", "mixed_regions"]}
+                }
+              }
+            },
+            "prohibited_combinations": {
+              "type": "array", "uniqueItems": true,
+              "items": {"type": "string", "minLength": 1, "maxLength": 500}
+            }
+          }
+        },
         "image_direction": {
           "type": "object",
           "additionalProperties": false,
@@ -402,5 +440,27 @@
     "generated_at": {"type": "string", "format": "date-time"},
     "warnings": {"type": "array", "items": {"type": "string"}},
     "assumptions": {"type": "array", "items": {"type": "string"}}
-  }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"schema_version": {"pattern": "^0\\.2\\."}}},
+      "then": {
+        "properties": {
+          "direction": {
+            "required": ["grammar", "page_designs"],
+            "properties": {
+              "page_designs": {
+                "items": {
+                  "required": ["page_family_id", "component_variant_id"],
+                  "properties": {
+                    "regions": {"items": {"required": ["style_id"]}}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

@@ -79,6 +79,7 @@ def slide_spec_content_hash(slide: dict[str, Any]) -> str:
             "core_message",
             "content_blocks",
             "visual_intent",
+            "representation",
             "speaker_notes",
             "density_budget",
             "editability_intent",
@@ -124,6 +125,10 @@ def layout_gate_reasons(
         reasons.append("layout safe area leaves no usable canvas")
 
     specs = list(slide_specs.get("slides", []))
+    specs_v2 = str(slide_specs.get("schema_version", "")).startswith("0.2.")
+    layout_v2 = str(layout_plans.get("schema_version", "")).startswith("0.2.")
+    if specs_v2 != layout_v2:
+        reasons.append("Reviewed/critical planning cannot mix Specs/Layout generations")
     specs_by_id = {str(item["slide_id"]): item for item in specs}
     plans = list(layout_plans.get("plans", []))
     spec_ids = [str(item["slide_id"]) for item in specs]
@@ -146,6 +151,16 @@ def layout_gate_reasons(
         families = set(spec.get("visual_intent", {}).get("suggested_layout_families", []))
         if plan.get("layout_family") not in families:
             reasons.append(f"Layout Plan {slide_id} ignores declared layout-family intent")
+        if specs_v2 and layout_v2:
+            representation = spec.get("representation", {})
+            expected_ref = {
+                "representation_id": representation.get("representation_id"),
+                "content_hash": "sha256:" + sha256_json(representation),
+            }
+            if plan.get("representation_ref") != expected_ref:
+                reasons.append(
+                    f"Layout Plan {slide_id} has stale P5A representation binding"
+                )
         blocks = {str(item["block_id"]): item for item in spec.get("content_blocks", [])}
         regions = list(plan.get("regions", []))
         region_ids = [str(item.get("region_id", "")) for item in regions]
@@ -156,6 +171,21 @@ def layout_gate_reasons(
             reasons.append(f"Layout Plan {slide_id} does not map every Block exactly once")
         if list(plan.get("reading_order", [])) != region_ids:
             reasons.append(f"Layout Plan {slide_id} reading_order must match Region order")
+        if specs_v2 and layout_v2:
+            focal = list(plan.get("focal_order", []))
+            view = plan.get("view", {})
+            if len(focal) != len(set(focal)) or set(focal) != set(region_ids):
+                reasons.append(
+                    f"Layout Plan {slide_id} focal_order must cover every Region"
+                )
+            if view.get("kind") != spec.get("representation", {}).get("kind"):
+                reasons.append(
+                    f"Layout Plan {slide_id} view kind disagrees with P5A representation"
+                )
+            if focal and view.get("primary_region_id") != focal[0]:
+                reasons.append(
+                    f"Layout Plan {slide_id} primary Region is not the first focal Region"
+                )
         expected_prefix = f"REG-{slide_id.replace('-', '')}-"
         if any(not region_id.startswith(expected_prefix) for region_id in region_ids):
             reasons.append(f"Layout Plan {slide_id} has non-slide-scoped Region IDs")
@@ -342,6 +372,7 @@ def slide_specs_gate_reasons(
         reasons.append("Slide Specs order/coverage disagrees with active Deck Outline")
     usable = usable_evidence_map(evidence)
     max_words = 0
+    specs_v2 = str(slide_specs.get("schema_version", "")).startswith("0.2.")
     for spec in specs:
         slide_id = str(spec.get("slide_id", ""))
         outline_slide = outline_by_id.get(slide_id)
@@ -364,6 +395,41 @@ def slide_specs_gate_reasons(
         if spec.get("status") not in {"approved", "frozen"}:
             reasons.append(f"Slide Spec {slide_id} is not approved")
         blocks = list(spec.get("content_blocks", []))
+        if specs_v2:
+            representation = spec.get("representation")
+            if not isinstance(representation, dict):
+                reasons.append(f"Slide Spec {slide_id} lacks P5A representation")
+            else:
+                expected_id = f"REP-{slide_id.replace('-', '')}"
+                if representation.get("representation_id") != expected_id:
+                    reasons.append(
+                        f"Slide Spec {slide_id} representation identity mismatch"
+                    )
+                kind = str(representation.get("kind", ""))
+                block_types = {str(item.get("content_type")) for item in blocks}
+                if kind in {"image", "chart", "table", "diagram"} and kind not in block_types:
+                    reasons.append(
+                        f"Slide Spec {slide_id} representation {kind} has no matching Block"
+                    )
+                avoid = " ".join(
+                    str(item).casefold()
+                    for item in spec.get("visual_intent", {}).get("avoid", [])
+                )
+                if (
+                    "equal" in avoid
+                    and "card" in avoid
+                    and representation.get("semantics", {}).get("topology") == "network"
+                    and len(
+                        {
+                            str(item.get("role"))
+                            for item in representation.get("semantics", {}).get("nodes", [])
+                        }
+                    )
+                    <= 1
+                ):
+                    reasons.append(
+                        f"Slide Spec {slide_id} contradicts its avoid-equal-cards direction"
+                    )
         block_ids = [str(item.get("block_id", "")) for item in blocks]
         expected_prefix = f"BLK-{slide_id.replace('-', '')}-"
         if len(block_ids) != len(set(block_ids)) or any(

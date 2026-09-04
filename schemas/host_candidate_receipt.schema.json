@@ -10,7 +10,7 @@
     "release_approved", "diagnostics"
   ],
   "properties": {
-    "schema_version": {"const": "0.2.0"},
+    "schema_version": {"enum": ["0.2.0", "0.3.0"]},
     "attempt_id": {"type": "string", "pattern": "^HCA-[A-F0-9]{16}$"},
     "status": {
       "enum": [
@@ -35,6 +35,42 @@
         "adapter_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
       }
     },
+    "dependency_key": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "producer_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backend", "version", "adapter_sha256", "capability_id", "capability_hash"],
+      "properties": {
+        "backend": {"const": "artifact-tool"},
+        "version": {"type": "string", "minLength": 1},
+        "adapter_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "capability_id": {"const": "artifact-tool-closed-grammar-v2"},
+        "capability_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      }
+    },
+    "calibration_authorization": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "dependency_key", "decision_path", "reference_set_path",
+            "renderer_ir_sha256", "producer"
+          ],
+          "properties": {
+            "dependency_key": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+            "decision_path": {"type": "string", "minLength": 1},
+            "reference_set_path": {"type": "string", "minLength": 1},
+            "renderer_ir_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+            "producer": {"type": "object"}
+          }
+        }
+      ]
+    },
     "artifacts": {
       "type": "array",
       "minItems": 1,
@@ -50,7 +86,33 @@
       ]
     },
     "outputs": {"type": "array", "items": {"$ref": "#/$defs/file"}},
-    "office_review": {"enum": ["not_started", "pending"]},
+    "office_review": {"enum": ["not_started", "pending", "evidence_pending", "review_pending", "reviewed"]},
+    "office": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "application", "build", "profile", "export_parameters", "pages"],
+      "properties": {
+        "status": {"enum": ["not_requested", "evidence_pending", "available", "reviewed"]},
+        "application": {"type": ["string", "null"]},
+        "build": {"type": ["string", "null"]},
+        "profile": {"type": ["string", "null"]},
+        "export_parameters": {"type": ["object", "null"]},
+        "pages": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slide_id", "path", "sha256"],
+            "properties": {
+              "slide_id": {"type": "string", "pattern": "^S-[0-9]{3}$"},
+              "path": {"type": "string", "minLength": 1},
+              "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+            }
+          }
+        }
+      }
+    },
     "release_approved": {"const": false},
     "diagnostics": {
       "type": "object",
@@ -76,12 +138,21 @@
   },
   "allOf": [
     {
+      "if": {"properties": {"schema_version": {"const": "0.3.0"}}},
+      "then": {
+        "required": ["dependency_key", "producer_identity", "calibration_authorization", "office"],
+        "properties": {
+          "dependency_key": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+        }
+      }
+    },
+    {
       "if": {"properties": {"status": {"const": "candidate_office_review_pending"}}},
       "then": {
         "properties": {
           "input": {"$ref": "#/$defs/file"},
           "outputs": {"minItems": 3},
-          "office_review": {"const": "pending"},
+          "office_review": {"enum": ["pending", "evidence_pending", "review_pending", "reviewed"]},
           "diagnostics": {
             "properties": {
               "stage": {"const": "complete"},

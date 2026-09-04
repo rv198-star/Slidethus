@@ -13,7 +13,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "pattern": "^0\\.1\\.[0-9]+$"
+      "pattern": "^0\\.(1|2)\\.[0-9]+$"
     },
     "project_id": {
       "type": "string",
@@ -233,6 +233,7 @@
               }
             }
           },
+          "representation": {"$ref": "#/$defs/representation"},
           "speaker_notes": {
             "type": "string"
           },
@@ -272,7 +273,181 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": {"properties": {"schema_version": {"pattern": "^0\\.2\\."}}},
+      "then": {
+        "properties": {
+          "slides": {
+            "items": {"required": ["representation"]}
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
+    "assetStrategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["demand", "asset_refs", "fallback"],
+      "properties": {
+        "demand": {"enum": ["none", "preferred", "required"]},
+        "asset_refs": {
+          "type": "array", "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^AST-[0-9]{3}$"}
+        },
+        "fallback": {"enum": ["replan", "textual", "table", "none"]}
+      }
+    },
+    "representation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "representation_id", "kind", "carrier_reason", "visual_weight", "density_role",
+        "asset_strategy", "semantics"
+      ],
+      "properties": {
+        "representation_id": {"type": "string", "pattern": "^REP-S[0-9]{3}$"},
+        "kind": {"enum": ["text", "typographic", "image", "chart", "table", "diagram", "mixed"]},
+        "carrier_reason": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "visual_weight": {"enum": ["hero", "primary", "supporting", "background"]},
+        "density_role": {"enum": ["anchor", "proof", "context", "navigation"]},
+        "asset_strategy": {"$ref": "#/$defs/assetStrategy"},
+        "semantics": {"type": "object"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"enum": ["text", "typographic"]}}},
+          "then": {"properties": {"semantics": {"$ref": "#/$defs/textSemantics"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "image"}}},
+          "then": {"properties": {"semantics": {"$ref": "#/$defs/imageSemantics"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "chart"}}},
+          "then": {"properties": {"semantics": {"$ref": "#/$defs/chartSemantics"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "table"}}},
+          "then": {"properties": {"semantics": {"$ref": "#/$defs/tableSemantics"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "diagram"}}},
+          "then": {"properties": {"semantics": {"$ref": "#/$defs/diagramSemantics"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "mixed"}}},
+          "then": {"properties": {"semantics": {"$ref": "#/$defs/mixedSemantics"}}}
+        }
+      ]
+    },
+    "textSemantics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["structure", "emphasis"],
+      "properties": {
+        "structure": {"enum": ["statement", "sequence", "comparison", "explanation", "quote"]},
+        "emphasis": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "imageSemantics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["narrative_role", "subject", "focal_intent", "source_strategy"],
+      "properties": {
+        "narrative_role": {"enum": ["evidence", "context", "emotion", "identity", "metaphor"]},
+        "subject": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "focal_intent": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "source_strategy": {"enum": ["existing", "generate", "acquire", "replan"]}
+      }
+    },
+    "chartSemantics": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "communication_question", "chart_type", "categories", "series",
+        "comparison_semantics", "data_evidence_ids", "fallback"
+      ],
+      "properties": {
+        "communication_question": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "chart_type": {"enum": ["bar", "line", "pie", "doughnut", "area"]},
+        "categories": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "series": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["name", "values"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1},
+              "values": {"type": "array", "minItems": 1, "items": {"type": "number"}}
+            }
+          }
+        },
+        "comparison_semantics": {"enum": ["magnitude", "trend", "composition", "distribution", "ranking"]},
+        "data_evidence_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^EVD-[0-9]{3}$"}},
+        "fallback": {"enum": ["table", "metric", "prose", "replan"]}
+      }
+    },
+    "tableSemantics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["decision_task", "columns", "row_hierarchy", "emphasized_dimension", "source_evidence_ids"],
+      "properties": {
+        "decision_task": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "columns": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "row_hierarchy": {"enum": ["flat", "grouped", "ranked"]},
+        "emphasized_dimension": {"type": "string", "minLength": 1, "maxLength": 500},
+        "source_evidence_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^EVD-[0-9]{3}$"}}
+      }
+    },
+    "diagramSemantics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["topology", "nodes", "edges"],
+      "properties": {
+        "topology": {"enum": ["flow", "hierarchy", "cycle", "network"]},
+        "nodes": {
+          "type": "array", "minItems": 2,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["id", "label", "role"],
+            "properties": {
+              "id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$"},
+              "label": {"type": "string", "minLength": 1, "maxLength": 500},
+              "role": {"type": "string", "minLength": 1, "maxLength": 120}
+            }
+          }
+        },
+        "edges": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["id", "from", "to", "meaning", "direction"],
+            "properties": {
+              "id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$"},
+              "from": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$"},
+              "to": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$"},
+              "meaning": {"type": "string", "minLength": 1, "maxLength": 500},
+              "direction": {"enum": ["forward", "backward", "bidirectional"]}
+            }
+          }
+        }
+      }
+    },
+    "mixedSemantics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["children"],
+      "properties": {
+        "children": {
+          "type": "array", "minItems": 2, "maxItems": 4,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["id", "kind", "priority"],
+            "properties": {
+              "id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$"},
+              "kind": {"enum": ["text", "typographic", "image", "chart", "table", "diagram"]},
+              "priority": {"enum": ["primary", "secondary", "tertiary"]}
+            }
+          }
+        }
+      }
+    },
     "artDirectionSeedRef": {
       "type": "object",
       "additionalProperties": false,

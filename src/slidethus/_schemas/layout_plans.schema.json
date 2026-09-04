@@ -15,7 +15,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "pattern": "^0\\.1\\.[0-9]+$"
+      "pattern": "^0\\.(1|2)\\.[0-9]+$"
     },
     "project_id": {
       "type": "string",
@@ -135,6 +135,20 @@
               "pattern": "^REG-S[0-9]{3}-[0-9]{2}$"
             }
           },
+          "representation_ref": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["representation_id", "content_hash"],
+            "properties": {
+              "representation_id": {"type": "string", "pattern": "^REP-S[0-9]{3}$"},
+              "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+            }
+          },
+          "focal_order": {
+            "type": "array", "minItems": 1, "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^REG-S[0-9]{3}-[0-9]{2}$"}
+          },
+          "view": {"$ref": "#/$defs/representationView"},
           "regions": {
             "type": "array",
             "minItems": 1,
@@ -240,7 +254,153 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": {"properties": {"schema_version": {"pattern": "^0\\.2\\."}}},
+      "then": {
+        "properties": {
+          "plans": {
+            "items": {"required": ["representation_ref", "focal_order", "view"]}
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
+    "point": {
+      "type": "object", "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": {"type": "number", "minimum": 0, "maximum": 1},
+        "y": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "representationView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "primary_region_id", "negative_space", "details"],
+      "properties": {
+        "kind": {"enum": ["text", "typographic", "image", "chart", "table", "diagram", "mixed"]},
+        "primary_region_id": {"type": "string", "pattern": "^REG-S[0-9]{3}-[0-9]{2}$"},
+        "negative_space": {"enum": ["compact", "balanced", "expansive"]},
+        "details": {"type": "object"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"enum": ["text", "typographic"]}}},
+          "then": {"properties": {"details": {"$ref": "#/$defs/textView"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "chart"}}},
+          "then": {"properties": {"details": {"$ref": "#/$defs/chartView"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "table"}}},
+          "then": {"properties": {"details": {"$ref": "#/$defs/tableView"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "diagram"}}},
+          "then": {"properties": {"details": {"$ref": "#/$defs/diagramView"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "image"}}},
+          "then": {"properties": {"details": {"$ref": "#/$defs/imageView"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "mixed"}}},
+          "then": {"properties": {"details": {"$ref": "#/$defs/mixedView"}}}
+        }
+      ]
+    },
+    "textView": {
+      "type": "object", "additionalProperties": false,
+      "required": ["emphasis_region_id", "rhythm"],
+      "properties": {
+        "emphasis_region_id": {"type": "string", "pattern": "^REG-S[0-9]{3}-[0-9]{2}$"},
+        "rhythm": {"enum": ["single-focus", "progressive", "contrast"]}
+      }
+    },
+    "chartView": {
+      "type": "object", "additionalProperties": false,
+      "required": ["orientation", "label_position", "legend_position"],
+      "properties": {
+        "orientation": {"const": "vertical"},
+        "label_position": {"enum": ["axis", "direct"]},
+        "legend_position": {"enum": ["none", "top", "right"]}
+      }
+    },
+    "tableView": {
+      "type": "object", "additionalProperties": false,
+      "required": ["header_rows", "emphasized_column", "overflow"],
+      "properties": {
+        "header_rows": {"type": "integer", "minimum": 0, "maximum": 3},
+        "emphasized_column": {"type": ["integer", "null"], "minimum": 0},
+        "overflow": {"const": "block"}
+      }
+    },
+    "diagramView": {
+      "type": "object", "additionalProperties": false,
+      "required": ["node_geometry", "routing", "label_anchors"],
+      "properties": {
+        "node_geometry": {
+          "type": "array", "minItems": 2,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["node_id", "x", "y", "w", "h"],
+            "properties": {
+              "node_id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$"},
+              "x": {"type": "number", "minimum": 0, "maximum": 1},
+              "y": {"type": "number", "minimum": 0, "maximum": 1},
+              "w": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+              "h": {"type": "number", "exclusiveMinimum": 0, "maximum": 1}
+            }
+          }
+        },
+        "routing": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["edge_id", "source_port", "target_port", "route"],
+            "properties": {
+              "edge_id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$"},
+              "source_port": {"enum": ["top", "right", "bottom", "left", "center"]},
+              "target_port": {"enum": ["top", "right", "bottom", "left", "center"]},
+              "route": {"enum": ["direct", "orthogonal"]}
+            }
+          }
+        },
+        "label_anchors": {
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["edge_id", "point"],
+            "properties": {
+              "edge_id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$"},
+              "point": {"$ref": "#/$defs/point"}
+            }
+          }
+        }
+      }
+    },
+    "imageView": {
+      "type": "object", "additionalProperties": false,
+      "required": ["fit", "focal_point", "fallback_region_id"],
+      "properties": {
+        "fit": {"enum": ["cover", "contain"]},
+        "focal_point": {"$ref": "#/$defs/point"},
+        "fallback_region_id": {"type": ["string", "null"], "pattern": "^REG-S[0-9]{3}-[0-9]{2}$"}
+      }
+    },
+    "mixedView": {
+      "type": "object", "additionalProperties": false,
+      "required": ["child_region_ids"],
+      "properties": {
+        "child_region_ids": {
+          "type": "array", "minItems": 2, "maxItems": 4, "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^REG-S[0-9]{3}-[0-9]{2}$"}
+        }
+      }
+    },
     "artifactRef": {
       "type": "object",
       "additionalProperties": false,

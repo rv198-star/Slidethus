@@ -38,10 +38,18 @@ from slidethus.host_create_records import (
 from slidethus.host_design import (
     HostArtDirectionProvider,
     HostDesignBridge,
+    HostDesignRequired,
     HostPlanningProvider,
+    HostVisualReviewProvider,
 )
 from slidethus.io_utils import ensure_within, read_json, sha256_file
-from slidethus.protocols import BriefCompletionHints, PlanningLimits, ResearchProvider
+from slidethus.protocols import (
+    ArtDirectionLimits,
+    BriefCompletionHints,
+    PlanningLimits,
+    ResearchProvider,
+    VisualReviewProvider,
+)
 from slidethus.render_backends.artifact_tool import ArtifactToolRenderBackend
 from slidethus.services.layout import LayoutPlanningService
 from slidethus.services.m2_application import M2ApplicationLimits
@@ -53,6 +61,7 @@ from slidethus.services.narrative import NarrativePlanningService
 from slidethus.services.outline import OutlinePlanningService
 from slidethus.services.render_preflight import RenderPreflightService
 from slidethus.services.slide_specs import SlideSpecPlanningService
+from slidethus.services.visual_calibration import VisualCalibrationService
 from slidethus.services.visual_system import VisualSystemService
 from slidethus.state_machine import FORWARD_SEQUENCE, Phase
 from slidethus.workflow_operations import WorkflowLease
@@ -74,6 +83,11 @@ _PENDING_TARGETS = {
     "slide_specs": "P5A",
     "layout_plans": "P5B",
     "art_direction": "P6",
+    "direction_review": "P4",
+    "semantic_planning_review": "P5B",
+    "calibration_office_evidence": "P7",
+    "calibration_review": "P7",
+    "whole_deck_review": "P8",
 }
 
 
@@ -88,12 +102,17 @@ class HostCreateService:
         modules: Path | None = None,
         font_match: str | None = None,
         research_provider: ResearchProvider | None = None,
+        visual_review_provider: VisualReviewProvider | None = None,
     ) -> None:
         self.workspace = workspace.resolve()
         self.bridge = HostDesignBridge(self.workspace)
+        self.visual_review_provider = visual_review_provider or HostVisualReviewProvider(
+            self.bridge
+        )
         self.art_direction = HostArtDirectionProvider(
             self.bridge,
             require_taste_generated=True,
+            visual_review_provider=self.visual_review_provider,
         )
         self.planning = HostPlanningProvider(
             self.bridge,
@@ -277,6 +296,7 @@ class HostCreateService:
             planning_provider=self.planning,
             research_provider=self.research_provider,
             art_direction_provider=self.art_direction,
+            visual_review_provider=self.visual_review_provider,
         )
 
     def _source_revision_config(
@@ -307,6 +327,7 @@ class HostCreateService:
             planning_provider=self.planning,
             research_provider=self.research_provider,
             art_direction_provider=self.art_direction,
+            visual_review_provider=self.visual_review_provider,
         )
         if candidate == current:
             raise HostCreateConflictError(
@@ -325,8 +346,16 @@ class HostCreateService:
         candidate["status"] = "active"
         candidate["pending_revision"] = None
         candidate["pending_request"] = None
+        candidate["prepared_art_direction_seed"] = None
         candidate["m2_reports"] = {"orientation": None, "targeted": None}
         candidate["last_planning_report"] = None
+        candidate["calibration"] = {
+            "state": "idle",
+            "sample_receipt": None,
+            "authorization": None,
+            "full_receipt": None,
+            "whole_deck_decision": None,
+        }
         return save_host_create_session(
             self.workspace,
             candidate,
@@ -366,7 +395,13 @@ class HostCreateService:
             "layout_plans": LayoutPlanningService,
         }
         if stage == "art_direction_seed":
-            self.art_direction.request_seed_revision()
+            # A Seed revision can pause after the new Seed is admitted but before
+            # the forced Slide Specs proposal arrives.  On cross-process resume,
+            # the Session-restored prepared reference is authoritative: asking the
+            # provider for another revision here would replay the old Host response
+            # and recreate the Issue #3 overwrite path.
+            if self.planning.prepared_art_direction_seed_reference is None:
+                self.art_direction.request_seed_revision()
             SlideSpecPlanningService(
                 self.workspace,
                 provider=self.planning,
@@ -381,12 +416,199 @@ class HostCreateService:
             provider=self.planning,
         ).generate(force=True)
 
+    def _calibration_service(self) -> VisualCalibrationService:
+        return VisualCalibrationService(
+            self.workspace,
+            backend=self.backend,
+            reviewer=self.visual_review_provider,
+            author_identities=(self.planning.name, self.art_direction.name),
+        )
+
+    def _receipt_ref(self, receipt_path: Path) -> dict[str, str]:
+        path = ensure_within(self.workspace, receipt_path)
+        return {
+            "path": path.relative_to(self.workspace).as_posix(),
+            "sha256": sha256_file(path),
+        }
+
+    def _register_office_evidence(
+        self,
+        receipt_path: Path,
+        *,
+        kind: str,
+    ) -> dict[str, Any]:
+        receipt = read_json(ensure_within(self.workspace, receipt_path))
+        proposal = self.bridge.exchange(
+            "calibration_office_evidence",
+            {
+                "kind": kind,
+                "receipt": receipt,
+                "required_slide_ids": list(receipt["slide_ids"]),
+                "rules": {
+                    "application": "Microsoft PowerPoint",
+                    "real_office_export_required": True,
+                    "artifact_tool_png_is_not_office_evidence": True,
+                },
+            },
+            ArtDirectionLimits(),
+        )
+        required = {
+            "application",
+            "build",
+            "profile",
+            "export_parameters",
+            "pages",
+        }
+        if set(proposal) != required or not isinstance(proposal.get("pages"), list):
+            raise HostCreateError(
+                "Office evidence proposal must contain exactly application, build, "
+                "profile, export_parameters and pages"
+            )
+        pages = tuple(
+            {
+                "slide_id": str(item.get("slide_id", "")),
+                "path": str(item.get("path", "")),
+            }
+            for item in proposal["pages"]
+            if isinstance(item, dict)
+        )
+        return self.backend.record_office_evidence(
+            self.workspace,
+            receipt_path,
+            pages=pages,
+            application=str(proposal["application"]),
+            build=str(proposal["build"]),
+            profile=str(proposal["profile"]),
+            export_parameters=copy.deepcopy(proposal["export_parameters"]),
+        )
+
+    def _resume_calibration(self, calibration: dict[str, Any]) -> dict[str, Any] | None:
+        """Advance registered sample/full Office evidence before any new render."""
+
+        state = str(calibration.get("state", "idle"))
+        service = self._calibration_service()
+        if state in {"sample_rendered", "sample_office_available"}:
+            ref = calibration.get("sample_receipt")
+            if not isinstance(ref, dict):
+                raise HostCreateError("Calibration sample receipt is missing")
+            receipt_path = self.workspace / str(ref["path"])
+            receipt = read_json(receipt_path)
+            if receipt.get("office", {}).get("status") != "available":
+                registered = self._register_office_evidence(
+                    receipt_path, kind="sample"
+                )
+                receipt_path = Path(str(registered["receipt_path"]))
+            try:
+                admitted = service.review_sample(receipt_path)
+            except HostDesignRequired:
+                update = copy.deepcopy(calibration)
+                update.update(
+                    {
+                        "state": "sample_office_available",
+                        "sample_receipt": self._receipt_ref(receipt_path),
+                    }
+                )
+                return {
+                    "status": "host_input_required",
+                    "pending": self.bridge.pending,
+                    "calibration_update": update,
+                    "receipt_path": str(receipt_path),
+                    "release_approved": False,
+                }
+            update = copy.deepcopy(calibration)
+            approved = bool(admitted.decision["quality_approved"])
+            update.update(
+                {
+                    "state": "approved" if approved else "rework",
+                    "sample_receipt": self._receipt_ref(receipt_path),
+                    "authorization": admitted.authorization,
+                }
+            )
+            return {
+                "status": "calibration_approved" if approved else "calibration_rework",
+                "calibration_update": update,
+                "receipt_path": str(receipt_path),
+                "visual_review": str(admitted.review_path),
+                "visual_decision": str(admitted.decision_path),
+                **(
+                    {"visual_reference_set": str(admitted.reference_set_path)}
+                    if admitted.reference_set_path is not None
+                    else {}
+                ),
+                "blockers": [
+                    {"finding_id": item, "message": "sample visual blocker"}
+                    for item in admitted.decision["open_finding_ids"]
+                ],
+                "release_approved": False,
+            }
+        if state in {"full_rendered", "full_office_available"}:
+            ref = calibration.get("full_receipt")
+            if not isinstance(ref, dict):
+                raise HostCreateError("Full candidate receipt is missing")
+            receipt_path = self.workspace / str(ref["path"])
+            receipt = read_json(receipt_path)
+            if receipt.get("office", {}).get("status") != "available":
+                registered = self._register_office_evidence(
+                    receipt_path, kind="full"
+                )
+                receipt_path = Path(str(registered["receipt_path"]))
+            try:
+                admitted = service.review_whole_deck(receipt_path)
+            except HostDesignRequired:
+                update = copy.deepcopy(calibration)
+                update.update(
+                    {
+                        "state": "full_office_available",
+                        "full_receipt": self._receipt_ref(receipt_path),
+                    }
+                )
+                return {
+                    "status": "host_input_required",
+                    "pending": self.bridge.pending,
+                    "calibration_update": update,
+                    "receipt_path": str(receipt_path),
+                    "release_approved": False,
+                }
+            update = copy.deepcopy(calibration)
+            update.update(
+                {
+                    "state": (
+                        "whole_deck_approved"
+                        if admitted.decision["quality_approved"]
+                        else "whole_deck_rework"
+                    ),
+                    "full_receipt": self._receipt_ref(receipt_path),
+                    "whole_deck_decision": self._receipt_ref(
+                        admitted.decision_path
+                    ),
+                }
+            )
+            return {
+                "status": (
+                    "whole_deck_approved"
+                    if admitted.decision["quality_approved"]
+                    else "whole_deck_rework"
+                ),
+                "calibration_update": update,
+                "receipt_path": str(receipt_path),
+                "visual_review": str(admitted.review_path),
+                "visual_decision": str(admitted.decision_path),
+                "blockers": [
+                    {"finding_id": item, "message": "whole-deck visual blocker"}
+                    for item in admitted.decision["open_finding_ids"]
+                ],
+                "release_approved": False,
+            }
+        return None
+
     def _advance(
         self,
         config: dict[str, Any],
         *,
         render: bool,
         slide_ids: tuple[str, ...],
+        calibration: dict[str, Any],
+        prepared_art_direction_seed: dict[str, Any] | None,
         revise_stage: str | None,
         reusable_m2_reports: dict[str, dict[str, Any] | None],
         on_revision_committed: Callable[[], None] | None = None,
@@ -394,6 +616,9 @@ class HostCreateService:
         self.bridge.pending = None
         revision_completed = False
         try:
+            self.planning.restore_prepared_art_direction_seed(
+                prepared_art_direction_seed
+            )
             if revise_stage is not None:
                 self._apply_revision_stage(revise_stage)
                 revision_completed = True
@@ -406,6 +631,8 @@ class HostCreateService:
                     self.workspace,
                     planning_provider=self.planning,
                     research_provider=self.research_provider,
+                    visual_review_provider=self.visual_review_provider,
+                    quality_by_construction=True,
                 ).run(
                     config_source_paths(config),
                     brief_hints=config_brief_hints(config),
@@ -437,6 +664,9 @@ class HostCreateService:
                     return {
                         "status": result_status,
                         "pending": self.bridge.pending,
+                        "prepared_art_direction_seed_update": (
+                            self.planning.prepared_art_direction_seed_reference
+                        ),
                         "planning_report": str(planning.path),
                         "blockers": planning.report["blockers"],
                         "release_approved": False,
@@ -479,6 +709,12 @@ class HostCreateService:
                         "release_approved": False,
                         "revision_completed": revision_completed,
                     }
+            strict_quality = str(visual.get("schema_version", "")).startswith("0.2.")
+            if strict_quality:
+                resumed = self._resume_calibration(calibration)
+                if resumed is not None:
+                    resumed["revision_completed"] = revision_completed
+                    return resumed
             if not render:
                 return {
                     "status": "design_ready",
@@ -502,11 +738,73 @@ class HostCreateService:
                     "release_approved": False,
                     "revision_completed": revision_completed,
                 }
+            if strict_quality and slide_ids:
+                raise HostCreateConflictError(
+                    "Reviewed/critical calibration selects representative slides deterministically; "
+                    "--slide-id cannot override it"
+                )
+            if strict_quality:
+                service = self._calibration_service()
+                calibration_state = str(calibration.get("state", "idle"))
+                if calibration_state == "idle":
+                    receipt = service.render_sample(preflight)
+                    receipt_path = Path(str(receipt["receipt_path"]))
+                    update = copy.deepcopy(calibration)
+                    update.update(
+                        {
+                            "state": "sample_rendered",
+                            "sample_receipt": self._receipt_ref(receipt_path),
+                            "authorization": None,
+                            "full_receipt": None,
+                            "whole_deck_decision": None,
+                        }
+                    )
+                    return {
+                        **receipt,
+                        "status": "calibration_office_evidence_pending",
+                        "calibration_update": update,
+                        "revision_completed": revision_completed,
+                    }
+                if calibration_state == "approved":
+                    authorization = calibration.get("authorization")
+                    if not isinstance(authorization, dict):
+                        raise HostCreateError(
+                            "Approved calibration state lacks full-render authorization"
+                        )
+                    receipt = service.render_full(preflight, authorization)
+                    receipt_path = Path(str(receipt["receipt_path"]))
+                    update = copy.deepcopy(calibration)
+                    update.update(
+                        {
+                            "state": "full_rendered",
+                            "full_receipt": self._receipt_ref(receipt_path),
+                            "whole_deck_decision": None,
+                        }
+                    )
+                    return {
+                        **receipt,
+                        "status": "full_office_evidence_pending",
+                        "calibration_update": update,
+                        "revision_completed": revision_completed,
+                    }
+                if calibration_state == "whole_deck_approved":
+                    return {
+                        "status": "whole_deck_approved",
+                        "receipt_path": str(
+                            self.workspace / str(calibration["full_receipt"]["path"])
+                        ),
+                        "release_approved": False,
+                        "revision_completed": revision_completed,
+                    }
+                raise HostCreateConflictError(
+                    f"Calibration state {calibration_state} must be resumed before rendering"
+                )
             return {
                 **self.backend.render(
                     self.workspace,
                     preflight,
                     slide_ids=slide_ids,
+                    scope="full" if not slide_ids else "sample",
                 ),
                 "revision_completed": revision_completed,
             }
@@ -529,6 +827,9 @@ class HostCreateService:
                     else "blocked"
                 ),
                 "pending": self.bridge.pending,
+                "prepared_art_direction_seed_update": (
+                    self.planning.prepared_art_direction_seed_reference
+                ),
                 "host_submission": self.bridge.last_submission,
                 "error": str(exc),
                 "release_approved": False,
@@ -584,6 +885,9 @@ class HostCreateService:
             ("planning_report", "m3_report"),
             ("preflight", "preflight"),
             ("receipt_path", "render_receipt"),
+            ("visual_review", "visual_review"),
+            ("visual_decision", "visual_decision"),
+            ("visual_reference_set", "visual_reference_set"),
         )
         for field, kind in fields:
             raw = result.get(field)
@@ -628,6 +932,14 @@ class HostCreateService:
             "candidate_office_review_pending",
             "render_failed",
             "render_timed_out",
+            "calibration_office_evidence_pending",
+            "calibration_review_pending",
+            "calibration_rework",
+            "calibration_approved",
+            "full_office_evidence_pending",
+            "whole_deck_review_pending",
+            "whole_deck_rework",
+            "whole_deck_approved",
         }:
             status = "failed"
         pending = result.get("pending") or self.bridge.pending
@@ -653,6 +965,30 @@ class HostCreateService:
             actions = ("render", "revise_stage")
         elif status == "candidate_office_review_pending":
             actions = ("review_candidate", "revise_stage")
+        elif status == "calibration_office_evidence_pending":
+            target = "P7"
+            actions = ("register_office_evidence", "resume", "revise_stage")
+        elif status == "calibration_review_pending":
+            target = "P7"
+            actions = ("review_sample", "resume", "revise_stage")
+        elif status == "calibration_rework":
+            target = "P7"
+            actions = ("inspect_report", "revise_stage", "resume")
+        elif status == "calibration_approved":
+            target = "P7"
+            actions = ("render_full", "revise_stage")
+        elif status == "full_office_evidence_pending":
+            target = "P8"
+            actions = ("register_office_evidence", "resume", "revise_stage")
+        elif status == "whole_deck_review_pending":
+            target = "P8"
+            actions = ("review_whole_deck", "resume", "revise_stage")
+        elif status == "whole_deck_rework":
+            target = "P8"
+            actions = ("inspect_report", "revise_stage", "resume")
+        elif status == "whole_deck_approved":
+            target = "P8"
+            actions = ("inspect_report", "revise_stage")
         else:
             actions = ("inspect_report", "resume")
         message = str(result.get("error") or "")
@@ -672,6 +1008,14 @@ class HostCreateService:
                 "candidate_office_review_pending": "Candidate generated; real PowerPoint review remains pending.",
                 "render_failed": "Renderer attempt failed; inspect its terminal receipt.",
                 "render_timed_out": "Renderer attempt timed out; inspect its terminal receipt.",
+                "calibration_office_evidence_pending": "Representative sample generated; register real PowerPoint page exports.",
+                "calibration_review_pending": "Representative Office pages await independent visual review.",
+                "calibration_rework": "Representative Office sample has unresolved visual blockers.",
+                "calibration_approved": "Representative Office sample is approved for the identical full IR and producer.",
+                "full_office_evidence_pending": "Full candidate generated; register real PowerPoint page exports.",
+                "whole_deck_review_pending": "Full Office-rendered deck awaits whole-deck review.",
+                "whole_deck_rework": "Whole-deck Office review has unresolved visual blockers.",
+                "whole_deck_approved": "Whole-deck Office review is approved.",
             }[status]
         return status, target, issue_ids, actions, message
 
@@ -694,9 +1038,27 @@ class HostCreateService:
         status = str(terminal["status"])
         candidate["status"] = (
             status
-            if status in {"design_ready", "candidate_office_review_pending"}
+            if status
+            in {
+                "design_ready",
+                "candidate_office_review_pending",
+                "calibration_office_evidence_pending",
+                "calibration_review_pending",
+                "calibration_rework",
+                "calibration_approved",
+                "full_office_evidence_pending",
+                "whole_deck_review_pending",
+                "whole_deck_rework",
+                "whole_deck_approved",
+            }
             else "active"
         )
+        if isinstance(result.get("calibration_update"), dict):
+            candidate["calibration"] = copy.deepcopy(result["calibration_update"])
+        if "prepared_art_direction_seed_update" in result:
+            candidate["prepared_art_direction_seed"] = copy.deepcopy(
+                result["prepared_art_direction_seed_update"]
+            )
         candidate["last_terminal"] = terminal_reference(
             self.workspace,
             terminal_path,
@@ -838,6 +1200,7 @@ class HostCreateService:
                     planning_provider=self.planning,
                     research_provider=self.research_provider,
                     art_direction_provider=self.art_direction,
+                    visual_review_provider=self.visual_review_provider,
                 )
                 if not workspace_exists:
                     init_workspace(self.workspace, title=str(config["title"]))
@@ -890,6 +1253,7 @@ class HostCreateService:
                         planning_provider=self.planning,
                         research_provider=self.research_provider,
                         art_direction_provider=self.art_direction,
+                        visual_review_provider=self.visual_review_provider,
                     )
                 if revise_stage is not None:
                     if pending_revision is not None and pending_revision.get(
@@ -912,6 +1276,12 @@ class HostCreateService:
                             "stage": revise_stage,
                             "requested_at": utc_now(),
                         }
+                        if revise_stage in {
+                            "narrative_blueprint",
+                            "deck_outline",
+                            "art_direction_seed",
+                        }:
+                            candidate["prepared_art_direction_seed"] = None
                         session = save_host_create_session(
                             self.workspace,
                             candidate,
@@ -930,6 +1300,13 @@ class HostCreateService:
                     candidate = copy.deepcopy(session)
                     candidate["pending_revision"] = None
                     candidate["pending_request"] = None
+                    candidate["calibration"] = {
+                        "state": "idle",
+                        "sample_receipt": None,
+                        "authorization": None,
+                        "full_receipt": None,
+                        "whole_deck_decision": None,
+                    }
                     session = save_host_create_session(
                         self.workspace,
                         candidate,
@@ -940,6 +1317,10 @@ class HostCreateService:
                     config,
                     render=render,
                     slide_ids=slide_ids,
+                    calibration=copy.deepcopy(session["calibration"]),
+                    prepared_art_direction_seed=copy.deepcopy(
+                        session["prepared_art_direction_seed"]
+                    ),
                     revise_stage=effective_revision,
                     reusable_m2_reports=copy.deepcopy(session["m2_reports"]),
                     on_revision_committed=(

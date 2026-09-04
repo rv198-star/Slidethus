@@ -36,11 +36,11 @@ stateDiagram-v2
 | P2 Evidence | 哪些声明有依据 | Sources、方向性研究、逐页定向研究 | Evidence Ledger | G2 Evidence；P5A 前再次确认 |
 | P3 Narrative | 整套演示如何说服 | Brief、Evidence | Narrative Blueprint | G3 Narrative |
 | P4 Outline | 每一页承担什么任务 | Narrative | Deck Outline | G4 Outline |
-| P5A Slide Specs | 每页讲什么及何时需要视觉载体 | Outline、Evidence、（designed Create 时）冻结 Art Direction Seed | Slide Specs | G5A Specs |
-| P5B Layout | 每页如何组织 | Slide Specs | Layout Plans、wireframes | G5B Layout |
-| P6 Visual | 整套视觉规则是什么 | Brief、参考、Layout、Assets、（如存在）同一 Art Direction Seed | immutable Art Direction Packet、Visual System | G6 Visual |
-| P7 Render | 如何变成目标文件 | Specs、Layout、Visual | Render Manifest、draft | G7 Render |
-| P8 Review | 具体哪里有问题 | draft、所有 artifacts | Quality Report、repair plan | G8 Review |
+| P5A Slide Specs | 每页讲什么及用何种语义载体 | Outline、Evidence、（designed Create 时）已审阅的 Art Direction Seed | Slide Specs；reviewed/critical 使用 0.2 representation grammar | G5A Specs |
+| P5B Layout | 载体如何形成阅读、焦点和几何关系 | Slide Specs | Layout Plans、wireframes；reviewed/critical 另有 semantic previews 与 qualitative planning decision | G5B Layout |
+| P6 Visual | 整套可执行视觉语法是什么 | Brief、参考、Layout、Assets、同一 Seed | immutable Art Direction Packet、Visual System、完整 page designs | G6 Visual |
+| P7 Render | 如何以已准入 producer 机械实现 | Specs、Layout、Visual、完整 Renderer IR | Render Manifest/draft；Designed Create sample/full candidate receipts | G7 Render |
+| P8 Review | 真实目标渲染后具体哪里有问题 | Office-rendered pages、所有 current artifacts | immutable visual review/decision、Quality Report、repair plan | G8 Review |
 | P9 Delivery | 交付是否完整 | approved draft | Delivery Manifest | G9 Delivery |
 
 ### 2.1 MVP 动作完整性
@@ -82,6 +82,27 @@ Brief completion / G0
 - `M3 Application Report` 的 planning level P0/P2/P3/P4/P5A/P5B 必须与最终 Project State 一致，部分失败不能冒充 P5B。
 
 M3 Exit 是仓库级 Gate，不加入 deck G0–G9。它只证明不做最终视觉时，结构、证据、页面语义、几何和灰模已可审阅。
+
+### 2.4 Designed Create 的视觉质量前置事务
+
+Reviewed/critical Designed Create 不把“Gate 没阻断”当成视觉质量证明。Workflow 从精确 Brief 派生 immutable `VisualAdmissionPolicy`，并在 Outline 后按下列顺序执行：
+
+```text
+Taste-driven native prototype + direction review
+  → frozen ArtDirectionSeed
+  → full-deck Slide Specs 0.2 representation grammar
+  → full-deck Layout Plans 0.2 + semantic planning previews
+  → qualitative planning review/decision
+  → closed ArtDirectionPacket/Visual System 0.2
+  → one complete Renderer IR 0.2
+  → deterministic representative selection
+  → scope=sample Artifact Tool render from that IR
+  → real PowerPoint pages + immutable review/derived decision
+  → scope=full render from the identical IR/producer
+  → whole-deck PowerPoint review/decision
+```
+
+校准是 P6 与 full P7 之间的 supporting transaction，不新增 Project State phase。Sample 保持 `VISUAL_SYSTEM_READY` 且不满足 G7；只有同一完整 IR/producer 获得 current calibration authorization 后才允许 full render。任何 Specs、Layout、Visual、IR、asset、font、producer 或 Office profile 变化都会使旧授权失效。
 
 ## 3. Gate 语义
 
@@ -130,6 +151,7 @@ Critical 规则不能被 waiver。Major waiver 只允许显式审批者、原因
 | 事实无支持/冲突 | P2 |
 | 故事线不成立 | P3 |
 | 页数、节奏或重复 | P4 |
+| 主题解读、参考取舍或原生样板方向错误 | Design Direction Prototype / ArtDirectionSeed |
 | 单页命题/内容块错误 | P5A |
 | 元素关系、密度、构图错误 | P5B |
 | 字体、颜色、风格错误 | P6 |
@@ -175,6 +197,10 @@ slidethus create <workspace>
 Resume 只能复用已被 current Gate 重新认可的 artifact。正文仍存在、Schema 通过或历史报告有效都不足以跳过阶段；必须同时满足 current Phase、accepted Gate、registry version/hash、provider/policy 和 upstream lineage。Targeted M2 report 还必须绑定 current Outline/Slide Specs。
 
 每次 Create invocation 都先写 started operation，再闭合为一个 terminal operation。Planning Review 的 `rework_required` 必须直接返回 earliest target phase、Review path、具体 `PRI-*` issues 和允许的下一动作。Renderer attempt 仍由独立 candidate receipt 负责，二者不互相冒充。
+
+Session 0.2 还固定 visual reviewer identity/capabilities 和 calibration state。Reviewed/critical 的 `--render` 首先从完整 IR 确定性选取代表页，产出 sample receipt 并停在 `calibration_office_evidence_pending`；注册真实 PowerPoint 页面后产生 immutable review、workflow-derived decision 与 evidence-only ReferenceSet。批准后下一次 resume 才能执行 full render；full candidate 再停在 `full_deck_office_evidence_pending`，直至 whole-deck decision 成立。直接指定 `--slide-id` 不能替代该事务。
+
+同一 page hash 上已经 admitted 的 Critical/Major finding 不能因漏报、降级或切换 reviewer 消失。真正修复必须改变页面 hash；事实误判只能通过保留原 finding 的 immutable adjudication 关闭。任何 full-render 入口都必须调用共享 `RenderAdmissionPolicy`，不能只依赖 Host Create 的编排状态。
 
 ## 6. 局部重生成
 

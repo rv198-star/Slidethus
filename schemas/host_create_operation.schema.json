@@ -25,7 +25,7 @@
     "result"
   ],
   "properties": {
-    "schema_version": {"const": "0.1.0"},
+    "schema_version": {"enum": ["0.1.0", "0.2.0"]},
     "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
     "session_id": {"type": "string", "pattern": "^HCS-[A-F0-9]{16}$"},
     "attempt_id": {"type": "string", "pattern": "^HCO-[A-F0-9]{16}$"},
@@ -40,11 +40,14 @@
         "design_ready",
         "candidate_office_review_pending",
         "render_failed",
-        "render_timed_out"
+        "render_timed_out", "calibration_office_evidence_pending",
+        "calibration_review_pending", "calibration_rework", "calibration_approved",
+        "full_office_evidence_pending", "whole_deck_review_pending",
+        "whole_deck_rework", "whole_deck_approved"
       ]
     },
     "action": {
-      "enum": ["start", "resume", "revise_stage", "revise_brief", "revise_sources", "render"]
+      "enum": ["start", "resume", "revise_stage", "revise_brief", "revise_sources", "render", "register_office_evidence", "review"]
     },
     "occurred_at": {"type": "string", "format": "date-time"},
     "started_at": {"type": "string", "format": "date-time"},
@@ -95,7 +98,10 @@
               "design_ready",
               "candidate_office_review_pending",
               "render_failed",
-              "render_timed_out"
+              "render_timed_out", "calibration_office_evidence_pending",
+              "calibration_review_pending", "calibration_rework", "calibration_approved",
+              "full_office_evidence_pending", "whole_deck_review_pending",
+              "whole_deck_rework", "whole_deck_approved"
             ]
           },
           "finished_at": {"type": "string", "format": "date-time"},
@@ -153,7 +159,8 @@
             "art_direction_seed",
             "slide_specs",
             "layout_plans",
-            "art_direction"
+            "art_direction", "direction_review", "semantic_planning_review",
+            "calibration_office_evidence", "calibration_review", "whole_deck_review"
           ]
         },
         "request_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
@@ -167,7 +174,10 @@
       "required": ["kind", "path", "sha256"],
       "properties": {
         "kind": {
-          "enum": ["m2_report", "m3_report", "planning_review", "preflight", "render_receipt", "candidate"]
+          "enum": [
+            "m2_report", "m3_report", "planning_review", "preflight", "render_receipt",
+            "candidate", "visual_review", "visual_decision", "visual_reference_set", "office_page"
+          ]
         },
         "path": {"type": "string", "minLength": 1, "maxLength": 4096},
         "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
@@ -181,7 +191,7 @@
         "message": {"type": "string", "minLength": 1, "maxLength": 4000},
         "target_phase": {
           "type": ["string", "null"],
-          "enum": [null, "P0", "P1", "P2", "P3", "P4", "P5A", "P5B", "P6", "P7"]
+          "enum": [null, "P0", "P1", "P2", "P3", "P4", "P5A", "P5B", "P6", "P7", "P8"]
         },
         "issue_ids": {
           "type": "array",
@@ -203,6 +213,7 @@
               "repair_capability",
               "render",
               "review_candidate"
+              ,"register_office_evidence", "review_sample", "render_full", "review_whole_deck"
             ]
           }
         },

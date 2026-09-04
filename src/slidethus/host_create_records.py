@@ -38,6 +38,14 @@ TERMINAL_STATUSES = {
     "candidate_office_review_pending",
     "render_failed",
     "render_timed_out",
+    "calibration_office_evidence_pending",
+    "calibration_review_pending",
+    "calibration_rework",
+    "calibration_approved",
+    "full_office_evidence_pending",
+    "whole_deck_review_pending",
+    "whole_deck_rework",
+    "whole_deck_approved",
 }
 
 
@@ -151,6 +159,49 @@ def validate_host_create_session_data(
     else:
         if updated < created:
             errors.append("Host Create session updated_at precedes created_at")
+    if data.get("schema_version") == "0.2.0":
+        calibration = data.get("calibration", {})
+        state = calibration.get("state")
+        if state == "idle" and any(
+            calibration.get(field) is not None
+            for field in (
+                "sample_receipt",
+                "authorization",
+                "full_receipt",
+                "whole_deck_decision",
+            )
+        ):
+            errors.append("Idle Host Create calibration contains stale authority")
+        if state in {
+            "sample_rendered",
+            "sample_office_available",
+            "approved",
+            "rework",
+            "full_rendered",
+            "full_office_available",
+            "whole_deck_approved",
+            "whole_deck_rework",
+        } and calibration.get("sample_receipt") is None:
+            errors.append("Host Create calibration state lacks sample receipt")
+        if state in {
+            "approved",
+            "full_rendered",
+            "full_office_available",
+            "whole_deck_approved",
+            "whole_deck_rework",
+        } and calibration.get("authorization") is None:
+            errors.append("Host Create calibrated state lacks authorization")
+        if state in {
+            "full_rendered",
+            "full_office_available",
+            "whole_deck_approved",
+            "whole_deck_rework",
+        } and calibration.get("full_receipt") is None:
+            errors.append("Host Create full-deck state lacks full receipt")
+        if state in {"whole_deck_approved", "whole_deck_rework"} and calibration.get(
+            "whole_deck_decision"
+        ) is None:
+            errors.append("Host Create whole-deck state lacks decision")
     return tuple(errors)
 
 
@@ -202,6 +253,28 @@ def provider_identity(provider: Any, *, include_mode: bool = False) -> dict[str,
     return identity
 
 
+def visual_reviewer_identity(provider: Any) -> dict[str, Any]:
+    if provider is None:
+        return {
+            "name": "unconfigured-visual-reviewer",
+            "version": "0",
+            "capabilities": ["unavailable"],
+        }
+    identity = provider_identity(provider)
+    if identity is None:
+        raise HostCreateRecordError("Host Create requires a visual review provider")
+    capabilities = sorted(
+        set(str(item) for item in getattr(provider, "capabilities", ()))
+    )
+    required = {"native_prototype", "semantic_preview", "office_pages", "whole_deck"}
+    if not required.issubset(capabilities):
+        raise HostCreateRecordError(
+            "Host Create visual reviewer lacks required capabilities: "
+            + ", ".join(sorted(required - set(capabilities)))
+        )
+    return {**identity, "capabilities": capabilities}
+
+
 def fingerprint_sources(source_paths: tuple[Path, ...]) -> list[dict[str, Any]]:
     """Fingerprint an explicit complete Source set before workspace mutation."""
 
@@ -238,6 +311,7 @@ def build_host_create_config(
     planning_provider: Any,
     research_provider: Any,
     art_direction_provider: Any,
+    visual_review_provider: Any = None,
 ) -> dict[str, Any]:
     """Build the complete canonical intent/config payload for one Create session."""
 
@@ -259,6 +333,7 @@ def build_host_create_config(
         "art_direction_provider": provider_identity(
             art_direction_provider, include_mode=True
         ),
+        "visual_review_provider": visual_reviewer_identity(visual_review_provider),
     }
     config["config_hash"] = "sha256:" + sha256_json(_config_hash_payload(config))
     return config
@@ -277,6 +352,11 @@ def load_host_create_session(
     if not path.is_file():
         return None
     data = read_json(path)
+    if data.get("schema_version") == "0.1.0":
+        raise HostCreateRecordError(
+            "Host Create Session 0.1 cannot resume the quality-by-construction workflow; "
+            "start a new workspace or perform an explicit session migration"
+        )
     admitted = (schema_dir or SchemaRegistry().schema_dir).resolve()
     errors = validate_host_create_session_data(data, admitted)
     if errors:
@@ -299,7 +379,7 @@ def create_host_create_session(
     state = read_json(workspace / "project_state.json")
     now = _utc_now()
     session = {
-        "schema_version": "0.1.0",
+        "schema_version": "0.2.0",
         "project_id": str(state["project_id"]),
         "session_id": _session_id(str(state["project_id"]), now),
         "session_revision": 1,
@@ -310,9 +390,17 @@ def create_host_create_session(
         "config": copy.deepcopy(config),
         "pending_revision": None,
         "pending_request": None,
+        "prepared_art_direction_seed": None,
         "m2_reports": {"orientation": None, "targeted": None},
         "last_planning_report": None,
         "last_terminal": None,
+        "calibration": {
+            "state": "idle",
+            "sample_receipt": None,
+            "authorization": None,
+            "full_receipt": None,
+            "whole_deck_decision": None,
+        },
     }
     admitted = (schema_dir or SchemaRegistry().schema_dir).resolve()
     errors = validate_host_create_session_data(session, admitted)
@@ -382,6 +470,7 @@ def resolve_session_config(
     planning_provider: Any,
     research_provider: Any,
     art_direction_provider: Any,
+    visual_review_provider: Any = None,
 ) -> dict[str, Any]:
     """Create initial config or validate explicit resume arguments against it."""
 
@@ -400,6 +489,7 @@ def resolve_session_config(
             planning_provider=planning_provider,
             research_provider=research_provider,
             art_direction_provider=art_direction_provider,
+            visual_review_provider=visual_review_provider,
         )
 
     canonical = copy.deepcopy(session["config"])
@@ -443,6 +533,7 @@ def resolve_session_config(
         planning_provider=planning_provider,
         research_provider=research_provider,
         art_direction_provider=art_direction_provider,
+        visual_review_provider=visual_review_provider,
     )
     if candidate != canonical:
         fields = [
@@ -536,7 +627,7 @@ def start_host_create_operation(
     state_before = _state_ref(workspace)
     digest = invocation_hash(invocation_payload)
     event = {
-        "schema_version": "0.1.0",
+        "schema_version": "0.2.0",
         "project_id": str(session["project_id"]),
         "session_id": str(session["session_id"]),
         "attempt_id": attempt_id,
@@ -633,7 +724,7 @@ def finish_host_create_operation(
         raise HostCreateRecordError(f"Unknown Host Create terminal status: {status}")
     finished_at = _utc_now()
     event = {
-        "schema_version": "0.1.0",
+        "schema_version": "0.2.0",
         "project_id": str(read_json(context.workspace / "project_state.json")["project_id"]),
         "session_id": context.session_id,
         "attempt_id": context.attempt_id,
@@ -823,6 +914,43 @@ def host_create_workspace_errors(
         else:
             if not target.is_file() or sha256_file(target) != planning_ref.get("sha256"):
                 errors.append((relative_session, "Host Create M3 report ref is invalid"))
+
+    calibration = session.get("calibration", {})
+    for field, root_path in (
+        ("sample_receipt", Path("outputs/host-candidates")),
+        ("full_receipt", Path("outputs/host-candidates")),
+        ("whole_deck_decision", Path(".slidethus/visual-quality")),
+    ):
+        ref = calibration.get(field)
+        if not isinstance(ref, dict):
+            continue
+        try:
+            target = _safe_runtime_file(
+                workspace, str(ref["path"]), admitted_root=root_path
+            )
+        except Exception as exc:  # noqa: BLE001
+            errors.append((relative_session, str(exc)))
+            continue
+        if not target.is_file() or sha256_file(target) != ref.get("sha256"):
+            errors.append(
+                (relative_session, f"Host Create calibration {field} ref is invalid")
+            )
+    authorization = calibration.get("authorization")
+    if isinstance(authorization, dict):
+        for field in ("decision_path", "reference_set_path"):
+            try:
+                target = _safe_runtime_file(
+                    workspace,
+                    str(authorization[field]),
+                    admitted_root=Path(".slidethus/visual-quality"),
+                )
+            except Exception as exc:  # noqa: BLE001
+                errors.append((relative_session, str(exc)))
+                continue
+            if not target.is_file():
+                errors.append(
+                    (relative_session, f"Host Create calibration {field} is missing")
+                )
 
     root = workspace / OPERATIONS_ROOT
     terminal_by_attempt: dict[str, tuple[Path, dict[str, Any]]] = {}

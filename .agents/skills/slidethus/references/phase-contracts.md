@@ -7,11 +7,11 @@
 | P2 | sources/research; brief needs; post-outline page needs | Evidence Ledger | orientation baseline exists; used factual claims are supported; conflicts surfaced; page-level evidence gaps are resolved before P5A |
 | P3 | brief/evidence | Narrative Blueprint | thesis, arc, sections, objections, transitions coherent |
 | P4 | narrative/evidence | Deck Outline | stable slide IDs, page target, unique messages, no major repetition |
-| P5A | outline/evidence | Slide Specs | one spec per slide; blocks and evidence complete |
-| P5B | slide specs | Layout Plans/wireframes | every block mapped; readable geometry; layout rationale |
-| P6 | brief/layout/assets/brand refs | immutable Art Direction Packet + Visual System | Packet hash/provider/input lineage valid; tokens and diversity/forbidden rules complete |
-| P7 | specs/layout/visual/assets | rendered draft/manifest | file valid; preview generated; warnings recorded; actual editability measured |
-| P8 | draft/all artifacts | Quality Report/repair plan | Critical=0, Major=0, regression pass |
+| P5A | outline/evidence + reviewed ArtDirectionSeed on designed path | Slide Specs | one spec/closed representation per slide; blocks, semantic carrier decisions and evidence complete |
+| P5B | slide specs | Layout Plans/wireframes + semantic preview/qualitative decision when policy requires | every block/representation mapped; focal/read/view geometry readable; zero open qualitative Critical/Major |
+| P6 | brief/layout/assets/brand refs | immutable Art Direction Packet + Visual System + complete page designs | current direction evidence; closed producer-capability grammar; all executable decisions consumed without fallback |
+| P7 | specs/layout/visual/assets + complete IR + render admission | rendered candidate/manifest/receipt | sample/full identity valid; file/preview integrity recorded; full render has current calibration authorization |
+| P8 | real target-rendered full pages/all artifacts | immutable visual decision + Quality Report/repair plan | full-deck Office coverage; Critical=0, Major=0, regression pass |
 | P9 | approved versions | Delivery Manifest | requested formats, hashes, limitations, target and actual editability declared |
 
 ## Two-pass research contract

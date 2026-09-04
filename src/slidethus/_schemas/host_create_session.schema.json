@@ -16,12 +16,13 @@
     "config",
     "pending_revision",
     "pending_request",
+    "prepared_art_direction_seed",
     "m2_reports",
     "last_planning_report",
     "last_terminal"
   ],
   "properties": {
-    "schema_version": {"const": "0.1.0"},
+    "schema_version": {"enum": ["0.1.0", "0.2.0"]},
     "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
     "session_id": {"type": "string", "pattern": "^HCS-[A-F0-9]{16}$"},
     "session_revision": {"type": "integer", "minimum": 1},
@@ -29,7 +30,12 @@
     "created_at": {"type": "string", "format": "date-time"},
     "updated_at": {"type": "string", "format": "date-time"},
     "status": {
-      "enum": ["active", "design_ready", "candidate_office_review_pending"]
+      "enum": [
+        "active", "design_ready", "candidate_office_review_pending",
+        "calibration_office_evidence_pending", "calibration_review_pending",
+        "calibration_rework", "calibration_approved", "full_office_evidence_pending",
+        "whole_deck_review_pending", "whole_deck_rework", "whole_deck_approved"
+      ]
     },
     "config": {"$ref": "#/$defs/config"},
     "pending_revision": {
@@ -42,6 +48,12 @@
       "oneOf": [
         {"type": "null"},
         {"$ref": "#/$defs/pendingRequest"}
+      ]
+    },
+    "prepared_art_direction_seed": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/artDirectionSeedRef"}
       ]
     },
     "m2_reports": {
@@ -62,8 +74,22 @@
     },
     "last_terminal": {
       "oneOf": [{"type": "null"}, {"$ref": "#/$defs/terminalRef"}]
+    },
+    "calibration": {
+      "$ref": "#/$defs/calibrationState"
     }
   },
+  "allOf": [
+    {
+      "if": {"properties": {"schema_version": {"const": "0.2.0"}}},
+      "then": {
+        "required": ["calibration"],
+        "properties": {
+          "config": {"required": ["visual_review_provider"]}
+        }
+      }
+    }
+  ],
   "$defs": {
     "provider": {
       "type": "object",
@@ -82,6 +108,30 @@
         "name": {"type": "string", "minLength": 1, "maxLength": 128},
         "version": {"type": "string", "minLength": 1, "maxLength": 128},
         "mode": {"type": "string", "minLength": 1, "maxLength": 128}
+      }
+    },
+    "visualReviewProvider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "capabilities"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 128},
+        "version": {"type": "string", "minLength": 1, "maxLength": 128},
+        "capabilities": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"enum": ["native_prototype", "semantic_preview", "office_pages", "whole_deck", "unavailable"]}
+        }
+      }
+    },
+    "artDirectionSeedRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seed_id", "path", "content_hash", "provider"],
+      "properties": {
+        "seed_id": {"type": "string", "pattern": "^ADS-[A-F0-9]{16}$"},
+        "path": {"type": "string", "pattern": "^\\.slidethus/art-direction/seeds/[a-f0-9]{64}\\.json$"},
+        "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "provider": {"$ref": "#/$defs/artDirectionProvider"}
       }
     },
     "sourceFingerprint": {
@@ -276,7 +326,40 @@
         "research_provider": {
           "oneOf": [{"type": "null"}, {"$ref": "#/$defs/provider"}]
         },
-        "art_direction_provider": {"$ref": "#/$defs/artDirectionProvider"}
+        "art_direction_provider": {"$ref": "#/$defs/artDirectionProvider"},
+        "visual_review_provider": {"$ref": "#/$defs/visualReviewProvider"}
+      }
+    },
+    "calibrationState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "sample_receipt", "authorization", "full_receipt", "whole_deck_decision"],
+      "properties": {
+        "state": {
+          "enum": [
+            "idle", "sample_rendered", "sample_office_available", "approved", "rework",
+            "full_rendered", "full_office_available", "whole_deck_approved", "whole_deck_rework"
+          ]
+        },
+        "sample_receipt": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/fileRef"}]},
+        "authorization": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object", "additionalProperties": false,
+              "required": ["dependency_key", "decision_path", "reference_set_path", "renderer_ir_sha256", "producer"],
+              "properties": {
+                "dependency_key": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+                "decision_path": {"type": "string", "minLength": 1},
+                "reference_set_path": {"type": "string", "minLength": 1},
+                "renderer_ir_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+                "producer": {"type": "object"}
+              }
+            }
+          ]
+        },
+        "full_receipt": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/fileRef"}]},
+        "whole_deck_decision": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/fileRef"}]}
       }
     },
     "pendingRevision": {
@@ -315,6 +398,8 @@
             "slide_specs",
             "layout_plans",
             "art_direction"
+            ,"direction_review", "semantic_planning_review", "calibration_office_evidence",
+            "calibration_review", "whole_deck_review"
           ]
         },
         "request_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
@@ -358,6 +443,9 @@
             "candidate_office_review_pending",
             "render_failed",
             "render_timed_out"
+            ,"calibration_office_evidence_pending", "calibration_review_pending",
+            "calibration_rework", "calibration_approved", "full_office_evidence_pending",
+            "whole_deck_review_pending", "whole_deck_rework", "whole_deck_approved"
           ]
         },
         "path": {"type": "string", "minLength": 1, "maxLength": 4096},

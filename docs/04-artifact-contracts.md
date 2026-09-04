@@ -179,6 +179,8 @@ M3 Outline 把页面建模为稳定数字便利贴：`S-*` 与 ordinal 分离，
 
 M3 Production Slide Specs 还记录 `outline_slide_ref`/semantic hash、stable Block identity、`claim_mode`、Block content hash、frozen status 和 current `planning_lineage`。Factual Block 只能使用 Outline 已声明且 policy-usable 的 Evidence；qualified support 必须携带可见 qualification，Provider 不能通过正文扩写创造新事实。
 
+Reviewed/critical Designed Create 使用 Slide Specs 0.2。每页必须拥有一个 closed、discriminated `representation`，kind 为 `text / typographic / image / chart / table / diagram / mixed`。Specs 是 carrier reason、visual weight、density role 以及 chart series/categories、table hierarchy、diagram nodes/edges、image narrative role 等语义事实的唯一 owner。它不得保存最终坐标、P6 style/component ID，renderer 也不得在缺字段时自行推断载体或拓扑。Legacy 0.1 Specs 仍可供明确 controlled path 读取，但不能通过新 G5A。
+
 M2.5 在 G5A 前重新计算当前 Outline/Slide Specs 的 block-level Evidence gap：required factual block 必须绑定已知、可用 Evidence；required slide 的 Evidence 必须落实到具体 block；qualified Evidence 必须有显式 qualification。结果写入非 catalog 的 `evidence_gap_report.schema.json` 运行时事实，并可生成 targeted Research Plan 或走正式 `OUTLINE_READY/SLIDE_SPECS_READY → EVIDENCE_READY` 返工。
 
 M2.6 另外发布非 catalog 的 `m2_application_report.schema.json` 运行时事实，回答“这次 M2 应用实际做了什么、缺什么能力、为什么降级或阻断、最后停在哪个 Gate”。它绑定 Project Brief、final Project State revision、Source/Evidence/Planning artifacts、requested Source fingerprints、完整 application config/limits、Gap Report、capability/security decisions 与 Gate evaluations。每个 Research Run 以 content-addressed 快照固化到 `.slidethus/m2/research-runs/`，并继续引用不可变 Research Cache；Application Report 位于 `.slidethus/m2/runs/`。
@@ -208,6 +210,10 @@ M3 新增三类非 catalog 审计事实：
 - layout rationale。
 
 M3 Production Layout 还绑定 current Slide Specs semantic hashes、stable `REG-*`、每个 Block 的一一映射、capacity/content units、minimum font floor、collision/safe-area/coverage diagnostics 和 `planning_lineage`。每页灰模以 content-addressed SVG 写入 `.slidethus/planning/wireframes/`；Layout artifact 只引用路径与 SHA-256，不把灰模冒充最终视觉。
+
+Layout Plans 0.2 只引用 matching representation ID，并拥有 focal order、reading path、negative-space target 和载体 view geometry：chart orientation/labels/legend、table header/emphasis、diagram ports/routing/label anchors、image fit/crop/focal point。它不复制 series、nodes/edges 或 table schema。系统由 frozen Seed/Specs/Layout 生成 content-addressed semantic SVG 与 `SemanticPreviewReceipt`；预览必须把真实 chart orientation、table hierarchy、diagram topology、image crop/focal placeholder 和视觉权重画出来，raw JSON 或等权占位框不构成 reviewed/critical G5B 证据。
+
+`PlanningReviewReport` 0.2 在原 deterministic planning facts 之外绑定精确 VisualAdmissionPolicy、SemanticPreviewReceipt、reviewer identity、immutable `VisualQualityReview` 和 workflow-derived `VisualQualityDecision`。Qualitative review 负责 carrier fitness、focal hierarchy、page distinction 与 deck rhythm；它是 P5 admission，不是 P8 Quality Report。
 
 ### 4.8 Visual System
 
@@ -241,14 +247,20 @@ M3 Production Layout 还绑定 current Slide Specs semantic hashes、stable `REG
 
 Packet 写入 `.slidethus/art-direction/packets/<sha256>.json` 后不可覆盖。Visual System 只引用 Packet ID/path/hash、provider identity 和（若有）Seed reference，并把已准入方向编译为正式 tokens/page designs。Taste 是默认 provider，但 Packet schema 不出现供应商专属字段。
 
+Reviewed/critical 使用 ArtDirectionPacket/Visual System 0.2 的 closed grammar。Packet 唯一拥有 page family、component variant 与 style IDs；Visual System 将相同 style ID 映射到相同 concrete style，并绑定 producer capability ID/hash。`semantic-fallback`、family/variant 不匹配、未绑定 style、隐式 image fit、隐式 chart/table view 或 diagram routing 均是阻断。Renderer IR 0.2 必须逐页记录 family/variant/representation/view 和 source decision → style/slot/asset → concrete region 的 consumption trace；generic `_style_for`、decorations 或 diagram fallback 不能用于该路径。
+
+方向评审使用同一组不可变 supporting facts：`VisualQualityReview` 保存 reviewer evidence/findings，`VisualQualityDecision` 由 workflow 机械派生，`ReviewAdjudication` 保存授权主体对事实误判的不可覆盖处理。Reviewer 不提交 pass。`VisualReferenceSet` 只保存批准的真实 Office page refs、coverage、receipt/decision/dependency hashes，不拥有 style、geometry 或 renderer behavior。
+
 #### 4.8.2 Host Create Session 与 Operation
 
 Designed Create 使用两类非 catalog supporting facts：
 
-- `.slidethus/host-create/session.json`：一次用户意图的 canonical config，包含 Source fingerprints、Brief hints、Planning/M2 limits、policy flags、provider identities、pending revision/request、可复用 M2 refs、最近 M3 report 与最近终态；
+- `.slidethus/host-create/session.json`：一次用户意图的 canonical config，包含 Source fingerprints、Brief hints、Planning/M2 limits、policy flags、provider identities、固定 visual reviewer identity/capabilities、pending revision/request、已冻结但尚未被 Specs 引用的 exact ArtDirectionSeed ref、calibration lifecycle、可复用 M2 refs、最近 M3 report 与最近终态；
 - `.slidethus/host-create/operations/HCO-*/started.json|terminal.json`：每次 invocation 的 config/invocation hash、动作、状态前后、耗时、pending request、结果引用和恢复动作。
 
 Session 可版本化更新但不能改变 `session_id` 或 `created_at`；`intent_revision` 只在显式 Brief/Source revision 时递增。普通参数省略复用 Session，显式冲突不能修改 Project State、Brief、Source、Evidence 或 planning artifacts。Stage revision 在 owning artifact 提交后立即更新 Session、清除 pending revision/request，再继续 dependents；pending revision 不能与 Render 合并。Operation started/terminal 使用 immutable create-if-absent 文件；每个 attempt 只能有一个终态，后续持锁调用会把中断的 started fact 关闭为 failed。
+
+Session/Operation 0.2 的 calibration state 为 `idle / sample_rendered / sample_office_available / approved / rework / full_rendered / full_office_available / whole_deck_approved / whole_deck_rework`。每个状态引用前一步 immutable fact；Brief/Source/Seed/Specs/Layout/P6 revision 将其复位。Direction review 已完成而 Slide Specs request 尚待回答时，Session 保存并校验 exact Seed ref，使跨进程 resume 不会再次 prepare Seed 或重放旧 response。0.1 Session 不被静默补默认值，必须显式迁移或新建 workspace。
 
 这些事实不进入 Artifact Runtime catalog，不满足 G0–G9，也不替代 M2/M3 Application Report、Planning Review、Render Manifest 或 Host Candidate Receipt。`rework_required` 的 terminal fact 必须引用真实 Planning Review，并携带 earliest phase 与具体 `PRI-*` issue IDs。详细决策见 ADR-0033。
 
@@ -274,7 +286,9 @@ Session 可版本化更新但不能改变 `session_id` 或 `created_at`；`inten
 
 `target_editability_level` 表示计划目标；`editability_level` 表示对真实输出的测量结果。`pending`/`draft` 阶段必须允许 `not_measured`，成功渲染和可交付状态则不能继续使用该值。
 
-Designed Host Create 另有非 catalog 的 `host_candidate_receipt.schema.json`。每次真正启动的 Artifact Tool attempt 先写 `render_started`，再闭合为 `render_failed`、`render_timed_out` 或 `candidate_office_review_pending`。回执绑定 current artifact refs、Renderer IR、Preflight、input/output hashes、adapter identity、stage/duration/exit/timeout 和截断脱敏后的 stdout/stderr；失败回执也必须通过 Schema。它不是 Render Manifest、G7 或 release evidence。
+Designed Host Create 另有非 catalog 的 `host_candidate_receipt.schema.json`。每次真正启动的 Artifact Tool attempt 先写 `render_started`，再闭合为 `render_failed`、`render_timed_out` 或 `candidate_office_review_pending`。0.3 receipt 增加 `scope=sample|full`、conservative dependency key、完整 producer identity/capability、calibration authorization 和 Office evidence。回执绑定 current artifact refs、同一完整 Renderer IR、Preflight、input/output hashes、adapter identity、stage/duration/exit/timeout 和截断脱敏后的 stdout/stderr；失败回执也必须通过 Schema。
+
+Artifact Tool preview 只能诊断。`record_office_evidence` 要求 application 为 Microsoft PowerPoint、精确 slide order、build/profile/export parameters 和每页独立 raster hash；它拒绝把 attempt output path 重新登记为 Office 页面，并写入新的 content-addressed `receipt-office-<hash>.json`，不覆盖 terminal receipt。Sample receipt 不满足 G7；full receipt 只有通过共享 `RenderAdmissionPolicy`，且与 sample 使用精确相同的 complete IR/producer/dependency authorization，才可启动。Receipt 0.2 历史可读，但不能授权新 reviewed/critical 路径。
 
 `render_preflight_report.schema.json` 的容量 finding 使用结构化 `details`：required/available height、minimum height increase、width、preferred/floor/fitted font、line-height、line count、qualification reserve、实际 renderer horizontal/vertical padding 与 stable failure reason。Adapter-specific finding 可绑定 `asset_id`，同一次报告聚合全 deck 的 capacity、collision、asset、caption、carrier 与 runtime 条件。
 

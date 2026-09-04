@@ -92,6 +92,29 @@ def validate_renderer_ir_data(
             errors.append(f"Renderer IR slide {slide.get('slide_id')} maps one block more than once")
         region_ids.update(local_regions)
         block_ids.update(local_blocks)
+        if str(data.get("schema_version", "")).startswith("0.2."):
+            focal = [str(item) for item in slide.get("focal_order", [])]
+            if set(focal) != set(local_regions) or len(focal) != len(local_regions):
+                errors.append(
+                    f"Renderer IR focal order must cover every region on {slide.get('slide_id')}"
+                )
+            if focal and focal[0] != slide.get("view", {}).get("primary_region_id"):
+                errors.append(
+                    f"Renderer IR primary region is not first focal item on {slide.get('slide_id')}"
+                )
+            if slide.get("consumption_trace", {}).get("output_ids") != [
+                slide.get("slide_id")
+            ]:
+                errors.append(
+                    f"Renderer IR page consumption trace mismatch on {slide.get('slide_id')}"
+                )
+            for region in slide.get("regions", []):
+                if region.get("consumption_trace", {}).get("output_ids") != [
+                    region.get("region_id")
+                ]:
+                    errors.append(
+                        f"Renderer IR region consumption trace mismatch on {region.get('region_id')}"
+                    )
     if len(region_ids) != sum(len(item.get("regions", [])) for item in data.get("slides", [])):
         errors.append("Renderer IR region IDs are not globally unique")
     if len(block_ids) != sum(len(item.get("regions", [])) for item in data.get("slides", [])):
@@ -167,6 +190,7 @@ def renderer_ir_reference_errors(
     outline = historical.get("deck_outline")
     specs = historical.get("slide_specs")
     layouts = historical.get("layout_plans")
+    visual = historical.get("visual_system")
     if outline is not None:
         expected_ids = [
             str(item["slide_id"])
@@ -195,6 +219,50 @@ def renderer_ir_reference_errors(
             errors.append("Renderer IR region/block mapping disagrees with bound Layout Plans")
         if not set(ir_regions.values()).issubset(blocks):
             errors.append("Renderer IR references blocks absent from bound Slide Specs")
+    if (
+        str(data.get("schema_version", "")).startswith("0.2.")
+        and specs is not None
+        and layouts is not None
+        and visual is not None
+    ):
+        specs_by_id = {str(item["slide_id"]): item for item in specs["slides"]}
+        layouts_by_id = {str(item["slide_id"]): item for item in layouts["plans"]}
+        pages_by_id = {
+            str(item["slide_id"]): item for item in visual.get("page_designs", [])
+        }
+        if data.get("producer_capability") != visual.get("capability_contract"):
+            errors.append("Renderer IR producer capability differs from Visual System")
+        for page in data.get("slides", []):
+            slide_id = str(page["slide_id"])
+            spec = specs_by_id.get(slide_id, {})
+            layout = layouts_by_id.get(slide_id, {})
+            authored = pages_by_id.get(slide_id, {})
+            representation = spec.get("representation", {})
+            if page.get("representation_ref") != layout.get("representation_ref"):
+                errors.append(f"Renderer IR representation ref differs on {slide_id}")
+            if page.get("focal_order") != layout.get("focal_order"):
+                errors.append(f"Renderer IR focal order differs on {slide_id}")
+            if page.get("view") != layout.get("view"):
+                errors.append(f"Renderer IR representation view differs on {slide_id}")
+            for field in ("page_family_id", "component_variant_id"):
+                if page.get(field) != authored.get(field):
+                    errors.append(f"Renderer IR {field} differs on {slide_id}")
+            styles = {
+                str(item["block_id"]): item for item in authored.get("regions", [])
+            }
+            for region in page.get("regions", []):
+                block_id = str(region["block_id"])
+                style = styles.get(block_id, {})
+                if region.get("style_id") != style.get("style_id") or region.get(
+                    "style"
+                ) != style.get("style"):
+                    errors.append(f"Renderer IR style authority differs for {block_id}")
+                if region.get("representation_id") != representation.get(
+                    "representation_id"
+                ):
+                    errors.append(
+                        f"Renderer IR representation identity differs for {block_id}"
+                    )
     return tuple(errors)
 
 

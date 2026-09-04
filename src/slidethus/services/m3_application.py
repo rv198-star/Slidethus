@@ -31,8 +31,10 @@ from slidethus.protocols import (
     PlanningLimits,
     PlanningProvider,
     ResearchProvider,
+    VisualReviewProvider,
 )
 from slidethus.schema_registry import SchemaRegistry
+from slidethus.semantic_preview import review_semantic_previews
 from slidethus.services.brief_completion import (
     BriefCompletionService,
     validate_brief_completion_hints,
@@ -50,6 +52,7 @@ from slidethus.services.research import validate_research_limits
 from slidethus.services.slide_specs import SlideSpecPlanningService
 from slidethus.services.source_ingestion import SourceIngestionService
 from slidethus.state_machine import FORWARD_SEQUENCE, Phase, can_transition
+from slidethus.visual_quality import build_visual_admission_policy, quality_path_required
 
 _GATE_TARGETS = {
     "G0": Phase.BRIEF_READY,
@@ -163,6 +166,8 @@ class M3ApplicationService:
         *,
         planning_provider: PlanningProvider | None = None,
         research_provider: ResearchProvider | None = None,
+        visual_review_provider: VisualReviewProvider | None = None,
+        quality_by_construction: bool = False,
         runtime: ArtifactRuntime | None = None,
         schema_registry: SchemaRegistry | None = None,
     ) -> None:
@@ -171,6 +176,8 @@ class M3ApplicationService:
         self.schemas = schema_registry or SchemaRegistry()
         self.planning_provider = planning_provider or DeterministicPlanningProvider()
         self.research_provider = research_provider
+        self.visual_review_provider = visual_review_provider
+        self.quality_by_construction = quality_by_construction
         self.planning_provider_identity = _provider_identity(
             self.planning_provider,
             required=True,
@@ -916,6 +923,22 @@ class M3ApplicationService:
                 planning_level="P0",
             )
 
+        if self.quality_by_construction:
+            policy_path, policy = build_visual_admission_policy(
+                self.workspace,
+                runtime=self.runtime,
+            )
+            self._add_action(
+                actions,
+                stage="visual_admission_policy",
+                status="complete",
+                detail=(
+                    "Derived visual risk/evidence policy "
+                    f"{policy['policy_id']} ({policy['risk_class']}) from the exact Brief."
+                ),
+                refs=(policy_path.relative_to(self.workspace).as_posix(),),
+            )
+
         reusable_orientation_ref = (reusable_m2_reports or {}).get("orientation")
         orientation_report = self._reusable_m2_report(
             reusable_orientation_ref,
@@ -1227,6 +1250,40 @@ class M3ApplicationService:
                     f"{len(layout.wireframe_paths)} wireframes are current."
                 ),
             )
+            if quality_path_required(self.workspace):
+                if self.visual_review_provider is None:
+                    raise M3ApplicationError(
+                        "Reviewed/critical planning requires an independent semantic-preview reviewer"
+                    )
+                admission = review_semantic_previews(
+                    self.workspace,
+                    provider=self.visual_review_provider,
+                    author_identities=(
+                        str(self.planning_provider_identity["name"]),
+                    ),
+                )
+                self._add_action(
+                    actions,
+                    stage="qualitative_planning_review",
+                    status=(
+                        "complete"
+                        if admission.decision["quality_approved"]
+                        else "blocked"
+                    ),
+                    detail=(
+                        "Semantic planning previews were independently reviewed; "
+                        f"decision={admission.decision['outcome']}."
+                    ),
+                    refs=(
+                        admission.review_path.relative_to(self.workspace).as_posix(),
+                        admission.decision_path.relative_to(self.workspace).as_posix(),
+                    ),
+                )
+                if not admission.decision["quality_approved"]:
+                    raise M3ApplicationError(
+                        "Qualitative planning admission requires rework: "
+                        + ", ".join(admission.decision["open_finding_ids"])
+                    )
             if not self._ensure_gate(
                 "G5B",
                 actions=actions,

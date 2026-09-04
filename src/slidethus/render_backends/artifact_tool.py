@@ -20,8 +20,10 @@ from slidethus.errors import RenderAttemptError, RenderBackendError
 from slidethus.io_utils import (
     atomic_create_json,
     atomic_write_json,
+    ensure_within,
     read_json,
     sha256_file,
+    sha256_json,
 )
 from slidethus.render_backends.artifact_tool_runtime import (
     ArtifactToolRuntime,
@@ -29,6 +31,11 @@ from slidethus.render_backends.artifact_tool_runtime import (
 )
 from slidethus.schema_registry import SchemaRegistry
 from slidethus.services.render_preflight import RenderPreflightResult
+from slidethus.visual_quality import (
+    RenderAdmissionPolicy,
+    calibration_dependency_key,
+    current_visual_admission_policy,
+)
 
 
 def _bounded_diagnostic(value: str | bytes | None, redactions: dict[str, str]) -> str:
@@ -94,10 +101,20 @@ class ArtifactToolRenderBackend:
             for path in outputs
         ]
         terminal["office_review"] = (
-            "pending"
+            (
+                "evidence_pending"
+                if receipt.get("schema_version") == "0.3.0"
+                else "pending"
+            )
             if status == "candidate_office_review_pending"
             else "not_started"
         )
+        if terminal.get("schema_version") == "0.3.0":
+            terminal["office"]["status"] = (
+                "evidence_pending"
+                if status == "candidate_office_review_pending"
+                else "not_requested"
+            )
         terminal["diagnostics"] = {
             "stage": stage,
             "started_at": receipt["diagnostics"]["started_at"],
@@ -117,6 +134,9 @@ class ArtifactToolRenderBackend:
         preflight: RenderPreflightResult,
         *,
         slide_ids: tuple[str, ...] = (),
+        scope: str | None = None,
+        dependency_key: str | None = None,
+        calibration_authorization: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Write a unique candidate plus a terminal receipt for every started attempt."""
 
@@ -125,6 +145,7 @@ class ArtifactToolRenderBackend:
         if preflight.report["status"] != "pass" or preflight.report["backends"] != [self.name]:
             raise RenderBackendError("Artifact Tool requires its own passing current preflight")
         ir = preflight.compiled.ir
+        strict = str(ir.get("schema_version", "")).startswith("0.2.")
         try:
             snapshots_match = (
                 read_json(preflight.compiled.path) == ir
@@ -139,6 +160,13 @@ class ArtifactToolRenderBackend:
         if not selected or len(selected) != len(set(selected)) or not set(selected).issubset(active):
             raise RenderBackendError("Unknown, duplicate or empty slide selection")
         selected = [slide_id for slide_id in active if slide_id in selected]
+        admitted_scope = scope or ("full" if selected == active else "sample")
+        if admitted_scope not in {"sample", "full"}:
+            raise RenderBackendError("Render scope must be sample or full")
+        if admitted_scope == "full" and selected != active:
+            raise RenderBackendError("Full render scope must cover the complete admitted IR")
+        if strict and admitted_scope == "sample" and len(active) > 1 and selected == active:
+            raise RenderBackendError("Calibration sample must be a representative IR subset")
         artifact_runtime = ArtifactRuntime(workspace)
         current = {
             artifact["artifact_type"]: artifact
@@ -154,6 +182,43 @@ class ArtifactToolRenderBackend:
                     "Preflight IR is stale; compile again before rendering"
                 )
 
+        producer = {
+            "backend": self.name,
+            "version": runtime_config.version,
+            "adapter_sha256": sha256_file(runtime_config.script),
+            "capability_id": str(
+                ir.get("producer_capability", {}).get("capability_id", "legacy")
+            ),
+            "capability_hash": str(
+                ir.get("producer_capability", {}).get("contract_hash", "sha256:" + "0" * 64)
+            ),
+        }
+        policy = current_visual_admission_policy(workspace, create=False)
+        if strict:
+            expected_dependency = calibration_dependency_key(
+                {
+                    "kind": "artifact_tool_calibration",
+                    "policy_id": policy[1]["policy_id"] if policy else None,
+                    "renderer_ir_sha256": sha256_file(preflight.compiled.path),
+                    "preflight_sha256": sha256_file(preflight.path),
+                    "producer": producer,
+                }
+            )
+            if dependency_key is not None and dependency_key != expected_dependency:
+                raise RenderBackendError("Caller calibration dependency differs from render inputs")
+            dependency_key = expected_dependency
+            if admitted_scope == "full":
+                try:
+                    RenderAdmissionPolicy.assert_full_render(
+                        workspace,
+                        dependency_key=dependency_key,
+                        renderer_ir_sha256=sha256_file(preflight.compiled.path),
+                        producer=producer,
+                        authorization=calibration_authorization,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    raise RenderBackendError(str(exc)) from exc
+
         root = workspace / "outputs/host-candidates"
         root.mkdir(parents=True, exist_ok=True)
         output = Path(tempfile.mkdtemp(prefix="candidate-", dir=root))
@@ -161,10 +226,10 @@ class ArtifactToolRenderBackend:
         receipt_path = output / "receipt.json"
         started = time.monotonic()
         receipt: dict[str, Any] = {
-            "schema_version": "0.2.0",
+            "schema_version": "0.3.0" if strict else "0.2.0",
             "attempt_id": "HCA-" + uuid.uuid4().hex[:16].upper(),
             "status": "render_started",
-            "scope": "full" if selected == active else "sample",
+            "scope": admitted_scope,
             "slide_ids": selected,
             "renderer": {
                 **identity,
@@ -194,6 +259,25 @@ class ArtifactToolRenderBackend:
                 "stderr": "",
                 "error": None,
             },
+            **(
+                {
+                    "dependency_key": dependency_key,
+                    "producer_identity": producer,
+                    "calibration_authorization": copy.deepcopy(
+                        calibration_authorization
+                    ),
+                    "office": {
+                        "status": "not_requested",
+                        "application": None,
+                        "build": None,
+                        "profile": None,
+                        "export_parameters": None,
+                        "pages": [],
+                    },
+                }
+                if strict
+                else {}
+            ),
         }
         self._write_receipt(receipt_path, receipt)
         redactions = {
@@ -367,3 +451,86 @@ class ArtifactToolRenderBackend:
         )
         self._write_receipt(receipt_path, terminal)
         return {**terminal, "receipt_path": str(receipt_path)}
+
+    def record_office_evidence(
+        self,
+        workspace: Path,
+        receipt_path: Path,
+        *,
+        pages: tuple[dict[str, str], ...],
+        application: str,
+        build: str,
+        profile: str,
+        export_parameters: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Attach real Office-exported page bytes to one completed 0.3 receipt."""
+
+        workspace = workspace.resolve()
+        path = ensure_within(workspace, receipt_path)
+        receipt = read_json(path)
+        if receipt.get("schema_version") != "0.3.0":
+            raise RenderBackendError("Office evidence registration requires receipt 0.3")
+        if receipt.get("status") != "candidate_office_review_pending":
+            raise RenderBackendError("Office evidence requires a successful candidate")
+        if receipt.get("office", {}).get("status") not in {
+            "evidence_pending",
+            "available",
+        }:
+            raise RenderBackendError("Receipt is not awaiting Office evidence")
+        if "powerpoint" not in " ".join(str(application).lower().split()):
+            raise RenderBackendError(
+                "Office evidence must identify Microsoft PowerPoint as the target renderer"
+            )
+        if not str(build).strip() or not str(profile).strip():
+            raise RenderBackendError("Office evidence requires build and rendering profile")
+        candidate_output_paths = {
+            Path(str(item["path"])).resolve() for item in receipt.get("outputs", [])
+        }
+        admitted: list[dict[str, str]] = []
+        for page in pages:
+            slide_id = str(page.get("slide_id", ""))
+            page_path = ensure_within(workspace, workspace / str(page.get("path", "")))
+            if not page_path.is_file():
+                raise RenderBackendError(f"Office page is missing: {page_path}")
+            if page_path in candidate_output_paths:
+                raise RenderBackendError(
+                    "Artifact Tool preview bytes cannot be registered as Office evidence"
+                )
+            if page_path.suffix.lower() not in {".png", ".jpg", ".jpeg"}:
+                raise RenderBackendError("Office page evidence must be a raster page export")
+            admitted.append(
+                {
+                    "slide_id": slide_id,
+                    "path": page_path.relative_to(workspace).as_posix(),
+                    "sha256": sha256_file(page_path),
+                }
+            )
+        if [item["slide_id"] for item in admitted] != list(receipt["slide_ids"]):
+            raise RenderBackendError(
+                "Office page evidence must cover receipt slides once and in order"
+            )
+        if len({item["sha256"] for item in admitted}) != len(admitted):
+            raise RenderBackendError(
+                "Office page evidence contains duplicate page bytes"
+            )
+        updated = copy.deepcopy(receipt)
+        updated["office_review"] = "review_pending"
+        updated["office"] = {
+            "status": "available",
+            "application": str(application),
+            "build": str(build),
+            "profile": str(profile),
+            "export_parameters": copy.deepcopy(export_parameters),
+            "pages": admitted,
+        }
+        schema = read_json(
+            SchemaRegistry().schema_dir / "host_candidate_receipt.schema.json"
+        )
+        Draft202012Validator(schema).validate(updated)
+        updated_path = path.parent / f"receipt-office-{sha256_json(updated)}.json"
+        created = atomic_create_json(updated_path, updated)
+        if not created and read_json(updated_path) != updated:
+            raise RenderBackendError(
+                f"Immutable Office receipt path contains different content: {updated_path}"
+            )
+        return {**updated, "receipt_path": str(updated_path)}

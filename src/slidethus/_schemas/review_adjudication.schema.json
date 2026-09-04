@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/review-adjudication.schema.json",
+  "title": "Immutable Review Adjudication",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "project_id", "adjudication_id", "generated_at", "finding_id",
+    "review_ref", "resolution", "reason", "authority"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "adjudication_id": {"type": "string", "pattern": "^VQA-[A-F0-9]{16}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "finding_id": {"type": "string", "pattern": "^VQF-[A-F0-9]{16}$"},
+    "review_ref": {"$ref": "#/$defs/fileRef"},
+    "resolution": {"enum": ["false_positive", "accepted_risk"]},
+    "reason": {"type": "string", "minLength": 1, "maxLength": 4000},
+    "authority": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "identity"],
+      "properties": {
+        "kind": {"enum": ["human", "policy_owner"]},
+        "identity": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    }
+  },
+  "$defs": {
+    "fileRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "path", "sha256"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    }
+  }
+}

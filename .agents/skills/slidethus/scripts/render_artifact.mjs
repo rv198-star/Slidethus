@@ -81,7 +81,8 @@ function editableDiagram(content) {
     ids.add(node.id);
   }
   for (const edge of edges) {
-    if (!edge || Object.keys(edge).some(k => !["from", "to", "label"].includes(k)) ||
+    if (!edge || Object.keys(edge).some(k => !["id", "from", "to", "label"].includes(k)) ||
+      (edge.id !== undefined && (typeof edge.id !== "string" || !edge.id.trim())) ||
       typeof edge.from !== "string" || typeof edge.to !== "string" || !ids.has(edge.from) || !ids.has(edge.to) ||
       edge.from === edge.to || (edge.label !== undefined && typeof edge.label !== "string")) {
       throw new Error("Editable diagram edges must reference distinct admitted nodes");
@@ -104,25 +105,37 @@ function renderEditableDiagram(slide, r) {
     const y1 = source.top + source.height / 2;
     const x2 = target.left + target.width / 2;
     const y2 = target.top + target.height / 2;
-    if (x1 !== x2) slide.shapes.add({
-      name: `${r.block_id}-edge-${edge.from}-${edge.to}-h`, geometry: "line",
-      position: { left: Math.min(x1, x2), top: y1, width: Math.abs(x2 - x1), height: 0 },
-      fill: "none", line: line(r.style.border_color ?? r.style.color, Math.max(1, r.style.border_width)),
-    });
-    if (y1 !== y2) slide.shapes.add({
-      name: `${r.block_id}-edge-${edge.from}-${edge.to}-v`, geometry: "line",
-      position: { left: x2, top: Math.min(y1, y2), width: 0, height: Math.abs(y2 - y1) },
-      fill: "none", line: line(r.style.border_color ?? r.style.color, Math.max(1, r.style.border_width)),
-    });
+    const route = (r.render_options?.routing ?? []).find(item => item.edge_id === edge.id)?.route ?? "direct";
+    if (route === "direct") {
+      slide.shapes.add({
+        name: `${r.block_id}-edge-${edge.from}-${edge.to}`, geometry: "line",
+        position: { left: x1, top: y1, width: x2 - x1, height: y2 - y1 },
+        fill: "none", line: line(r.style.border_color ?? r.style.color, Math.max(1, r.style.border_width)),
+      });
+    } else if (route === "orthogonal") {
+      if (x1 !== x2) slide.shapes.add({
+        name: `${r.block_id}-edge-${edge.from}-${edge.to}-h`, geometry: "line",
+        position: { left: Math.min(x1, x2), top: y1, width: Math.abs(x2 - x1), height: 0 },
+        fill: "none", line: line(r.style.border_color ?? r.style.color, Math.max(1, r.style.border_width)),
+      });
+      if (y1 !== y2) slide.shapes.add({
+        name: `${r.block_id}-edge-${edge.from}-${edge.to}-v`, geometry: "line",
+        position: { left: x2, top: Math.min(y1, y2), width: 0, height: Math.abs(y2 - y1) },
+        fill: "none", line: line(r.style.border_color ?? r.style.color, Math.max(1, r.style.border_width)),
+      });
+    } else throw new Error(`Unsupported admitted diagram route: ${route}`);
     if (edge.label) {
       const labelWidth = Math.min(120, r.w);
       const labelHeight = Math.min(24, r.h);
+      const admittedAnchor = (r.render_options?.label_anchors ?? []).find(item => item.edge_id === edge.id)?.point;
+      const anchorX = admittedAnchor ? r.x + admittedAnchor.x * r.w : (x1 + x2) / 2;
+      const anchorY = admittedAnchor ? r.y + admittedAnchor.y * r.h : (y1 + y2) / 2;
       const labelLeft = Math.max(r.x, Math.min(
-        (x1 + x2) / 2 - labelWidth / 2,
+        anchorX - labelWidth / 2,
         r.x + r.w - labelWidth,
       ));
       const labelTop = Math.max(r.y, Math.min(
-        (y1 + y2) / 2 - labelHeight / 2,
+        anchorY - labelHeight / 2,
         r.y + r.h - labelHeight,
       ));
       const label = slide.shapes.add({
@@ -191,13 +204,17 @@ async function renderRegion(slide, r, page) {
       const fill = style.chart_colors[i % style.chart_colors.length];
       return { name: s.name, values: s.values, fill, line: line(fill, 2) };
     });
+    const chartOptions = r.render_options ?? {};
+    if (chartOptions.orientation && chartOptions.orientation !== "vertical") throw new Error("Artifact Tool only admits vertical chart orientation");
+    const legendPosition = chartOptions.legend_position ?? (series.length > 1 ? "right" : "none");
     slide.charts.add(c.type, { position: frame(r), categories: c.categories, series,
-      hasLegend: series.length > 1, chartFill: style.fill ?? "none", plotAreaFill: style.fill ?? "none",
+      hasLegend: legendPosition !== "none", legendPosition,
+      chartFill: style.fill ?? "none", plotAreaFill: style.fill ?? "none",
       chartLine: line(style.border_color, style.border_width),
       xAxis: { textStyle: { fontSize: style.font_size * 4 / 3, fill: style.color } },
       yAxis: { textStyle: { fontSize: style.font_size * 4 / 3, fill: style.color } },
       legend: { textStyle: { fontSize: style.font_size * 4 / 3, fill: style.color } },
-      dataLabels: { showValue: true, textStyle: { fontSize: style.font_size * 4 / 3, fill: style.color } },
+      dataLabels: { showValue: chartOptions.label_position === "direct", textStyle: { fontSize: style.font_size * 4 / 3, fill: style.color } },
     });
     return;
   }
@@ -214,10 +231,14 @@ async function renderRegion(slide, r, page) {
     table.setColumnWidths(layout.columnWidths);
     for (let y = 0; y < rows.length; y++) table.rows[y].height = layout.rowHeights[y];
     table.borders.assign(line(style.border_color, style.border_width));
+    const headerRows = r.render_options?.header_rows ?? 0;
+    const emphasizedColumn = r.render_options?.emphasized_column ?? null;
+    if (!Number.isInteger(headerRows) || headerRows < 0 || headerRows > rows.length) throw new Error("Invalid admitted table header_rows");
+    if (emphasizedColumn !== null && (!Number.isInteger(emphasizedColumn) || emphasizedColumn < 0 || emphasizedColumn >= rows[0].length)) throw new Error("Invalid admitted emphasized_column");
     for (let y = 0; y < rows.length; y++) for (let x = 0; x < rows[0].length; x++) {
       const cell = table.getCell(y, x);
       cell.fill = style.fill ?? "none";
-      cell.text.style = textStyle(r);
+      cell.text.style = { ...textStyle(r), bold: y < headerRows || x === emphasizedColumn || style.font_weight >= 600 };
     }
     return;
   }

@@ -4,6 +4,8 @@ import copy
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from jsonschema import Draft202012Validator
+
 from slidethus.art_direction_seed import validate_seed_reference_for_graph
 from slidethus.artifact_runtime import ArtifactRuntime, utc_now
 from slidethus.constants import SCHEMA_VERSION
@@ -30,6 +32,7 @@ from slidethus.planning_rules import (
     usable_evidence_map,
 )
 from slidethus.protocols import PlanningLimits, PlanningProvider, PreLayoutArtDirection
+from slidethus.visual_quality import current_visual_admission_policy, quality_path_required
 
 
 @dataclass(frozen=True)
@@ -229,6 +232,134 @@ class SlideSpecPlanningService:
         used_ids.add(block_id)
         return block, next_number
 
+    def _admit_representation(
+        self,
+        raw: Any,
+        *,
+        slide_id: str,
+        blocks: list[dict[str, Any]],
+        outline_evidence: set[str],
+    ) -> dict[str, Any]:
+        """Admit one P5A semantic carrier; no later phase may invent its facts."""
+
+        if not isinstance(raw, dict):
+            raise SlideSpecPlanningError(
+                f"Reviewed/critical slide {slide_id} requires representation"
+            )
+        representation = copy.deepcopy(raw)
+        representation["representation_id"] = f"REP-{slide_id.replace('-', '')}"
+        root_schema = self.runtime.registry.schema("slide_specs")
+        schema = {
+            "$schema": root_schema["$schema"],
+            "$ref": "#/$defs/representation",
+            "$defs": root_schema["$defs"],
+        }
+        errors = sorted(
+            Draft202012Validator(schema).iter_errors(representation),
+            key=lambda item: list(item.absolute_path),
+        )
+        if errors:
+            raise SlideSpecPlanningError(
+                f"Invalid representation for {slide_id}: "
+                + "; ".join(f"{item.json_path}: {item.message}" for item in errors)
+            )
+        kind = str(representation["kind"])
+        semantics = representation["semantics"]
+        content_by_type = {
+            str(block["content_type"]): block for block in blocks
+        }
+        if kind in {"chart", "table", "diagram", "image"} and kind not in content_by_type:
+            raise SlideSpecPlanningError(
+                f"Representation {kind} for {slide_id} has no matching semantic Block"
+            )
+        if kind == "chart":
+            content = content_by_type["chart"]["content"]
+            expected = {
+                "type": semantics["chart_type"],
+                "categories": semantics["categories"],
+                "series": semantics["series"],
+            }
+            if content != expected:
+                raise SlideSpecPlanningError(
+                    f"Chart representation for {slide_id} disagrees with its chart Block"
+                )
+            if not set(semantics["data_evidence_ids"]).issubset(outline_evidence):
+                raise SlideSpecPlanningError(
+                    f"Chart representation for {slide_id} uses Evidence outside Outline"
+                )
+        elif kind == "table":
+            content = content_by_type["table"]["content"]
+            headers = content.get("headers", []) if isinstance(content, dict) else []
+            if headers and list(map(str, headers)) != list(map(str, semantics["columns"])):
+                raise SlideSpecPlanningError(
+                    f"Table representation for {slide_id} disagrees with table headers"
+                )
+            if not set(semantics["source_evidence_ids"]).issubset(outline_evidence):
+                raise SlideSpecPlanningError(
+                    f"Table representation for {slide_id} uses Evidence outside Outline"
+                )
+        elif kind == "diagram":
+            content = content_by_type["diagram"]["content"]
+            if not isinstance(content, dict):
+                raise SlideSpecPlanningError(
+                    f"Diagram representation for {slide_id} requires structured content"
+                )
+            semantic_nodes = [
+                {"id": item["id"], "label": item["label"]}
+                for item in semantics["nodes"]
+            ]
+            block_nodes = [
+                {"id": item.get("id"), "label": item.get("label")}
+                for item in content.get("nodes", [])
+            ]
+            semantic_edges = [
+                {"from": item["from"], "to": item["to"]}
+                for item in semantics["edges"]
+            ]
+            block_edges = [
+                {"from": item.get("from"), "to": item.get("to")}
+                for item in content.get("edges", [])
+            ]
+            if semantic_nodes != block_nodes or semantic_edges != block_edges:
+                raise SlideSpecPlanningError(
+                    f"Diagram representation for {slide_id} disagrees with its diagram Block"
+                )
+            node_ids = {str(item["id"]) for item in semantics["nodes"]}
+            if any(
+                str(item["from"]) not in node_ids or str(item["to"]) not in node_ids
+                for item in semantics["edges"]
+            ):
+                raise SlideSpecPlanningError(
+                    f"Diagram representation for {slide_id} has an edge outside its node set"
+                )
+            if semantics["topology"] == "cycle":
+                indegree = {node_id: 0 for node_id in node_ids}
+                outdegree = {node_id: 0 for node_id in node_ids}
+                for edge in semantics["edges"]:
+                    outdegree[str(edge["from"])] += 1
+                    indegree[str(edge["to"])] += 1
+                if any(not indegree[item] or not outdegree[item] for item in node_ids):
+                    raise SlideSpecPlanningError(
+                        f"Cycle representation for {slide_id} is missing a feedback edge"
+                    )
+        strategy = representation["asset_strategy"]
+        declared_assets = {
+            str(asset_id)
+            for block in blocks
+            for asset_id in block.get("asset_refs", [])
+        }
+        if not set(strategy["asset_refs"]).issubset(declared_assets):
+            raise SlideSpecPlanningError(
+                f"Representation asset strategy for {slide_id} references undeclared assets"
+            )
+        if strategy["demand"] == "required" and not strategy["asset_refs"] and strategy[
+            "fallback"
+        ] != "replan":
+            raise SlideSpecPlanningError(
+                f"Required representation asset for {slide_id} has no asset or replan fallback"
+            )
+        return representation
+
     def _admit(
         self,
         proposal_content: dict[str, Any],
@@ -275,6 +406,12 @@ class SlideSpecPlanningService:
             outline_hash = outline_slide_content_hash(outline_slide)
             prior = existing_by_id.get(slide_id)
             if prior and prior.get("status") == "frozen":
+                if quality_path_required(self.workspace) and not prior.get(
+                    "representation"
+                ):
+                    raise SlideSpecPlanningError(
+                        f"Frozen legacy Slide Spec {slide_id} cannot enter the reviewed/critical path"
+                    )
                 if prior.get("outline_slide_ref", {}).get("content_hash") != outline_hash:
                     raise SlideSpecPlanningError(
                         f"Frozen Slide Spec {slide_id} is stale for current Outline"
@@ -336,8 +473,7 @@ class SlideSpecPlanningService:
             )
             if not families:
                 raise SlideSpecPlanningError(f"Slide {slide_id} has no layout-family intent")
-            slides.append(
-                {
+            admitted_slide = {
                     "slide_id": slide_id,
                     "section_id": str(outline_slide["section_id"]),
                     "slide_type": str(outline_slide["slide_type"]),
@@ -370,7 +506,14 @@ class SlideSpecPlanningService:
                         brief["constraints"]["editability_target"]
                     ),
                 }
-            )
+            if quality_path_required(self.workspace):
+                admitted_slide["representation"] = self._admit_representation(
+                    raw.get("representation"),
+                    slide_id=slide_id,
+                    blocks=blocks,
+                    outline_evidence=outline_evidence,
+                )
+            slides.append(admitted_slide)
         lineage_inputs = {
             "deck_outline": graph["deck_outline"],
             "evidence_ledger": graph["evidence_ledger"],
@@ -400,7 +543,9 @@ class SlideSpecPlanningService:
             required_inputs=("deck_outline", "evidence_ledger", "project_brief"),
         )
         return {
-            "schema_version": SCHEMA_VERSION,
+            "schema_version": (
+                "0.2.0" if quality_path_required(self.workspace) else SCHEMA_VERSION
+            ),
             "project_id": brief["project_id"],
             "deck_id": str(outline["deck_id"]),
             "status": "approved",
@@ -444,6 +589,9 @@ class SlideSpecPlanningService:
             "evidence_ledger": copy.deepcopy(graph["evidence_ledger"]["data"]),
             "deck_outline": copy.deepcopy(graph["deck_outline"]["data"]),
         }
+        visual_policy = current_visual_admission_policy(self.workspace, create=False)
+        if visual_policy is not None:
+            context["visual_admission_policy"] = copy.deepcopy(visual_policy[1])
         pre_layout = self._pre_layout_art_direction(context, admitted_limits)
         if pre_layout is not None:
             try:
@@ -468,6 +616,9 @@ class SlideSpecPlanningService:
         if (
             not force
             and existing is not None
+            and str(existing["data"].get("schema_version", "")).startswith(
+                "0.2." if quality_path_required(self.workspace) else "0.1."
+            )
             and planning_artifact_reusable(
                 existing["data"],
                 graph,

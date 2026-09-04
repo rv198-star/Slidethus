@@ -16,6 +16,7 @@ from slidethus.io_utils import (
     atomic_create_bytes,
     atomic_write_bytes,
     sha256_bytes,
+    sha256_json,
 )
 from slidethus.layout_geometry import admit_authored_layout, build_layout_plan
 from slidethus.planning_limits import (
@@ -31,6 +32,8 @@ from slidethus.planning_lineage import (
 from slidethus.planning_provider import DeterministicPlanningProvider
 from slidethus.planning_rules import layout_gate_reasons, slide_spec_content_hash
 from slidethus.protocols import PlanningLimits, PlanningProvider
+from slidethus.semantic_preview import render_semantic_previews
+from slidethus.visual_quality import quality_path_required
 from slidethus.wireframe import build_wireframe_svg
 
 
@@ -146,6 +149,123 @@ class LayoutPlanningService:
             )
         return references, tuple(current_paths)
 
+    def _admit_representation_view(
+        self,
+        raw: dict[str, Any],
+        *,
+        slide: dict[str, Any],
+        plan: dict[str, Any],
+        canvas: dict[str, int],
+    ) -> None:
+        """Bind placement/view geometry to the P5A representation without copying semantics."""
+
+        slide_id = str(slide["slide_id"])
+        representation = slide.get("representation")
+        if not isinstance(representation, dict):
+            raise LayoutPlanningError(
+                f"Reviewed/critical Layout {slide_id} requires P5A representation"
+            )
+        view = copy.deepcopy(raw.get("view"))
+        if not isinstance(view, dict):
+            raise LayoutPlanningError(
+                f"Reviewed/critical Layout {slide_id} requires executable view geometry"
+            )
+        view["kind"] = str(representation["kind"])
+        root_schema = self.runtime.registry.schema("layout_plans")
+        schema = {
+            "$schema": root_schema["$schema"],
+            "$ref": "#/$defs/representationView",
+            "$defs": root_schema["$defs"],
+        }
+        errors = sorted(
+            Draft202012Validator(schema).iter_errors(view),
+            key=lambda item: list(item.absolute_path),
+        )
+        if errors:
+            raise LayoutPlanningError(
+                f"Invalid representation view for {slide_id}: "
+                + "; ".join(f"{item.json_path}: {item.message}" for item in errors)
+            )
+        region_ids = {str(item["region_id"]) for item in plan["regions"]}
+        block_by_region = {
+            str(item["region_id"]): str(item["block_id"])
+            for item in plan["regions"]
+        }
+        blocks = {str(item["block_id"]): item for item in slide["content_blocks"]}
+        primary_region = str(view["primary_region_id"])
+        if primary_region not in region_ids:
+            raise LayoutPlanningError(
+                f"Representation view for {slide_id} references unknown primary region"
+            )
+        kind = str(representation["kind"])
+        primary_type = str(blocks[block_by_region[primary_region]]["content_type"])
+        if kind in {"image", "chart", "table", "diagram"} and primary_type != kind:
+            raise LayoutPlanningError(
+                f"Representation view for {slide_id} places {kind} on a {primary_type} Block"
+            )
+        focal = [str(item) for item in raw.get("focal_order", [])]
+        if len(focal) != len(set(focal)) or set(focal) != region_ids:
+            raise LayoutPlanningError(
+                f"Layout {slide_id} focal_order must cover every Region exactly once"
+            )
+        if focal[0] != primary_region:
+            raise LayoutPlanningError(
+                f"Layout {slide_id} first focal Region must be representation primary_region_id"
+            )
+        occupied = sum(
+            float(item["w"]) * float(item["h"]) for item in plan["regions"]
+        ) / (float(canvas["width"]) * float(canvas["height"]))
+        expected_space = "compact" if occupied >= 0.62 else ("balanced" if occupied >= 0.36 else "expansive")
+        if view["negative_space"] != expected_space:
+            raise LayoutPlanningError(
+                f"Layout {slide_id} negative_space must be {expected_space} for observable geometry"
+            )
+        details = view["details"]
+        semantics = representation["semantics"]
+        if kind == "diagram":
+            node_ids = {str(item["id"]) for item in semantics["nodes"]}
+            geometry_ids = {str(item["node_id"]) for item in details["node_geometry"]}
+            if node_ids != geometry_ids:
+                raise LayoutPlanningError(
+                    f"Diagram view for {slide_id} must place every semantic node exactly once"
+                )
+            for item in details["node_geometry"]:
+                if float(item["x"]) + float(item["w"]) > 1 or float(item["y"]) + float(item["h"]) > 1:
+                    raise LayoutPlanningError(
+                        f"Diagram node geometry exceeds normalized bounds on {slide_id}"
+                    )
+            edge_ids = {str(item["id"]) for item in semantics["edges"]}
+            route_ids = {str(item["edge_id"]) for item in details["routing"]}
+            if edge_ids != route_ids:
+                raise LayoutPlanningError(
+                    f"Diagram view for {slide_id} must route every semantic edge exactly once"
+                )
+            if not {
+                str(item["edge_id"]) for item in details["label_anchors"]
+            }.issubset(edge_ids):
+                raise LayoutPlanningError(
+                    f"Diagram label anchor on {slide_id} references an unknown edge"
+                )
+        elif kind == "table":
+            emphasized = details["emphasized_column"]
+            if emphasized is not None and int(emphasized) >= len(semantics["columns"]):
+                raise LayoutPlanningError(
+                    f"Table emphasized column is outside the P5A schema on {slide_id}"
+                )
+        elif kind == "image":
+            if details["fit"] not in {"cover", "contain"}:
+                raise LayoutPlanningError(f"Image fit is unsupported on {slide_id}")
+        plan.update(
+            {
+                "representation_ref": {
+                    "representation_id": str(representation["representation_id"]),
+                    "content_hash": "sha256:" + sha256_json(representation),
+                },
+                "focal_order": focal,
+                "view": view,
+            }
+        )
+
     def _admit(
         self,
         proposal_content: dict[str, Any],
@@ -199,6 +319,12 @@ class LayoutPlanningService:
             spec_hash = slide_spec_content_hash(slide)
             prior = existing_by_id.get(slide_id)
             if prior and prior.get("status") == "frozen":
+                if quality_path_required(self.workspace) and not prior.get(
+                    "representation_ref"
+                ):
+                    raise LayoutPlanningError(
+                        f"Frozen legacy Layout {slide_id} cannot enter the reviewed/critical path"
+                    )
                 if prior.get("slide_spec_ref", {}).get("content_hash") != spec_hash:
                     raise LayoutPlanningError(
                         f"Frozen Layout Plan {slide_id} is stale for current Slide Spec"
@@ -216,7 +342,19 @@ class LayoutPlanningService:
                     f"Layout provider selected {family} outside Slide Spec intent for {slide_id}"
                 )
             plan = (
-                admit_authored_layout(slide, raw)
+                admit_authored_layout(
+                    slide,
+                    {
+                        key: copy.deepcopy(raw[key])
+                        for key in (
+                            "slide_id",
+                            "layout_family",
+                            "regions",
+                            "rationale",
+                        )
+                        if key in raw
+                    },
+                )
                 if "regions" in raw
                 else build_layout_plan(slide, family=family, canvas=canvas, safe_area=safe_area)
             )
@@ -233,6 +371,13 @@ class LayoutPlanningService:
                     ),
                 }
             )
+            if quality_path_required(self.workspace):
+                self._admit_representation_view(
+                    raw,
+                    slide=slide,
+                    plan=plan,
+                    canvas=canvas,
+                )
             plans.append(plan)
         wireframes, current_paths = self._wireframes(
             specs,
@@ -263,7 +408,9 @@ class LayoutPlanningService:
         )
         return (
             {
-                "schema_version": SCHEMA_VERSION,
+                "schema_version": (
+                    "0.2.0" if quality_path_required(self.workspace) else SCHEMA_VERSION
+                ),
                 "project_id": brief["project_id"],
                 "deck_id": str(outline["deck_id"]),
                 "status": "approved",
@@ -307,6 +454,9 @@ class LayoutPlanningService:
         if (
             not force
             and existing is not None
+            and str(existing["data"].get("schema_version", "")).startswith(
+                "0.2." if quality_path_required(self.workspace) else "0.1."
+            )
             and planning_artifact_reusable(
                 existing["data"],
                 graph,
@@ -329,6 +479,8 @@ class LayoutPlanningService:
                 graph=graph,
             )
             if not reasons:
+                if quality_path_required(self.workspace):
+                    render_semantic_previews(self.workspace, runtime=self.runtime)
                 return LayoutPlanningResult(
                     layout_plans=copy.deepcopy(existing["data"]),
                     changed=False,
@@ -395,6 +547,8 @@ class LayoutPlanningService:
             status="approved",
             created_by=created_by,
         )
+        if quality_path_required(self.workspace):
+            render_semantic_previews(self.workspace, runtime=self.runtime)
         return LayoutPlanningResult(
             layout_plans=self.runtime.show_artifact("layout_plans"),
             changed=True,

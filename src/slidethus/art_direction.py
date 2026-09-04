@@ -404,7 +404,11 @@ def compile_art_direction(
     if resource is not None:
         provider_identity["resource"] = resource
     packet_without_id: dict[str, Any] = {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": (
+            "0.2.0"
+            if str(context["slide_specs"].get("schema_version", "")).startswith("0.2.")
+            else SCHEMA_VERSION
+        ),
         "project_id": str(context["project_brief"]["project_id"]),
         "deck_id": str(context["deck_outline"]["deck_id"]),
         "status": "frozen",

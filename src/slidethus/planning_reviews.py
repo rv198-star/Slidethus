@@ -7,7 +7,7 @@ from typing import Any
 from jsonschema import Draft202012Validator
 
 from slidethus.errors import PlanningReviewError
-from slidethus.io_utils import read_json, sha256_json
+from slidethus.io_utils import ensure_within, read_json, sha256_file, sha256_json
 from slidethus.schema_registry import SchemaRegistry
 from slidethus.state_machine import PLANNING_REWORK_TARGETS
 
@@ -199,6 +199,13 @@ def planning_review_reference_errors(
             _artifact_for_ref(workspace, state, reference)
         except Exception as exc:  # noqa: BLE001
             errors.append(str(exc))
+    for kind, reference in report.get("visual_admission", {}).items():
+        try:
+            path = ensure_within(workspace, workspace / str(reference["path"]))
+            if not path.is_file() or sha256_file(path) != reference.get("sha256"):
+                errors.append(f"Planning Review visual admission ref mismatch: {kind}")
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"Planning Review visual admission ref is invalid: {kind}: {exc}")
     return tuple(errors)
 
 

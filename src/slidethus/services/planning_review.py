@@ -10,7 +10,7 @@ from slidethus.artifact_runtime import ArtifactRuntime, utc_now
 from slidethus.constants import SCHEMA_VERSION
 from slidethus.errors import PlanningReviewError
 from slidethus.gates import evaluate_gate
-from slidethus.io_utils import atomic_create_json, read_json
+from slidethus.io_utils import atomic_create_json, read_json, sha256_file
 from slidethus.planning_reviews import (
     planning_issue_id,
     planning_review_file_key,
@@ -20,6 +20,12 @@ from slidethus.planning_reviews import (
 )
 from slidethus.planning_rules import planning_content_units
 from slidethus.schema_registry import SchemaRegistry
+from slidethus.visual_quality import (
+    current_semantic_preview_receipt,
+    current_visual_admission_policy,
+    current_visual_quality_decision,
+    planning_admission_dependency_key,
+)
 
 _DIMENSIONS = (
     "brief",
@@ -864,8 +870,44 @@ class PlanningReviewService:
         open_issues = [item for item in issues if item.get("status") == "open"]
         target_phase = target_phase_for_issues(open_issues)
         scores = [int(item["score"]) for item in dimensions]
+        strict_quality = str(specs.get("schema_version", "")).startswith("0.2.")
+        visual_admission: dict[str, Any] | None = None
+        if strict_quality:
+            policy = current_visual_admission_policy(self.workspace, create=False)
+            preview = current_semantic_preview_receipt(self.workspace)
+            if policy is None or preview is None:
+                raise PlanningReviewError(
+                    "Planning Review 0.2 requires current policy and semantic previews"
+                )
+            dependency = planning_admission_dependency_key(policy[1], preview[1])
+            decision = current_visual_quality_decision(
+                self.workspace,
+                stage="planning",
+                dependency_key=dependency,
+            )
+            if decision is None or not decision[1].get("quality_approved"):
+                raise PlanningReviewError(
+                    "Planning Review 0.2 requires an approved qualitative planning decision"
+                )
+
+            def fact_ref(path: Path, identity: str) -> dict[str, str]:
+                return {
+                    "id": identity,
+                    "path": path.relative_to(self.workspace).as_posix(),
+                    "sha256": sha256_file(path),
+                }
+
+            visual_admission = {
+                "policy": fact_ref(policy[0], str(policy[1]["policy_id"])),
+                "semantic_preview": fact_ref(
+                    preview[0], str(preview[1]["receipt_id"])
+                ),
+                "qualitative_decision": fact_ref(
+                    decision[0], str(decision[1]["decision_id"])
+                ),
+            }
         report: dict[str, Any] = {
-            "schema_version": SCHEMA_VERSION,
+            "schema_version": "0.2.0" if strict_quality else SCHEMA_VERSION,
             "project_id": str(brief["project_id"]),
             "report_id": "",
             "generated_at": _generated_at(graph),
@@ -892,6 +934,11 @@ class PlanningReviewService:
             },
             "requires_rework": target_phase is not None,
             "target_phase": target_phase,
+            **(
+                {"visual_admission": visual_admission}
+                if visual_admission is not None
+                else {}
+            ),
         }
         report["report_id"] = planning_review_id(report)
         errors = validate_planning_review_data(report, self.schemas.schema_dir)

@@ -10,7 +10,13 @@ from jsonschema import Draft202012Validator
 
 from slidethus.constants import SCHEMA_VERSION
 from slidethus.errors import ArtifactError
-from slidethus.io_utils import atomic_create_json, read_json, sha256_file, sha256_json
+from slidethus.io_utils import (
+    atomic_create_json,
+    ensure_within,
+    read_json,
+    sha256_file,
+    sha256_json,
+)
 from slidethus.protocols import ArtDirectionLimits, ArtDirectionProvider
 from slidethus.schema_registry import SchemaRegistry
 
@@ -115,6 +121,34 @@ def _verify_native_prototype(workspace: Path, seed: dict[str, Any]) -> None:
     actual_hash = f"sha256:{sha256_file(path)}"
     if actual_hash != prototype.get("content_hash"):
         raise ArtifactError("Taste-generated Art Direction Seed prototype hash mismatch")
+
+
+def _verify_direction_approval(workspace: Path, seed: dict[str, Any]) -> None:
+    approval = seed.get("direction_approval")
+    if approval is None:
+        return
+    loaded: dict[str, dict[str, Any]] = {}
+    for field in ("review_ref", "decision_ref"):
+        ref = approval[field]
+        path = ensure_within(workspace, workspace / str(ref["path"]))
+        if not path.is_file() or sha256_file(path) != ref["sha256"]:
+            raise ArtifactError(f"Art Direction Seed {field} is missing or changed")
+        data = read_json(path)
+        identity_field = "review_id" if field == "review_ref" else "decision_id"
+        if data.get(identity_field) != ref["id"]:
+            raise ArtifactError(f"Art Direction Seed {field} identity mismatch")
+        loaded[field] = data
+    decision = loaded["decision_ref"]
+    review = loaded["review_ref"]
+    if (
+        review.get("stage") != "direction"
+        or decision.get("kind") != "direction"
+        or decision.get("review_ref", {}).get("id") != review.get("review_id")
+        or decision.get("dependency_key") != approval.get("dependency_key")
+        or review.get("dependency_key") != approval.get("dependency_key")
+        or not decision.get("quality_approved")
+    ):
+        raise ArtifactError("Art Direction Seed direction approval is not current and approved")
 
 
 def validate_seed_carriers(seed: dict[str, Any], outline: dict[str, Any]) -> None:
@@ -252,6 +286,11 @@ def compile_art_direction_seed(
         "dials": proposal.dials,
         "foundation": proposal.foundation,
         "direction": proposal.direction,
+        **(
+            {"direction_approval": proposal.direction_approval}
+            if proposal.direction_approval is not None
+            else {}
+        ),
         "warnings": list(proposal.warnings),
         "assumptions": list(proposal.assumptions),
     }
@@ -262,7 +301,9 @@ def compile_art_direction_seed(
     if len(proposal.design_read) > active_limits.max_design_read_chars:
         raise ArtifactError("Art Direction Seed design read exceeds the admission limit")
     seed_without_id: dict[str, Any] = {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": (
+            "0.2.0" if proposal.direction_approval is not None else SCHEMA_VERSION
+        ),
         "project_id": str(context["project_brief"]["project_id"]),
         "deck_id": str(context["deck_outline"]["deck_id"]),
         "status": "frozen",
@@ -324,6 +365,7 @@ def load_art_direction_seed(
     if provider != reference["provider"]:
         raise ArtifactError("Art Direction Seed provider identity mismatch")
     _verify_native_prototype(root, seed)
+    _verify_direction_approval(root, seed)
     return seed
 
 

@@ -20,7 +20,14 @@ from slidethus.art_direction_seed import (
 )
 from slidethus.artifact_runtime import ArtifactRuntime
 from slidethus.errors import ArtifactError, PlanningError
-from slidethus.io_utils import atomic_create_json, canonical_json_bytes, read_json, sha256_json
+from slidethus.io_utils import (
+    atomic_create_json,
+    canonical_json_bytes,
+    ensure_within,
+    read_json,
+    sha256_file,
+    sha256_json,
+)
 from slidethus.planning_rules import planning_content_units
 from slidethus.protocols import (
     ArtDirectionLimits,
@@ -29,11 +36,17 @@ from slidethus.protocols import (
     PlanningLimits,
     PlanningProposal,
     PreLayoutArtDirection,
+    VisualReviewProvider,
 )
 from slidethus.render_backends.artifact_tool_contract import (
     artifact_tool_host_contract,
 )
 from slidethus.schema_registry import SchemaRegistry
+from slidethus.visual_quality import (
+    current_visual_admission_policy,
+    derive_visual_quality_decision,
+    persist_visual_quality_review,
+)
 
 
 class HostDesignRequired(PlanningError):
@@ -311,6 +324,16 @@ def _planning_proposal_findings(
             ):
                 if field not in slide:
                     findings.append(_contract_error(f"{path}.{field}", "is required"))
+            if context.get("visual_admission_policy", {}).get("risk_class") in {
+                "reviewed",
+                "critical",
+            } and not isinstance(slide.get("representation"), dict):
+                findings.append(
+                    _contract_error(
+                        f"{path}.representation",
+                        "is required by the reviewed/critical visual admission policy",
+                    )
+                )
             blocks = slide.get("content_blocks")
             if not isinstance(blocks, list):
                 findings.append(
@@ -470,6 +493,17 @@ def _planning_proposal_findings(
             for field in ("slide_id", "layout_family", "rationale", "regions"):
                 if field not in plan:
                     findings.append(_contract_error(f"{path}.{field}", "is required"))
+            if str(context.get("slide_specs", {}).get("schema_version", "")).startswith(
+                "0.2."
+            ):
+                for field in ("focal_order", "view"):
+                    if field not in plan:
+                        findings.append(
+                            _contract_error(
+                                f"{path}.{field}",
+                                "is required by reviewed/critical Layout 0.2",
+                            )
+                        )
             slide_id = str(plan.get("slide_id", ""))
             family = plan.get("layout_family")
             if not isinstance(family, str) or _LAYOUT_FAMILY_PATTERN.fullmatch(family) is None:
@@ -640,6 +674,44 @@ class HostDesignBridge:
         }
 
 
+class HostVisualReviewProvider:
+    """Schema-bound human review bridge used when no independent auto reviewer is configured."""
+
+    name = "human-host-review"
+    version = "1.0.0"
+    capabilities = (
+        "native_prototype",
+        "semantic_preview",
+        "office_pages",
+        "whole_deck",
+    )
+
+    def __init__(self, bridge: HostDesignBridge) -> None:
+        self.bridge = bridge
+
+    def review(
+        self,
+        image_paths: tuple[Path, ...] | list[Path],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        stage = {
+            "direction": "direction_review",
+            "planning": "semantic_planning_review",
+            "calibration": "calibration_review",
+            "whole_deck": "whole_deck_review",
+        }.get(str(context.get("review_stage")))
+        if stage is None:
+            raise PlanningError("Host visual review context has no supported review_stage")
+        request = copy.deepcopy(context)
+        request["review_images"] = [
+            ensure_within(self.bridge.workspace, path.resolve())
+            .relative_to(self.bridge.workspace)
+            .as_posix()
+            for path in image_paths
+        ]
+        return self.bridge.exchange(stage, request, ArtDirectionLimits())
+
+
 def _messages(raw: dict[str, Any], field: str) -> tuple[str, ...]:
     values = raw.get(field, [])
     if not isinstance(values, list) or any(not isinstance(value, str) for value in values):
@@ -710,6 +782,8 @@ class HostPlanningProvider:
         )
         prepared = self._prepared_art_direction_seed
         if (
+            not self.art_direction_provider.seed_revision_requested
+            and
             prepared is not None
             and context.get("art_direction_seed") in (None, prepared.seed)
         ):
@@ -767,6 +841,44 @@ class HostPlanningProvider:
         self._prepared_art_direction_seed = copy.deepcopy(prepared)
         return prepared
 
+    @property
+    def prepared_art_direction_seed_reference(self) -> dict[str, Any] | None:
+        """Return the exact frozen Seed reference for cross-process Host resume."""
+
+        prepared = self._prepared_art_direction_seed
+        return copy.deepcopy(prepared.reference) if prepared is not None else None
+
+    def restore_prepared_art_direction_seed(
+        self, reference: dict[str, Any] | None
+    ) -> None:
+        """Restore a Session-bound Seed without replaying the host direction request."""
+
+        if reference is None:
+            self._prepared_art_direction_seed = None
+            return
+        runtime = ArtifactRuntime(self.bridge.workspace)
+        graph = runtime.read_artifact_graph_snapshot(
+            ("project_brief", "deck_outline")
+        )
+        seed = validate_seed_reference_for_graph(
+            self.bridge.workspace,
+            reference,
+            graph,
+            schema_registry=runtime.registry,
+        )
+        expected = {
+            key: str(getattr(self.art_direction_provider, key, ""))
+            for key in ("name", "version", "mode")
+        }
+        if reference.get("provider") != expected:
+            raise PlanningError(
+                "Session-prepared Art Direction Seed provider identity changed"
+            )
+        self._prepared_art_direction_seed = PreLayoutArtDirection(
+            reference=copy.deepcopy(reference),
+            seed=seed,
+        )
+
     def propose(
         self, artifact_type: str, context: dict[str, Any], limits: PlanningLimits
     ) -> PlanningProposal:
@@ -823,10 +935,125 @@ class HostArtDirectionProvider:
         bridge: HostDesignBridge,
         *,
         require_taste_generated: bool = False,
+        visual_review_provider: VisualReviewProvider | None = None,
     ) -> None:
         self.bridge = bridge
         self.require_taste_generated = require_taste_generated
+        self.visual_review_provider = visual_review_provider
         self._seed_revision_requested = False
+
+    def _review_seed_direction(
+        self,
+        raw: dict[str, Any],
+        context: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        """Require independent prototype evidence before a reviewed/critical Seed freezes."""
+
+        policy = current_visual_admission_policy(self.bridge.workspace, create=False)
+        if policy is None or policy[1]["risk_class"] == "controlled":
+            return None
+        if self.visual_review_provider is None:
+            raise PlanningError(
+                "Reviewed/critical direction requires an independent native-prototype reviewer"
+            )
+        prototype = raw.get("foundation", {}).get("prototype")
+        if not isinstance(prototype, dict):
+            raise PlanningError(
+                "Reviewed/critical direction requires a Taste-generated native prototype"
+            )
+        path = ensure_within(
+            self.bridge.workspace,
+            self.bridge.workspace / str(prototype.get("path", "")),
+        )
+        if not path.is_file() or "sha256:" + sha256_file(path) != prototype.get(
+            "content_hash"
+        ):
+            raise PlanningError("Direction prototype path/hash is invalid")
+        outline = context["deck_outline"]
+        roles = {
+            f"role_{str(item['slide_type'])}"
+            for item in outline.get("slides", [])
+            if item.get("status") != "excluded"
+        }
+        carriers = {
+            f"carrier_{str(item['kind'])}"
+            for item in raw.get("direction", {}).get("carriers", [])
+            if str(item.get("kind")) in {"image", "chart", "table", "diagram"}
+        }
+        required_coverage = sorted(roles | carriers)
+        observed = sorted(set(str(item) for item in prototype.get("coverage", [])))
+        missing = sorted(set(required_coverage) - set(observed))
+        if missing:
+            raise PlanningError(
+                "Direction prototype does not cover active body roles/carriers: "
+                + ", ".join(missing)
+            )
+        dependency = "sha256:" + sha256_json(
+            {
+                "kind": "direction_review",
+                "policy_id": policy[1]["policy_id"],
+                "brief": context["project_brief"],
+                "outline": outline,
+                "prototype": prototype,
+                "direction": raw["direction"],
+            }
+        )
+        proposal = self.visual_review_provider.review(
+            (path,),
+            {
+                "review_stage": "direction",
+                "mode": "native_direction_prototype",
+                "visual_admission_policy": policy[1],
+                "project_brief": context["project_brief"],
+                "deck_outline": outline,
+                "direction": raw["direction"],
+                "required_coverage": required_coverage,
+                "rules": {
+                    "provenance_is_not_approval": True,
+                    "reviewer_emits_findings_not_approval": True,
+                },
+            },
+        )
+        review_path, review = persist_visual_quality_review(
+            self.bridge.workspace,
+            stage="direction",
+            dependency_key=dependency,
+            provider=self.visual_review_provider,
+            image_set=[
+                {
+                    "slide_id": "prototype",
+                    "kind": "native_prototype",
+                    "path": path.relative_to(self.bridge.workspace).as_posix(),
+                    "sha256": sha256_file(path),
+                }
+            ],
+            coverage=observed,
+            proposal=proposal,
+            author_identities=(self.name,),
+        )
+        decision_path, decision = derive_visual_quality_decision(
+            self.bridge.workspace,
+            review_path=review_path,
+            required_coverage=required_coverage,
+        )
+        if not decision["quality_approved"]:
+            raise PlanningError(
+                "Direction prototype review requires rework: "
+                + ", ".join(decision["open_finding_ids"])
+            )
+        return {
+            "dependency_key": dependency,
+            "review_ref": {
+                "id": review["review_id"],
+                "path": review_path.relative_to(self.bridge.workspace).as_posix(),
+                "sha256": sha256_file(review_path),
+            },
+            "decision_ref": {
+                "id": decision["decision_id"],
+                "path": decision_path.relative_to(self.bridge.workspace).as_posix(),
+                "sha256": sha256_file(decision_path),
+            },
+        }
 
     def request_seed_revision(self) -> None:
         """Make the next Seed exchange explicit and distinct from initial admission."""
@@ -887,11 +1114,13 @@ class HostArtDirectionProvider:
                 "Host Create requires a Taste-generated native visual prototype; "
                 "taste-informed fallback is not admitted on this path"
             )
+        direction_approval = self._review_seed_direction(raw, context)
         return ArtDirectionSeedProposal(
             design_read=raw["design_read"],
             dials=raw["dials"],
             foundation=raw["foundation"],
             direction=raw["direction"],
+            direction_approval=direction_approval,
             warnings=_messages(raw, "warnings"),
             assumptions=_messages(raw, "assumptions"),
         )

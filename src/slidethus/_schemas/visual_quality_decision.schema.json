@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/visual-quality-decision.schema.json",
+  "title": "Workflow-derived Visual Quality Decision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "project_id", "decision_id", "generated_at", "kind",
+    "dependency_key", "review_ref", "adjudication_refs", "required_coverage",
+    "observed_coverage", "open_finding_ids", "outcome", "quality_approved"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "decision_id": {"type": "string", "pattern": "^VQD-[A-F0-9]{16}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "kind": {"enum": ["direction", "planning", "calibration", "whole_deck"]},
+    "dependency_key": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "review_ref": {"$ref": "#/$defs/fileRef"},
+    "adjudication_refs": {"type": "array", "items": {"$ref": "#/$defs/fileRef"}},
+    "required_coverage": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "observed_coverage": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "open_finding_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^VQF-[A-F0-9]{16}$"}},
+    "outcome": {"enum": ["approved", "rework", "blocked"]},
+    "quality_approved": {"type": "boolean"}
+  },
+  "$defs": {
+    "fileRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "path", "sha256"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    }
+  }
+}

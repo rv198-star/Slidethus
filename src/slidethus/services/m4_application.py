@@ -32,6 +32,7 @@ from slidethus.services.render_manifest import ProductionRenderManifestService
 from slidethus.services.render_preflight import RenderPreflightResult, RenderPreflightService
 from slidethus.services.visual_system import VisualSystemService
 from slidethus.state_machine import FORWARD_SEQUENCE, Phase, can_transition
+from slidethus.visual_quality import quality_path_required
 
 _BACKENDS = ("final-svg", "pptxgenjs-hybrid", "pptxgenjs-native")
 
@@ -296,6 +297,12 @@ class M4ApplicationService:
         require_office_preview: bool = False,
     ) -> M4ApplicationRunResult:
         """Run/resume the complete M4 multi-backend rendering boundary."""
+
+        if quality_path_required(self.workspace):
+            raise RenderingError(
+                "Reviewed/critical full rendering requires the Host Create calibration "
+                "authorization and identical Artifact Tool IR/producer; direct M4 is not admitted"
+            )
 
         config = {
             "backends": list(_BACKENDS),

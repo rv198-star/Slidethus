@@ -20,3 +20,5 @@
 | Assumption Log | `decisions/assumption_log.json` | versioned assumptions and resolution status |
 
 Runtime history and recovery journals live under `.slidethus/`; they are not active artifacts. Use stable IDs and never make prose chat the only copy of an approved artifact.
+
+Designed Create also uses immutable supporting facts under `.slidethus/`: VisualAdmissionPolicy, ArtDirectionSeed/Packet, SemanticPreviewReceipt, VisualQualityReview/Decision, ReviewAdjudication, VisualReferenceSet, Host Create Session/Operations and Host Candidate Receipts. They do not create a second Project State or replace catalog artifacts. Candidate receipts are the sole render-attempt authority; Office evidence is appended as a new content-addressed receipt, never written into chat or over an existing attempt record.

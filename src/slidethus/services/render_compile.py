@@ -9,8 +9,9 @@ from slidethus.artifact_runtime import ArtifactRuntime
 from slidethus.constants import SCHEMA_VERSION
 from slidethus.errors import RenderCompileError
 from slidethus.gates import evaluate_gate
-from slidethus.io_utils import atomic_create_json, read_json
+from slidethus.io_utils import atomic_create_json, read_json, sha256_json
 from slidethus.page_design import authored_styles, validate_page_designs
+from slidethus.render_backends.artifact_tool_contract import artifact_tool_host_contract
 from slidethus.render_ir import (
     renderer_ir_file_key,
     renderer_ir_id,
@@ -152,6 +153,56 @@ def _visible_text(content: Any, content_type: str) -> str:
     if isinstance(content, dict):
         return "\n".join(f"{key}: {value}" for key, value in content.items())
     return str(content or "")
+
+
+def _strict_region_content(
+    block: dict[str, Any],
+    representation: dict[str, Any],
+    view: dict[str, Any],
+    *,
+    region_id: str,
+) -> tuple[Any, dict[str, Any]]:
+    """Materialize admitted semantics and view decisions without carrier fallback."""
+
+    content = copy.deepcopy(block.get("content"))
+    if region_id != view["primary_region_id"]:
+        return content, {}
+    kind = str(representation["kind"])
+    semantics = representation["semantics"]
+    details = copy.deepcopy(view["details"])
+    if kind == "chart":
+        content = {
+            "type": semantics["chart_type"],
+            "categories": copy.deepcopy(semantics["categories"]),
+            "series": copy.deepcopy(semantics["series"]),
+        }
+    elif kind == "diagram":
+        geometry = {
+            str(item["node_id"]): item for item in details["node_geometry"]
+        }
+        content = {
+            "nodes": [
+                {
+                    "id": node["id"],
+                    "label": node["label"],
+                    **{
+                        key: geometry[str(node["id"])][key]
+                        for key in ("x", "y", "w", "h")
+                    },
+                }
+                for node in semantics["nodes"]
+            ],
+            "edges": [
+                {
+                    "id": edge["id"],
+                    "from": edge["from"],
+                    "to": edge["to"],
+                    "label": edge["meaning"],
+                }
+                for edge in semantics["edges"]
+            ],
+        }
+    return content, details
 
 
 def _connector_regions(regions: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -435,10 +486,36 @@ class RenderCompileService:
         specs = graph["slide_specs"]["data"]
         layouts = graph["layout_plans"]["data"]
         visual = graph["visual_system"]["data"]
+        strict_versions = {
+            str(specs.get("schema_version", "")).startswith("0.2."),
+            str(layouts.get("schema_version", "")).startswith("0.2."),
+            str(visual.get("schema_version", "")).startswith("0.2."),
+        }
+        if len(strict_versions) != 1:
+            raise RenderCompileError(
+                "Renderer inputs mix legacy and quality-by-construction generations"
+            )
+        strict_grammar = True in strict_versions
         explicit_styles = authored_styles(visual)
         page_designs = {p["slide_id"]: p for p in visual.get("page_designs", [])}
         if "page_designs" in visual:
             validate_page_designs(visual["page_designs"], specs, layouts)
+        if strict_grammar:
+            if set(page_designs) != {str(item["slide_id"]) for item in specs["slides"]}:
+                raise RenderCompileError(
+                    "Renderer IR 0.2 requires complete authored page designs"
+                )
+            capability = visual.get("capability_contract")
+            expected_contract = artifact_tool_host_contract()
+            if capability != {
+                "backend": expected_contract["backend"],
+                "contract_version": expected_contract["contract_version"],
+                "capability_id": expected_contract["capability_id"],
+                "contract_hash": "sha256:" + sha256_json(expected_contract),
+            }:
+                raise RenderCompileError(
+                    "Visual System producer capability is absent or differs from the closed grammar"
+                )
 
         expected_visual_inputs = [
             _artifact_ref(graph[artifact_type], artifact_type)
@@ -477,6 +554,14 @@ class RenderCompileService:
             outline_slide = outline_by_id[slide_id]
             slide_spec = specs_by_id[slide_id]
             layout = layout_by_id[slide_id]
+            representation = slide_spec.get("representation")
+            if strict_grammar and not isinstance(representation, dict):
+                raise RenderCompileError(f"{slide_id} lacks admitted representation semantics")
+            page_design = page_designs.get(slide_id, {})
+            authored_regions = {
+                str(item["block_id"]): item
+                for item in page_design.get("regions", [])
+            }
             blocks = {str(item["block_id"]): item for item in slide_spec.get("content_blocks", [])}
             regions: list[dict[str, Any]] = []
             for region in layout.get("regions", []):
@@ -484,14 +569,22 @@ class RenderCompileService:
                 block = blocks.get(block_id)
                 if block is None:
                     raise RenderCompileError(f"Layout region references unknown block: {block_id}")
-                style = copy.deepcopy(explicit_styles.get(block_id)) or _style_for(
-                    block,
-                    str(outline_slide["slide_type"]),
-                    visual,
-                    font_map,
-                    family=str(layout["layout_family"]),
-                    region_index=int(region["z"]),
-                )
+                if strict_grammar:
+                    authored = authored_regions.get(block_id)
+                    if authored is None or not authored.get("style_id"):
+                        raise RenderCompileError(
+                            f"Closed grammar omitted style authority for {block_id}"
+                        )
+                    style = copy.deepcopy(authored["style"])
+                else:
+                    style = copy.deepcopy(explicit_styles.get(block_id)) or _style_for(
+                        block,
+                        str(outline_slide["slide_type"]),
+                        visual,
+                        font_map,
+                        family=str(layout["layout_family"]),
+                        region_index=int(region["z"]),
+                    )
                 style["font_family"] = font_map.get(style["font_family"], style["font_family"])
                 content_type = str(block.get("content_type"))
                 if content_type in {"text", "list", "metric", "quote"}:
@@ -531,6 +624,20 @@ class RenderCompileService:
                 fonts.add(style["font_family"])
                 block_assets = [str(item) for item in block.get("asset_refs", [])]
                 used_assets.update(block_assets)
+                strict_content = copy.deepcopy(block.get("content"))
+                render_options: dict[str, Any] = {}
+                if strict_grammar:
+                    strict_content, render_options = _strict_region_content(
+                        block,
+                        representation,
+                        layout["view"],
+                        region_id=str(region["region_id"]),
+                    )
+                    if representation["kind"] == "image" and render_options:
+                        if style.get("image_fit") != render_options.get("fit"):
+                            raise RenderCompileError(
+                                f"Image style/view fit mismatch on {slide_id}"
+                            )
                 regions.append(
                     {
                         "region_id": str(region["region_id"]),
@@ -538,7 +645,7 @@ class RenderCompileService:
                         "semantic_role": str(block["semantic_role"]),
                         "content_type": str(block["content_type"]),
                         "priority": str(block["priority"]),
-                        "content": copy.deepcopy(block.get("content")),
+                        "content": strict_content,
                         "claim_mode": str(block.get("claim_mode", "label")),
                         "evidence_qualification": block.get("evidence_qualification"),
                         "evidence_ids": list(block.get("evidence_ids", [])),
@@ -552,6 +659,25 @@ class RenderCompileService:
                         "valign": str(region["valign"]),
                         "overflow_strategy": str(region["overflow_strategy"]),
                         "style": style,
+                        **(
+                            {
+                                "style_id": str(authored_regions[block_id]["style_id"]),
+                                "representation_id": str(representation["representation_id"]),
+                                "render_options": render_options,
+                                "consumption_trace": {
+                                    "decision_ids": [
+                                        str(representation["representation_id"]),
+                                        str(layout["representation_ref"]["content_hash"]),
+                                        str(page_design["page_family_id"]),
+                                        str(page_design["component_variant_id"]),
+                                        str(authored_regions[block_id]["style_id"]),
+                                    ],
+                                    "output_ids": [str(region["region_id"])],
+                                },
+                            }
+                            if strict_grammar
+                            else {}
+                        ),
                     }
                 )
             slides.append(
@@ -561,11 +687,35 @@ class RenderCompileService:
                     **({"background": page_designs[slide_id]["background"]} if page_designs else {}),
                     "layout_family": str(layout["layout_family"]),
                     "regions": sorted(regions, key=lambda item: (item["z"], item["region_id"])),
-                    "decorations": copy.deepcopy(page_designs[slide_id]["decorations"]) if page_designs else _decorations(
-                        slide_id,
-                        str(layout["layout_family"]),
-                        visual,
-                        regions,
+                    "decorations": (
+                        copy.deepcopy(page_designs[slide_id]["decorations"])
+                        if page_designs
+                        else _decorations(
+                            slide_id,
+                            str(layout["layout_family"]),
+                            visual,
+                            regions,
+                        )
+                    ),
+                    **(
+                        {
+                            "page_family_id": str(page_design["page_family_id"]),
+                            "component_variant_id": str(page_design["component_variant_id"]),
+                            "representation_ref": copy.deepcopy(layout["representation_ref"]),
+                            "focal_order": copy.deepcopy(layout["focal_order"]),
+                            "view": copy.deepcopy(layout["view"]),
+                            "consumption_trace": {
+                                "decision_ids": [
+                                    str(representation["representation_id"]),
+                                    str(layout["representation_ref"]["content_hash"]),
+                                    str(page_design["page_family_id"]),
+                                    str(page_design["component_variant_id"]),
+                                ],
+                                "output_ids": [slide_id],
+                            },
+                        }
+                        if strict_grammar
+                        else {}
                     ),
                 }
             )
@@ -599,7 +749,7 @@ class RenderCompileService:
             key=lambda item: item["artifact_type"],
         )
         ir: dict[str, Any] = {
-            "schema_version": SCHEMA_VERSION,
+            "schema_version": "0.2.0" if strict_grammar else SCHEMA_VERSION,
             "project_id": str(brief["project_id"]),
             "deck_id": str(outline["deck_id"]),
             "ir_id": "",
@@ -628,6 +778,17 @@ class RenderCompileService:
                 for item in sorted(font_resolutions, key=lambda value: value.requested)
                 if item.status == "substituted"
             ],
+            **(
+                {
+                    "producer_capability": copy.deepcopy(visual["capability_contract"]),
+                    "compiler": {
+                        "name": "slidethus-render-compile",
+                        "version": "2.0.0",
+                    },
+                }
+                if strict_grammar
+                else {}
+            ),
         }
         ir["ir_id"] = renderer_ir_id(ir)
         errors = validate_renderer_ir_data(ir, self.schemas.schema_dir)

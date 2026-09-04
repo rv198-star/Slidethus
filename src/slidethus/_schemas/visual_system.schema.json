@@ -41,6 +41,8 @@
           "surface_treatment": {
             "enum": ["plain", "tonal", "field", "image-led"]
           },
+          "page_family_id": {"type": "string", "pattern": "^family-[a-z0-9-]{2,63}$"},
+          "component_variant_id": {"type": "string", "pattern": "^variant-[a-z0-9-]{2,63}$"},
           "background": {
             "type": "string",
             "pattern": "^#[a-fA-F0-9]{6}$"
@@ -61,6 +63,7 @@
                   "type": "string",
                   "pattern": "^BLK-S[0-9]{3}-[0-9]{2}$"
                 },
+                "style_id": {"type": "string", "pattern": "^style-[a-z0-9-]{2,63}$"},
                 "style": {
                   "type": "object",
                   "additionalProperties": false,
@@ -205,7 +208,7 @@
     },
     "schema_version": {
       "type": "string",
-      "pattern": "^0\\.1\\.[0-9]+$"
+      "pattern": "^0\\.(1|2)\\.[0-9]+$"
     },
     "project_id": {
       "type": "string",
@@ -553,6 +556,50 @@
         }
       }
     },
+    "capability_contract": {
+      "type": "object", "additionalProperties": false,
+      "required": ["backend", "contract_version", "capability_id", "contract_hash"],
+      "properties": {
+        "backend": {"const": "artifact-tool"},
+        "contract_version": {"const": "2.0.0"},
+        "capability_id": {"const": "artifact-tool-closed-grammar-v2"},
+        "contract_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      }
+    },
+    "grammar": {
+      "type": "object", "additionalProperties": false,
+      "required": ["capability_id", "page_families", "component_variants", "prohibited_combinations"],
+      "properties": {
+        "capability_id": {"const": "artifact-tool-closed-grammar-v2"},
+        "page_families": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["family_id", "purpose"],
+            "properties": {
+              "family_id": {"type": "string", "pattern": "^family-[a-z0-9-]{2,63}$"},
+              "purpose": {"type": "string", "minLength": 1, "maxLength": 500}
+            }
+          }
+        },
+        "component_variants": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["variant_id", "representation_kind", "producer_behavior"],
+            "properties": {
+              "variant_id": {"type": "string", "pattern": "^variant-[a-z0-9-]{2,63}$"},
+              "representation_kind": {"enum": ["text", "typographic", "image", "chart", "table", "diagram", "mixed"]},
+              "producer_behavior": {"enum": ["text_focus", "image_frame", "native_chart", "native_table", "editable_diagram", "mixed_regions"]}
+            }
+          }
+        },
+        "prohibited_combinations": {
+          "type": "array", "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      }
+    },
     "render_lineage": {
       "type": "object",
       "additionalProperties": false,
@@ -579,5 +626,23 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"schema_version": {"pattern": "^0\\.2\\."}}},
+      "then": {
+        "required": ["capability_contract", "grammar", "page_designs"],
+        "properties": {
+          "page_designs": {
+            "items": {
+              "required": ["page_family_id", "component_variant_id"],
+              "properties": {
+                "regions": {"items": {"required": ["style_id"]}}
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

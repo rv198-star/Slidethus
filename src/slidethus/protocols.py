@@ -203,6 +203,7 @@ class ArtDirectionSeedProposal:
     dials: dict[str, int]
     foundation: dict[str, Any]
     direction: dict[str, Any]
+    direction_approval: dict[str, Any] | None = None
     warnings: tuple[str, ...] = ()
     assumptions: tuple[str, ...] = ()
 

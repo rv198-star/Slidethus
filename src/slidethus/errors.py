@@ -166,6 +166,10 @@ class VisualReviewError(ReviewError):
     """Raised when an M5 visual review proposal or persisted fact is inconsistent."""
 
 
+class VisualQualityError(ReviewError):
+    """Raised when quality-by-construction evidence or admission is inconsistent."""
+
+
 class ReviewRepairError(ReviewError):
     """Raised when an M5 repair plan or bounded repair execution is inconsistent."""
 

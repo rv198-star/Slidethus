@@ -23,6 +23,20 @@ def artifact_tool_host_contract() -> dict[str, Any]:
 
     return {
         "backend": "artifact-tool",
+        "contract_version": "2.0.0",
+        "capability_id": "artifact-tool-closed-grammar-v2",
+        "representation_kinds": [
+            "text",
+            "typographic",
+            "image",
+            "chart",
+            "table",
+            "diagram",
+            "mixed",
+        ],
+        "semantic_fallback": "forbidden",
+        "chart_orientation": ["vertical"],
+        "diagram_routing": ["direct", "orthogonal"],
         "overflow_strategies": ["fail", "wrap", "shrink_with_floor"],
         "qualified_non_text_requires_visible_caption": True,
         "text_insets": {
@@ -278,7 +292,8 @@ def _valid_editable_diagram(content: Any) -> bool:
     for edge in edges:
         if (
             not isinstance(edge, dict)
-            or set(edge) - {"from", "to", "label"}
+            or set(edge) - {"id", "from", "to", "label"}
+            or ("id" in edge and not isinstance(edge.get("id"), str))
             or not isinstance(edge.get("from"), str)
             or not isinstance(edge.get("to"), str)
             or edge.get("from") not in admitted_ids
@@ -363,6 +378,21 @@ def artifact_tool_admission_issues(
                             "Artifact Tool diagram requires normalized editable nodes/edges or one admitted PNG/JPEG asset.",
                         )
                     else:
+                        if str(ir.get("schema_version", "")).startswith("0.2."):
+                            edge_ids = {
+                                str(item.get("id"))
+                                for item in region["content"]["edges"]
+                            }
+                            options = region.get("render_options", {})
+                            routing_ids = {
+                                str(item.get("edge_id"))
+                                for item in options.get("routing", [])
+                            }
+                            if edge_ids != routing_ids:
+                                add(
+                                    "artifact_tool_diagram_routing_incomplete",
+                                    "Closed diagram grammar requires one admitted route per semantic edge.",
+                                )
                         failed_nodes = []
                         style = region.get("style", {})
                         for node in region["content"]["nodes"]:
@@ -471,6 +501,15 @@ def artifact_tool_admission_issues(
                         "artifact_tool_chart_colors_missing",
                         "Artifact Tool chart requires explicit series colors.",
                     )
+                options = region.get("render_options", {})
+                if str(ir.get("schema_version", "")).startswith("0.2.") and (
+                    set(options) != {"orientation", "label_position", "legend_position"}
+                    or options.get("orientation") != "vertical"
+                ):
+                    add(
+                        "artifact_tool_chart_view_invalid",
+                        "Closed chart grammar requires admitted vertical orientation, labels and legend position.",
+                    )
                 continue
             if content_type == "table":
                 layout = artifact_tool_table_layout(
@@ -491,6 +530,14 @@ def artifact_tool_admission_issues(
                         f"Artifact Tool table needs {layout.required_height:.1f}px "
                         f"after content-weighted column allocation, but {layout.available_height:.1f}px "
                         "is available; widen or increase the table in P5A/P5B.",
+                    )
+                options = region.get("render_options", {})
+                if str(ir.get("schema_version", "")).startswith("0.2.") and set(
+                    options
+                ) != {"header_rows", "emphasized_column", "overflow"}:
+                    add(
+                        "artifact_tool_table_view_invalid",
+                        "Closed table grammar requires header, emphasis and overflow decisions.",
                     )
                 continue
             add(

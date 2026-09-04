@@ -9,9 +9,10 @@ from slidethus.artifact_runtime import ArtifactRuntime
 from slidethus.constants import SCHEMA_VERSION
 from slidethus.errors import ArtifactError
 from slidethus.gates import evaluate_gate
-from slidethus.io_utils import read_json
+from slidethus.io_utils import read_json, sha256_json
 from slidethus.page_design import validate_page_designs
 from slidethus.protocols import ArtDirectionProvider
+from slidethus.render_backends.artifact_tool_contract import artifact_tool_host_contract
 
 _ENGINE = "deterministic-visual-system"
 _ENGINE_VERSION = "1.1.0"
@@ -75,8 +76,69 @@ class VisualSystemService:
             workspace=self.workspace,
         )
         direction = compiled_direction.packet["direction"]
+        strict_grammar = str(graph["slide_specs"]["data"].get("schema_version", "")).startswith(
+            "0.2."
+        )
+        if strict_grammar and not (
+            str(compiled_direction.packet.get("schema_version", "")).startswith("0.2.")
+            and isinstance(direction.get("grammar"), dict)
+            and isinstance(direction.get("page_designs"), list)
+        ):
+            raise ArtifactError(
+                "Reviewed/critical P6 requires Art Direction Packet 0.2, closed grammar and complete page designs"
+            )
         if "page_designs" in direction:
             validate_page_designs(direction["page_designs"], graph["slide_specs"]["data"], layouts)
+        if strict_grammar:
+            grammar = direction["grammar"]
+            family_ids = [str(item["family_id"]) for item in grammar["page_families"]]
+            variant_rows = {
+                str(item["variant_id"]): item for item in grammar["component_variants"]
+            }
+            if len(family_ids) != len(set(family_ids)) or len(variant_rows) != len(
+                grammar["component_variants"]
+            ):
+                raise ArtifactError("P6 grammar contains duplicate family/variant IDs")
+            required_prohibitions = {
+                "semantic-fallback",
+                "variant-kind-mismatch",
+                "unbound-style",
+                "implicit-image-fit",
+                "implicit-chart-view",
+                "implicit-table-view",
+                "implicit-diagram-routing",
+            }
+            observed_prohibitions = set(
+                str(item) for item in grammar["prohibited_combinations"]
+            )
+            if not required_prohibitions.issubset(observed_prohibitions):
+                raise ArtifactError(
+                    "P6 closed grammar omits mandatory prohibitions: "
+                    + ", ".join(
+                        sorted(required_prohibitions - observed_prohibitions)
+                    )
+                )
+            specs_by_id = {
+                str(item["slide_id"]): item
+                for item in graph["slide_specs"]["data"]["slides"]
+            }
+            for page in direction["page_designs"]:
+                if page["page_family_id"] not in family_ids:
+                    raise ArtifactError(
+                        f"Page design uses unknown family: {page['page_family_id']}"
+                    )
+                variant = variant_rows.get(str(page["component_variant_id"]))
+                if variant is None:
+                    raise ArtifactError(
+                        f"Page design uses unknown component variant: {page['component_variant_id']}"
+                    )
+                expected_kind = specs_by_id[str(page["slide_id"])]["representation"][
+                    "kind"
+                ]
+                if variant["representation_kind"] != expected_kind:
+                    raise ArtifactError(
+                        f"Page design variant does not implement {expected_kind} on {page['slide_id']}"
+                    )
         palette = direction["palette"]
         typography = direction["typography"]
         composition = direction["composition"]
@@ -111,7 +173,7 @@ class VisualSystemService:
             )
         ]
         candidate = {
-            "schema_version": SCHEMA_VERSION,
+            "schema_version": "0.2.0" if strict_grammar else SCHEMA_VERSION,
             "project_id": str(brief["project_id"]),
             "deck_id": str(outline["deck_id"]),
             "theme_id": str(direction["theme_id"]),
@@ -209,6 +271,20 @@ class VisualSystemService:
             "forbidden_patterns": list(direction["forbidden_patterns"]),
             "font_fallbacks": {preferred_font: fallbacks},
             "brand_assets": brand_assets,
+            **(
+                {
+                    "capability_contract": {
+                        "backend": "artifact-tool",
+                        "contract_version": "2.0.0",
+                        "capability_id": "artifact-tool-closed-grammar-v2",
+                        "contract_hash": "sha256:"
+                        + sha256_json(artifact_tool_host_contract()),
+                    },
+                    "grammar": copy.deepcopy(direction["grammar"]),
+                }
+                if strict_grammar
+                else {}
+            ),
             "art_direction": {
                 "packet_id": str(compiled_direction.packet["packet_id"]),
                 "path": compiled_direction.relative_path.as_posix(),
@@ -226,7 +302,7 @@ class VisualSystemService:
             },
             "render_lineage": {
                 "engine": _ENGINE,
-                "engine_version": _ENGINE_VERSION,
+                "engine_version": "2.0.0" if strict_grammar else _ENGINE_VERSION,
                 "generated_at": _generated_at(
                     self.runtime,
                     {"project_brief", "deck_outline", "slide_specs", "layout_plans", "asset_manifest"},

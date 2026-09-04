@@ -64,7 +64,8 @@
           "stage": {
             "enum": [
               "brief", "m2_orientation", "narrative", "outline", "slide_specs",
-              "m2_targeted", "layout", "planning_review", "planning_repair",
+              "visual_admission_policy", "m2_targeted", "layout",
+              "qualitative_planning_review", "planning_review", "planning_repair",
               "rework", "report"
             ]
           },

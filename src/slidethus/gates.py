@@ -263,6 +263,14 @@ def evaluate_gate(workspace: Path, gate_id: str) -> GateResult:
                     workspace=workspace,
                 )
             )
+        from slidethus.visual_quality import quality_path_required
+
+        if quality_path_required(workspace) and not str(
+            (slide_specs or {}).get("schema_version", "")
+        ).startswith("0.2."):
+            reasons.append(
+                "reviewed/critical G5A requires representation-aware Slide Specs 0.2"
+            )
         state = read_json(workspace / "project_state.json")
         artifacts_by_type = {
             str(item.get("artifact_type")): item for item in state.get("artifacts", [])
@@ -297,7 +305,16 @@ def evaluate_gate(workspace: Path, gate_id: str) -> GateResult:
                         graph=graph,
                     )
                 )
+                if str(layout_plans.get("schema_version", "")).startswith("0.2."):
+                    # Imported lazily because visual-quality persistence uses
+                    # ArtifactRuntime, whose evaluator imports this module.
+                    from slidethus.visual_quality import planning_admission_errors
+
+                    reasons.extend(planning_admission_errors(workspace))
     elif gate_id == "G6":
+        g5b = evaluate_gate(workspace, "G5B")
+        if not g5b.passed:
+            reasons.append("G5B does not pass for the current semantic planning lineage")
         state = read_json(workspace / "project_state.json")
         path = workspace / "design/visual_system.json"
         visual = read_json(path) if path.exists() else None
@@ -308,6 +325,14 @@ def evaluate_gate(workspace: Path, gate_id: str) -> GateResult:
                 workspace=workspace,
             )
         )
+        from slidethus.visual_quality import quality_path_required
+
+        if quality_path_required(workspace) and not str(
+            (visual or {}).get("schema_version", "")
+        ).startswith("0.2."):
+            reasons.append(
+                "reviewed/critical G6 requires a closed-grammar Visual System 0.2"
+            )
     elif gate_id == "G7":
         path = workspace / "renders/render_manifest.json"
         if not path.exists():
@@ -406,6 +431,9 @@ def evaluate_gate(workspace: Path, gate_id: str) -> GateResult:
                     SchemaRegistry().schema_dir,
                 )
             )
+        from slidethus.visual_quality import whole_deck_admission_errors
+
+        reasons.extend(whole_deck_admission_errors(workspace))
     elif gate_id == "G9":
         render = read_json(workspace / "renders/render_manifest.json")
         quality = read_json(workspace / "review/quality_report.json")

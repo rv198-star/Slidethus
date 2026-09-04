@@ -10,7 +10,7 @@
     "requires_rework", "target_phase"
   ],
   "properties": {
-    "schema_version": {"type": "string", "pattern": "^0\\.1\\.[0-9]+$"},
+    "schema_version": {"type": "string", "pattern": "^0\\.[12]\\.[0-9]+$"},
     "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
     "report_id": {"type": "string", "pattern": "^PRV-[A-F0-9]{16}$"},
     "generated_at": {"type": "string", "format": "date-time"},
@@ -94,9 +94,34 @@
     "target_phase": {
       "type": ["string", "null"],
       "enum": [null, "BRIEF_READY", "EVIDENCE_READY", "NARRATIVE_READY", "OUTLINE_READY", "SLIDE_SPECS_READY", "LAYOUT_READY"]
+    },
+    "visual_admission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy", "semantic_preview", "qualitative_decision"],
+      "properties": {
+        "policy": {"$ref": "#/$defs/fileRef"},
+        "semantic_preview": {"$ref": "#/$defs/fileRef"},
+        "qualitative_decision": {"$ref": "#/$defs/fileRef"}
+      }
     }
   },
+  "allOf": [
+    {
+      "if": {"properties": {"schema_version": {"pattern": "^0\\.2\\."}}},
+      "then": {"required": ["visual_admission"]}
+    }
+  ],
   "$defs": {
+    "fileRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "path", "sha256"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
     "artifactRef": {
       "type": "object",
       "additionalProperties": false,

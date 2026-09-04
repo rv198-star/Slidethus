@@ -8,7 +8,12 @@
   "properties": {
     "schema_version": {"const": "0.1.0"},
     "request_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
-    "stage": {"enum": ["narrative_blueprint", "deck_outline", "art_direction_seed", "slide_specs", "layout_plans", "art_direction"]},
+    "stage": {"enum": [
+      "narrative_blueprint", "deck_outline", "art_direction_seed", "slide_specs",
+      "layout_plans", "art_direction", "direction_review",
+      "semantic_planning_review", "calibration_office_evidence",
+      "calibration_review", "whole_deck_review"
+    ]},
     "proposal": {"type": "object"}
   }
 }

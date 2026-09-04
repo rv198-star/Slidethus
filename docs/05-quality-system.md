@@ -90,6 +90,10 @@ Round A 的 Critical/Major 问题修复后，再按维度评分。评分必须�
 - Host Create resume 是否同时满足 current Phase、accepted Gate、registry version/hash、provider/policy 和 upstream lineage，不能把存在或 Schema 合法的 draft 文件当成已完成阶段；
 - M2 orientation/targeted report 是否精确绑定当前 config、Sources、Gate 和相关 artifact refs；targeted report 是否绑定 current Outline/Slide Specs；
 - Host response 是否一次聚合当前 envelope/stage 中全部可确定字段、枚举、coverage、family、density 与基础 geometry finding，而不是 fail-fast 串行试错。
+- VisualAdmissionPolicy 是否精确绑定 current Brief hash，risk evidence requirements 与 approval pause mode 是否分离；
+- reviewed/critical Specs 是否有 closed representation semantics，Layout 是否只拥有 view geometry 且无 semantic duplication；
+- semantic preview 是否内容寻址并画出实际 chart/table/diagram/image 关系，而不是 raw JSON 或等权框；
+- qualitative planning review 是否绑定 exact preview hashes、合格且独立的 reviewer identity/capabilities，并由 workflow 派生 decision。
 
 M3 Planning Review 的 Critical/Major 必须为 0 才能通过 repository M3 Exit。Minor 可以保留为显式 warning，但不能被自动评分掩盖。该报告不是 P8 最终视觉 Quality Report。
 
@@ -130,6 +134,23 @@ M5.1 在 M4 之外重新计算 deterministic facts，而不是读取 `M4 Applica
 - complete-MVP stage/output coverage；
 - debug PPTX Region/Block mapping；
 - debug 与 final 两条独立 Office preview 链。
+
+### 4.7 Quality-by-construction admission
+
+Reviewed/critical Designed Create 必须在支付 full render 成本前取得以下 current evidence：
+
+1. Taste 驱动、保存在 workspace 的 native direction prototype，以及独立 direction review；
+2. full-deck Specs 0.2 representation、Layout 0.2 semantic preview 和 qualitative planning decision；
+3. closed P6 grammar、producer capability binding 和完整 Renderer IR 0.2 consumption trace；
+4. 从该 exact complete IR 确定性选出的 sample、Artifact Tool receipt、真实 PowerPoint page rasters；
+5. immutable findings、workflow-derived calibration decision 和 evidence-only VisualReferenceSet；
+6. exact same IR/producer/dependency authorization 的 full render，以及 P8 whole-deck PowerPoint decision。
+
+`auto` 只决定是否暂停等人，不删除上述 evidence。Author/provider 不能充当要求独立的 reviewer；缺少 reviewer 或 Office capability 时必须 fail closed。所有 full-render API 共用 `RenderAdmissionPolicy`，Host Create 状态或一个布尔参数不能成为旁路。
+
+Finding ID 不包含 severity。同一 page hash 上的 admitted Critical/Major 在后续 review 漏报、降级或换 reviewer 时仍保持 open；只有新页面 hash 或保留原 finding 的 immutable `ReviewAdjudication(false_positive)` 可以关闭。用户 waiver 可记录选择，但不能产生 reviewed/critical quality approval。
+
+Sample/full 必须绑定同一 complete IR、compiler、backend、adapter、capability、asset/font resolution 与 current dependency。Office evidence 必须来自 Microsoft PowerPoint，记录 application build、profile、export parameters 和每页 hash；Artifact Tool preview、Final SVG、对象数或可打开性均不能替代。P8 必须审阅整套页面的 correctness、plan/grammar fulfillment、sample language propagation、adjacent cadence 与全篇节奏，并可以基于全篇上下文撤销 sample approval。
 
 ## 5. 语义审计维度
 
@@ -185,11 +206,11 @@ Quality Report 可以用于前置规划审计，但最终 P8 Review 必须生成
 
 页面职责/节奏问题回 P4，内容容量问题回 P5A，空间关系问题回 P5B，视觉 token 问题才回 P6；不能只换皮肤。
 
-P6 还必须校验 Art Direction Packet 的存在性、schema、内容 hash、provider identity 与完整输入 lineage。若存在 pre-layout Art Direction Seed，还要校验其 Brief/Outline lineage、原生样板路径/hash、required carrier 的 Block/Region 兑现，以及最终页面的表面节奏：`field` 有真实 field treatment、`image-led` 有 image Block、`tonal` 不塌缩回全局 plain background。默认 Taste provider 的 Skill 文件 hash 或 MIT provenance 漂移属于 release-blocking capability/rights defect。Packet 只提高视觉方向基础，不替代真实 Office-rendered 页面评审；单凭 Packet、Visual System 或导出成功不能通过最终视觉 Gate。
+P6 还必须校验 Art Direction Packet 的存在性、schema、内容 hash、provider identity 与完整输入 lineage。若存在 pre-layout Art Direction Seed，还要校验其 Brief/Outline lineage、原生样板路径/hash、required carrier 的 Block/Region 兑现，以及最终页面的表面节奏：`field` 有真实 field treatment、`image-led` 有 image Block、`tonal` 不塌缩回全局 plain background。默认 Taste provider 的 Skill 文件 hash 或 MIT provenance 漂移属于 release-blocking capability/rights defect。Reviewed/critical 还必须拒绝 unsupported/unconsumed variant、style、view、routing 与 implicit fallback，并用 mutation-sensitive test 证明 material decision 会改变 IR 或显式失败。Packet 只提高视觉方向基础，不替代真实 Office-rendered 页面评审；单凭 Packet、Visual System 或导出成功不能通过最终视觉 Gate。
 
 ## 9. Stage AI Review 与统一修复
 
-Stage AI Review 不插入生产过程。一次 Production Attempt 先按现有确定性合同完整执行，直到正常完成，或命中既有的安全、证据、能力、几何、输出完整性等硬阻断。AI Review 本身既不新增中途 Gate，也不为了继续试跑而当场修改任何 Production Artifact。
+本节所称 Stage AI Review 是 attempt 结束后的 retrospective review，不等同于 4.7 的 direction/planning/calibration admission review。Retrospective Stage AI Review 不插入生产过程；一次 Production Attempt 先按准入合同完整执行，直到正常完成，或命中既有的安全、证据、能力、几何、输出完整性等硬阻断。它本身既不新增中途 Gate，也不为了继续试跑而当场修改任何 Production Artifact。
 
 当本次 Production Attempt 已结束后，P8 再分别用 P0、P1、P2、P3、P4、P5A、P5B、P6、P7 的责任视角执行独立 AI Open Issue Review。若流程在某个既有硬阻断处结束，则 Review 审计所有已经真实产生的 artifact 与 failure fact，并记录未到达下游阶段的影响，不当场修复 blocker 后继续跑。
 

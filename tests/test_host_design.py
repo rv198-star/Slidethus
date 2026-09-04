@@ -486,6 +486,13 @@ def _fixture_proposal(
     prototype: dict | None = None,
 ) -> dict:
     """Synthetic test host only; never used by the production entry."""
+    if stage in {
+        "direction_review",
+        "semantic_planning_review",
+        "calibration_review",
+        "whole_deck_review",
+    }:
+        return {"findings": []}
     if stage == "art_direction_seed":
         if prototype is None:
             raise AssertionError("Taste-generated fixture requires a native prototype")
@@ -543,19 +550,113 @@ def _fixture_proposal(
                     "kind": "rect", "x": 60, "y": 44, "w": 42, "h": 4,
                     "fill": "#7A3355", "stroke": None, "z": 0,
                 }]
-            pages.append({"slide_id": plan["slide_id"], "surface_treatment": treatment, "background": "#EFF2F8", "regions": rows, "decorations": decorations})
+            page = {"slide_id": plan["slide_id"], "surface_treatment": treatment, "background": "#EFF2F8", "regions": rows, "decorations": decorations}
+            if str(context["slide_specs"].get("schema_version", "")).startswith("0.2."):
+                representation = next(
+                    item["representation"]
+                    for item in context["slide_specs"]["slides"]
+                    if item["slide_id"] == plan["slide_id"]
+                )
+                page["page_family_id"] = "family-fixture"
+                page["component_variant_id"] = f"variant-{representation['kind']}"
+                for region in page["regions"]:
+                    region["style_id"] = "style-" + region["block_id"].lower()
+            pages.append(page)
         proposal["direction"]["page_designs"] = pages
+        if str(context["slide_specs"].get("schema_version", "")).startswith("0.2."):
+            behavior = {
+                "text": "text_focus",
+                "typographic": "text_focus",
+                "image": "image_frame",
+                "chart": "native_chart",
+                "table": "native_table",
+                "diagram": "editable_diagram",
+                "mixed": "mixed_regions",
+            }
+            kinds = list(
+                dict.fromkeys(
+                    item["representation"]["kind"]
+                    for item in context["slide_specs"]["slides"]
+                )
+            )
+            proposal["direction"]["grammar"] = {
+                "capability_id": "artifact-tool-closed-grammar-v2",
+                "page_families": [
+                    {
+                        "family_id": "family-fixture",
+                        "purpose": "Synthetic closed-grammar integration fixture",
+                    }
+                ],
+                "component_variants": [
+                    {
+                        "variant_id": f"variant-{kind}",
+                        "representation_kind": kind,
+                        "producer_behavior": behavior[kind],
+                    }
+                    for kind in kinds
+                ],
+                "prohibited_combinations": [
+                    "semantic-fallback",
+                    "variant-kind-mismatch",
+                    "unbound-style",
+                    "implicit-image-fit",
+                    "implicit-chart-view",
+                    "implicit-table-view",
+                    "implicit-diagram-routing",
+                ],
+            }
         return proposal
     if stage == "layout_plans":
         plans = []
         for slide in context["slide_specs"]["slides"]:
             blocks = slide["content_blocks"]
             h = 576 / len(blocks)
-            plans.append({"slide_id": slide["slide_id"], "layout_family": "custom", "rationale": "Synthetic unequal-margin geometry to detect template overwrite", "regions": [
+            plan = {"slide_id": slide["slide_id"], "layout_family": "custom", "rationale": "Synthetic unequal-margin geometry to detect template overwrite", "regions": [
                 {"block_id": b["block_id"], "x": 95, "y": 64 + i * h, "w": 1080, "h": h - 8,
                  "z": i, "align": "left", "valign": "top", "overflow_strategy": "fail"}
                 for i, b in enumerate(blocks)
-            ]})
+            ]}
+            representation = slide.get("representation")
+            if isinstance(representation, dict):
+                kind = representation["kind"]
+                target_type = kind if kind in {"chart", "table", "diagram", "image"} else None
+                primary_index = next(
+                    (
+                        index
+                        for index, block in enumerate(blocks)
+                        if target_type is not None and block["content_type"] == target_type
+                    ),
+                    0,
+                )
+                region_ids = [
+                    f"REG-{slide['slide_id'].replace('-', '')}-{index + 1:02d}"
+                    for index in range(len(blocks))
+                ]
+                primary = region_ids[primary_index]
+                details = {
+                    "text": {"emphasis_region_id": primary, "rhythm": "single-focus"},
+                    "typographic": {"emphasis_region_id": primary, "rhythm": "single-focus"},
+                    "chart": {
+                        "orientation": "vertical",
+                        "label_position": "direct",
+                        "legend_position": "top",
+                    },
+                    "image": {
+                        "fit": "contain",
+                        "focal_point": {"x": 0.5, "y": 0.5},
+                        "fallback_region_id": None,
+                    },
+                }[kind]
+                plan["focal_order"] = [
+                    primary, *[item for item in region_ids if item != primary]
+                ]
+                plan["view"] = {
+                    "kind": kind,
+                    "primary_region_id": primary,
+                    "negative_space": "compact",
+                    "details": details,
+                }
+            plans.append(plan)
         return {"content": {"plans": plans}, "warnings": [], "assumptions": []}
     proposal = asdict(DeterministicPlanningProvider().propose(stage, context, PlanningLimits(**limits)))
     proposal.pop("artifact_type")
@@ -573,6 +674,79 @@ def _fixture_proposal(
                     body.update({"content_type": "chart", "content": {"type": "bar", "categories": ["A", "B"], "series": [{"name": "Synthetic", "values": [2, 5]}]}})
                 else:
                     body.update({"claim_mode": "asset", "content_type": "image", "content": "Engineering fixture", "asset_refs": ["AST-001"]})
+            policy = context.get("visual_admission_policy", {})
+            if policy.get("risk_class") in {"reviewed", "critical"}:
+                carrier = next(
+                    item
+                    for item in context["art_direction_seed"]["direction"]["carriers"]
+                    if item["slide_id"] == slide["slide_id"]
+                )
+                kind = {"textual": "text"}.get(carrier["kind"], carrier["kind"])
+                evidence_ids = list(
+                    dict.fromkeys(
+                        evidence_id
+                        for block in slide["content_blocks"]
+                        for evidence_id in block.get("evidence_ids", [])
+                    )
+                )
+                if not evidence_ids:
+                    outline_slide = next(
+                        item
+                        for item in context["deck_outline"]["slides"]
+                        if item["slide_id"] == slide["slide_id"]
+                    )
+                    evidence_ids = list(outline_slide.get("evidence_ids", []))
+                if kind == "chart":
+                    chart = next(
+                        block["content"]
+                        for block in slide["content_blocks"]
+                        if block["content_type"] == "chart"
+                    )
+                    semantics = {
+                        "communication_question": "How do the two synthetic values compare?",
+                        "chart_type": chart["type"],
+                        "categories": chart["categories"],
+                        "series": chart["series"],
+                        "comparison_semantics": "magnitude",
+                        "data_evidence_ids": evidence_ids,
+                        "fallback": "table",
+                    }
+                    asset_strategy = {
+                        "demand": "none",
+                        "asset_refs": [],
+                        "fallback": "table",
+                    }
+                elif kind == "image":
+                    semantics = {
+                        "narrative_role": "context",
+                        "subject": "Synthetic engineering context",
+                        "focal_intent": "Keep the subject as the primary focal point",
+                        "source_strategy": "existing",
+                    }
+                    asset_strategy = {
+                        "demand": "required",
+                        "asset_refs": ["AST-001"],
+                        "fallback": "replan",
+                    }
+                else:
+                    semantics = {
+                        "structure": "statement" if kind == "typographic" else "explanation",
+                        "emphasis": "The slide takeaway",
+                    }
+                    asset_strategy = {
+                        "demand": "none",
+                        "asset_refs": [],
+                        "fallback": "none",
+                    }
+                slide["representation"] = {
+                    "representation_id": f"REP-{slide['slide_id'].replace('-', '')}",
+                    "kind": kind,
+                    "carrier_reason": "Use the carrier that directly expresses the fixture's semantic role.",
+                    "visual_weight": "hero" if index == 0 else "primary",
+                    "density_role": "anchor" if index == 0 else "proof",
+                    "asset_strategy": asset_strategy,
+                    "semantics": semantics,
+                }
     return proposal
 
 
@@ -860,6 +1034,7 @@ def test_rework_result_exposes_review_target_issues_and_allowed_actions(
         audience_role="Engineers",
         delivery_context="Engineering review",
         page_target=6,
+        quality_profile="draft",
     )
     m3 = M3ApplicationService(
         workspace,
@@ -878,9 +1053,10 @@ def test_rework_result_exposes_review_target_issues_and_allowed_actions(
             allow_research_degraded=False,
             approve_external_disclosure=False,
             allow_high_risk_source_evidence=False,
-            planning_provider=service.planning,
-            research_provider=service.research_provider,
-            art_direction_provider=service.art_direction,
+                planning_provider=service.planning,
+                research_provider=service.research_provider,
+                art_direction_provider=service.art_direction,
+                visual_review_provider=service.visual_review_provider,
         ),
     )
     service._advance = lambda _config, **_kwargs: {
@@ -966,7 +1142,16 @@ def authored_workspace(tmp_path_factory) -> Path:
     source.write_text("# Evidence\nSynthetic A is 2 and B is 5.\n\n# Decision\nReview the controlled fixture before adoption.", encoding="utf-8")
     workspace = root / "workspace"
     service = HostCreateService(workspace)
-    hints = BriefCompletionHints(request_text="Create a four-page engineering fixture", purpose="Check propagation", desired_outcome="Inspect candidate", call_to_action="Review the fixture", audience_role="Engineers", delivery_context="Engineering test", page_target=4)
+    hints = BriefCompletionHints(
+        request_text="Create a four-page engineering fixture",
+        purpose="Check propagation",
+        desired_outcome="Inspect candidate",
+        call_to_action="Review the fixture",
+        audience_role="Engineers",
+        delivery_context="Engineering test",
+        page_target=4,
+        quality_profile="draft",
+    )
     result = service.run((source,), hints=hints)
     runtime = ArtifactRuntime(workspace)
     image = workspace / "assets/test.png"
@@ -1099,6 +1284,17 @@ def test_seed_revision_resume_reuses_one_prepared_seed_for_slide_specs(
     }
     session = read_json(workspace / ".slidethus/host-create/session.json")
     assert session["pending_revision"]["stage"] == "art_direction_seed"
+    prepared_ref = session["prepared_art_direction_seed"]
+    assert read_json(workspace / prepared_ref["path"]) == specs_request["context"][
+        "art_direction_seed"
+    ]
+    # Once the revised Seed is frozen into Session, downstream resume must not
+    # replay the earlier Host Seed response.  Corrupting that historical response
+    # makes an accidental replay fail deterministically.
+    Path(requested["pending"]["response_path"]).write_text(
+        "{\"invalidated historical response\": true}\n",
+        encoding="utf-8",
+    )
     _respond(
         resumed["pending"],
         _fixture_proposal(
@@ -1448,6 +1644,7 @@ def test_fresh_create_controlled_revision_reaches_candidate_and_terminal_fact(
         audience_role="Engineers",
         delivery_context="Engineering acceptance",
         page_target=4,
+        quality_profile="draft",
     )
     service = HostCreateService(workspace)
     result = service.run((source,), hints=hints)
@@ -1566,6 +1763,179 @@ def test_fresh_create_controlled_revision_reaches_candidate_and_terminal_fact(
     assert host_create_workspace_errors(
         workspace, SchemaRegistry().schema_dir
     ) == ()
+
+
+def test_reviewed_create_requires_office_calibration_before_identical_full_render(
+    tmp_path: Path,
+) -> None:
+    """Run the reviewed path from direction evidence through whole-deck review."""
+
+    import base64
+
+    source = tmp_path / "source.txt"
+    source.write_text(
+        "# Evidence\nSynthetic A is 2 and B is 5.\n\n"
+        "# Decision\nReview the quality-by-construction fixture.\n",
+        encoding="utf-8",
+    )
+    workspace = tmp_path / "workspace"
+    hints = BriefCompletionHints(
+        request_text="Create a four-page reviewed engineering decision presentation",
+        purpose="Exercise representative Office calibration",
+        desired_outcome="Authorize only an identical full render",
+        call_to_action="Review the whole-deck evidence",
+        audience_role="Engineering leadership",
+        delivery_context="External review meeting",
+        page_target=4,
+    )
+    result = HostCreateService(workspace).run((source,), hints=hints)
+    runtime = ArtifactRuntime(workspace)
+    image = workspace / "assets/test.png"
+    image.parent.mkdir(exist_ok=True)
+    image.write_bytes(
+        base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+    )
+    manifest, version = runtime.read_artifact_snapshot("asset_manifest")
+    manifest["assets"] = [
+        {
+            "asset_id": "AST-001",
+            "kind": "image",
+            "source_type": "internal",
+            "path_or_url": "assets/test.png",
+            "license": "test fixture",
+            "allowed_use": "full",
+            "status": "available",
+        }
+    ]
+    runtime.write_artifact("asset_manifest", manifest, expected_version=version)
+
+    visited: list[str] = []
+    for _ in range(12):
+        assert result["status"] == "host_input_required", result
+        pending = result["pending"]
+        visited.append(pending["stage"])
+        request = read_json(Path(pending["request_path"]))
+        prototype = None
+        if pending["stage"] == "art_direction_seed":
+            prototype_path = workspace / "design/prototypes/reviewed.html"
+            prototype_path.parent.mkdir(parents=True, exist_ok=True)
+            prototype_path.write_text(
+                "<main>reviewed quality construction prototype</main>\n",
+                encoding="utf-8",
+            )
+            roles = {
+                f"role_{item['slide_type']}"
+                for item in request["context"]["deck_outline"]["slides"]
+                if item.get("status") != "excluded"
+            }
+            prototype = {
+                "medium": "html-css",
+                "path": "design/prototypes/reviewed.html",
+                "content_hash": f"sha256:{sha256_file(prototype_path)}",
+                "coverage": sorted({*roles, "carrier_chart", "carrier_image"}),
+            }
+        _respond(
+            pending,
+            _fixture_proposal(
+                request["stage"],
+                request["context"],
+                request["limits"],
+                prototype=prototype,
+            ),
+        )
+        result = HostCreateService(workspace).run()
+        if result["status"] == "design_ready":
+            break
+    assert visited == [
+        "narrative_blueprint",
+        "deck_outline",
+        "art_direction_seed",
+        "direction_review",
+        "slide_specs",
+        "layout_plans",
+        "semantic_planning_review",
+        "art_direction",
+    ]
+    assert result["status"] == "design_ready", result
+
+    node, modules = _fake_successful_artifact_tool_runtime(tmp_path)
+    fonts = write_fontconfig_tools(tmp_path)
+
+    def create_service() -> HostCreateService:
+        return HostCreateService(
+            workspace,
+            node=str(node),
+            modules=modules,
+            font_match=str(fonts),
+        )
+
+    def answer_pending(current: dict) -> None:
+        pending = current["pending"]
+        request = read_json(Path(pending["request_path"]))
+        if pending["stage"] == "calibration_office_evidence":
+            scope = request["context"]["receipt"]["scope"]
+            pages = []
+            for slide_id in request["context"]["required_slide_ids"]:
+                page = workspace / f"office/{scope}-{slide_id}.png"
+                page.parent.mkdir(exist_ok=True)
+                page.write_bytes(f"powerpoint-{scope}-{slide_id}".encode())
+                pages.append({"slide_id": slide_id, "path": str(page)})
+            proposal = {
+                "application": "Microsoft PowerPoint",
+                "build": "16.99-test",
+                "profile": "macOS PNG export test fixture",
+                "export_parameters": {"scale": 2},
+                "pages": pages,
+            }
+        else:
+            proposal = _fixture_proposal(
+                request["stage"], request["context"], request["limits"]
+            )
+        _respond(pending, proposal)
+
+    sample = create_service().run(render=True)
+    assert sample["status"] == "calibration_office_evidence_pending", sample
+    sample_receipt = read_json(Path(sample["receipt_path"]))
+    assert sample_receipt["scope"] == "sample"
+
+    result = create_service().run()
+    for _ in range(6):
+        if result["status"] == "calibration_approved":
+            break
+        assert result["status"] in {
+            "host_input_required",
+            "calibration_review_pending",
+        }, result
+        if result["status"] == "host_input_required":
+            answer_pending(result)
+        result = create_service().run()
+    assert result["status"] == "calibration_approved", result
+
+    full = create_service().run(render=True)
+    assert full["status"] == "full_office_evidence_pending", full
+    full_receipt = read_json(Path(full["receipt_path"]))
+    assert full_receipt["scope"] == "full"
+    assert full_receipt["renderer_ir"] == sample_receipt["renderer_ir"]
+    assert full_receipt["producer_identity"] == sample_receipt["producer_identity"]
+    assert full_receipt["dependency_key"] == sample_receipt["dependency_key"]
+
+    result = create_service().run()
+    for _ in range(6):
+        if result["status"] == "whole_deck_approved":
+            break
+        assert result["status"] in {
+            "host_input_required",
+            "whole_deck_review_pending",
+        }, result
+        if result["status"] == "host_input_required":
+            answer_pending(result)
+        result = create_service().run()
+    assert result["status"] == "whole_deck_approved", result
+    session = read_json(workspace / ".slidethus/host-create/session.json")
+    assert session["calibration"]["state"] == "whole_deck_approved"
+    assert session["calibration"]["whole_deck_decision"] is not None
 
 
 @pytest.mark.skipif(not os.environ.get("RUNTIME_NODE_MODULES"), reason="optional host Artifact Tool runtime")

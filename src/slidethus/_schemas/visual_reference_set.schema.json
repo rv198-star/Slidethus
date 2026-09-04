@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/visual-reference-set.schema.json",
+  "title": "Evidence-only Visual Reference Set",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "project_id", "reference_set_id", "generated_at", "dependency_key",
+    "receipt_ref", "decision_ref", "office_pages", "coverage", "design_authority"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "reference_set_id": {"type": "string", "pattern": "^VRS-[A-F0-9]{16}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "dependency_key": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "receipt_ref": {"$ref": "#/$defs/fileRef"},
+    "decision_ref": {"$ref": "#/$defs/fileRef"},
+    "office_pages": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["slide_id", "path", "sha256"],
+        "properties": {
+          "slide_id": {"type": "string", "pattern": "^S-[0-9]{3}$"},
+          "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+        }
+      }
+    },
+    "coverage": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "design_authority": {"const": false}
+  },
+  "$defs": {
+    "fileRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "path", "sha256"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    }
+  }
+}

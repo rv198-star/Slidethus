@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slidethus.dev/schemas/visual-admission-policy.schema.json",
+  "title": "Visual Admission Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "project_id", "policy_id", "generated_at", "policy_version",
+    "brief_ref", "risk_class", "reason_codes", "approval_mode", "required_evidence",
+    "approval_authority_policy", "reviewer_requirements"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "project_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "policy_id": {"type": "string", "pattern": "^VAP-[A-F0-9]{16}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "policy_version": {"const": "1.0.0"},
+    "brief_ref": {"$ref": "#/$defs/artifactRef"},
+    "risk_class": {"enum": ["controlled", "reviewed", "critical"]},
+    "reason_codes": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9_]{3,80}$"}
+    },
+    "approval_mode": {"enum": ["auto", "checkpoint", "strict"]},
+    "required_evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["direction", "semantic_preview", "calibration", "whole_deck_office"],
+      "properties": {
+        "direction": {"type": "boolean"},
+        "semantic_preview": {"type": "boolean"},
+        "calibration": {"type": "boolean"},
+        "whole_deck_office": {"type": "boolean"}
+      }
+    },
+    "approval_authority_policy": {"enum": ["workflow_derived", "human_checkpoint"]},
+    "reviewer_requirements": {
+      "type": "object", "additionalProperties": false,
+      "required": ["independent_from_author", "office_image_capable", "immutable_findings"],
+      "properties": {
+        "independent_from_author": {"type": "boolean"},
+        "office_image_capable": {"type": "boolean"},
+        "immutable_findings": {"const": true}
+      }
+    }
+  },
+  "$defs": {
+    "artifactRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_type", "version", "content_hash"],
+      "properties": {
+        "artifact_type": {"const": "project_brief"},
+        "version": {"type": "integer", "minimum": 1},
+        "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      }
+    }
+  }
+}
